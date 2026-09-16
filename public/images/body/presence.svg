@@ -1,17 +1,20 @@
-<svg width="886" height="1288" viewBox="0 0 886 1288" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<!-- Presence: the caption sits 60px below the Figma export, the pendant
-     250px below it, each in its own group. The export's two ellipses are both
-     gone from here: the inner circle was dropped, and PresenceHalo now owns
-     the outer one, drawing it as a radiating field centred on the pendant. -->
-<g transform="translate(0, 60)">
+<svg overflow="visible" width="886" height="1288" viewBox="0 0 886 1288" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Presence: the caption sits 532px below the Figma export, the pendant
+     436px below it, each in its own group. Together they are centred inside
+     the halo's innermost ring (y 697 to 1270, centred on y 983.5), with even
+     room of about 40px from the ring to the caption (top y 737), from the
+     caption to the pendant photo (y 825 to 1230), and from the photo back to
+     the ring. The export's two ellipses are both gone from here: the inner
+     circle was dropped, and PresenceHalo now owns the outer one, drawing it as
+     a radiating field centred on the pendant. The "and surrender to the
+     Emperor of nothingness" caption lives in emperor.svg, over its pendant. -->
+<g transform="translate(0, 532)">
 <text fill="white" style="white-space: pre" xml:space="preserve" font-family="Julius Sans One" font-size="12" letter-spacing="0em"><tspan x="414.221" y="252.31">Presence</tspan></text>
 <text fill="#888888" style="white-space: pre" xml:space="preserve" font-family="Julius Sans One" font-size="12" letter-spacing="0em"><tspan x="402.719" y="213.31">let there be &#10;</tspan><tspan x="442" y="226.31">&#10;</tspan><tspan x="442" y="239.31">&#10;</tspan></text>
 </g>
-<g transform="translate(0, 250)">
+<g transform="translate(0, 436)">
 <rect x="369" y="376" width="147" height="435" fill="url(#pattern0_1612_458)"/>
 </g>
-<text fill="#888888" style="white-space: pre" xml:space="preserve" font-family="Julius Sans One" font-size="12" letter-spacing="0em"><tspan x="383.436" y="1034.31">and surrender to&#10;</tspan><tspan x="442" y="1047.31">&#10;</tspan><tspan x="348.52" y="1073.31">the </tspan><tspan x="442" y="1086.31">&#10;</tspan><tspan x="442" y="1099.31">&#10;</tspan></text>
-<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Julius Sans One" font-size="12" letter-spacing="0em"><tspan x="442" y="1060.31">&#10;</tspan><tspan x="374.406" y="1073.31">Emperor of nothingness&#10;</tspan></text>
 <defs>
 <pattern id="pattern0_1612_458" patternContentUnits="objectBoundingBox" width="1" height="1">
 <use xlink:href="#image0_1612_458" transform="matrix(0.00237877 0 0 0.000803859 -0.0340327 0)"/>
