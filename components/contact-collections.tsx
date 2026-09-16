@@ -1,0 +1,128 @@
+"use client"
+
+import { Navigation } from "@/components/navigation"
+import { BodyFooter } from "@/components/body-footer"
+
+/**
+ * Contact landing page — an exact copy of the Making page shell (full-page
+ * Nujaad process video at 40% opacity behind transparent top/bottom menus),
+ * but with the studio message and the homepage subscribe form overlaid in
+ * white Julius Sans One instead of the "Making" line.
+ */
+const julius = {
+  fontFamily: "'Julius Sans One', sans-serif",
+}
+
+export function ContactCollections() {
+  const inputStyle: React.CSSProperties = {
+    border: "none",
+    borderBottom: "1px solid rgba(255,255,255,0.4)",
+    outline: "none",
+    background: "transparent",
+    textAlign: "center",
+    fontSize: "clamp(10px, 0.62vw, 12px)",
+    letterSpacing: "0.15em",
+    color: "#fff",
+    padding: "6px 0",
+    width: "240px",
+    fontFamily: "inherit",
+  }
+
+  return (
+    <main
+      className="relative w-full overflow-hidden"
+      style={{
+        backgroundColor: "#202020",
+        // The page is exactly one viewport tall so the whole layout (menus +
+        // content) fits without scrolling.
+        height: "100dvh",
+      }}
+    >
+      {/* Fixed full-screen background video — pinned to the viewport, filling
+          the whole screen (cropped as needed) behind the transparent top and
+          bottom menus, at 80% opacity. */}
+      <video
+        className="fixed inset-0 h-screen w-screen"
+        src="/videos/contact-bg.mp4"
+        poster="/videos/contact-bg-poster.jpg"
+        preload="auto"
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+        style={{ objectFit: "cover", objectPosition: "center", opacity: 0.8 }}
+      />
+
+      {/* Content layer on top of the video: menus + message + subscribe form */}
+      <div className="relative z-10 flex h-full flex-col">
+        {/* Top menu — transparent so the video shows through behind it */}
+        <Navigation dark bgColor="transparent" />
+
+        {/* Overlaid message + subscribe form, vertically centered */}
+        <div className="pointer-events-none flex-1 flex flex-col items-center justify-center px-6">
+          <p
+            className="text-center text-balance"
+            style={{
+              ...julius,
+              color: "#ffffff",
+              opacity: 0.5,
+              fontSize: "clamp(10px, 0.62vw, 12px)",
+              letterSpacing: "0.14em",
+              lineHeight: 1.9,
+              margin: 0,
+            }}
+          >
+            The work continues.
+            <br />
+            Subscribe to receive occasional updates from the studio.
+          </p>
+
+          {/* Subscribe form — same fields as the homepage, styled for the
+              dark video background. */}
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="pointer-events-auto"
+            style={{
+              ...julius,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "16px",
+              marginTop: "40px",
+            }}
+          >
+            <input type="text" placeholder="[Your Name]" style={inputStyle} />
+            <input type="email" placeholder="[Your Email Address]" style={inputStyle} />
+            <button
+              type="submit"
+              style={{
+                border: "none",
+                background: "transparent",
+                fontSize: "clamp(10px, 0.62vw, 12px)",
+                letterSpacing: "0.2em",
+                color: "#fff",
+                cursor: "pointer",
+                padding: "4px 0",
+                fontFamily: "inherit",
+                textTransform: "uppercase",
+                marginTop: "8px",
+                opacity: 0.85,
+              }}
+            >
+              Subscribe
+            </button>
+          </form>
+        </div>
+
+        {/* Bottom menu — transparent so the video shows through behind it */}
+        <div
+          className="mx-auto w-full pb-[2%]"
+          style={{ maxWidth: 1920, containerType: "inline-size" }}
+        >
+          <BodyFooter activeLabel="contact" />
+        </div>
+      </div>
+    </main>
+  )
+}
