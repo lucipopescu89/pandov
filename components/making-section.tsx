@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { BirdRings } from "@/components/bird-rings"
 
 const headingStyle = {
   fontFamily: "'Julius Sans One', sans-serif",
@@ -171,25 +170,6 @@ export function MakingSection() {
               }}
             />
           </div>
-        </div>
-
-        {/* Bird + rings in the pendant's open centre, laid over the photo's own
-            uncropped box so the percentages are the photo's. Painted after the
-            wrapper so they stay crisp above the band. */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: "-80px",
-            aspectRatio: "1587 / 1059",
-            pointerEvents: "none",
-          }}
-        >
-          <BirdRings
-            size="21%"
-            style={{ position: "absolute", left: "calc(35% - 10px)", top: "calc(49.5% + 115px)", transform: "translate(-50%, -50%)" }}
-          />
         </div>
 
         {/* Heading + manifesto — right of the pendant, level with its ring */}
