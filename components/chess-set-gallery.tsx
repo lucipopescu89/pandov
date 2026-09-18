@@ -5,27 +5,27 @@ import Image from "next/image"
 
 const IMAGES = [
   {
-    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_8122-2nw3Zmo2jC898NZyeFzDxHLWDVhT00.jpg",
+    src: "/images/chess-set/board-side.jpg",
     alt: "Chess Set — piese aurii și negre pe tablă din unghi lateral",
   },
   {
-    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/table%20design%20%284%29-PhioJnKG3eG2aPYQGhoWZ0RXOMkaXa.jpg",
+    src: "/images/chess-set/board-marble.jpg",
     alt: "Chess Set — tablă pe soclu de marmură albă cu piese aurii și argintii",
   },
   {
-    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_8133-QE7smSHUa8z5QK6ltTGEixAACQB6Ih.jpg",
+    src: "/images/chess-set/board-front.jpg",
     alt: "Chess Set — piese aurii și negre pe tablă, vedere frontală",
   },
   {
-    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_8115-4NITbJjSPObmGCUnu8TTcqsLcEFdbJ.jpg",
+    src: "/images/chess-set/board-detail.jpg",
     alt: "Chess Set — detaliu piese sculpturale aurii și negre pe tablă cu model circular",
   },
   {
-    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/3d%20printed%20in%20Brass%20and%20Steel%202-2Cp4gaQQEPnKxdzTyEG7vs40y6qpJR.jpg",
+    src: "/images/chess-set/set-left.jpg",
     alt: "Chess Set — set complet piese 3D printate în alamă și oțel, unghi lateral stânga",
   },
   {
-    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/3d%20Printed%20in%20Brass%20and%20Steel-AfSTu5SVifVFqH2inc4AXd5F6dx393.jpg",
+    src: "/images/chess-set/set-front.jpg",
     alt: "Chess Set — set complet piese 3D printate în alamă și oțel, unghi frontal",
   },
 ]
@@ -74,8 +74,8 @@ export function ChessSetGallery() {
               <Image
                 src={img.src}
                 alt={img.alt}
-                width={2400}
-                height={1800}
+                width={2079}
+                height={1550}
                 style={{ width: "100%", height: "auto", display: "block" }}
                 sizes="100vw"
                 priority={i === 0}

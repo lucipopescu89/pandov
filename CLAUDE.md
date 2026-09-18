@@ -66,6 +66,8 @@ These are the author's rules, not inferences from the code. Where the code disag
 
 **The top menu and the bottom menu are centred, and they hold still between pages.** Logo and menu are centred on the page on every route, and a visitor moving from one page to another must not see them shift, resize or re-space. Anything that changes the centre line (a scrollbar appearing on one page and not another) or the rhythm (different padding above and below the bottom menu, a different logo size, different type) is a bug, not a per-page choice.
 
+One exception the author has set, deliberately: `/mind/chess-set` ends on the six dots of the pieces gallery and gives the bottom menu 44px more room above it than the rest of the site — 130px from the dots to the logo on a desktop, 106 on a phone — because a row of small marks needs more air under it than a photograph's edge does. It lives as a `margin-bottom` on `.chess-pieces-section`. Don't "correct" it back.
+
 ## Conventions
 
 - **Julius Sans One is the display face for everything.** `app/layout.tsx` adds an explicit Google Fonts `<link>` for it, because inline Figma SVG `<text>` elements reference the literal family name and can't see a `next/font` alias — that `<link>` is what makes the SVG captions render correctly. The `next/font` instances in the same file are assigned to `_`-prefixed variables and never applied to an element; `app/globals.css` reaches the families by literal name through `--font-sans` / `--font-heading` instead.

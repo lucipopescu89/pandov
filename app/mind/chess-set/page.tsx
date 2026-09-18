@@ -1,16 +1,26 @@
+import { readFile } from "node:fs/promises"
+import path from "node:path"
 import Image from "next/image"
+import { splitRadiant } from "@/lib/radiant"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { ChessSetGallery } from "@/components/chess-set-gallery"
 import { ChessSetOrnament } from "@/components/chess-set-ornament"
 import { ChessSetStatement } from "@/components/chess-set-statement"
+import { ChessPieces } from "@/components/chess-pieces"
 
 export const metadata = {
   title: "Chess Set — PANDOV",
   description: "Chess Set — For Mind collection",
 }
 
-export default function ChessSetPage() {
+export default async function ChessSetPage() {
+  // The closing ornament is read and ranked here, on the server, so the wave of
+  // light has its order before the page is ever painted. See `lib/radiant.ts`.
+  const radiant = splitRadiant(
+    await readFile(path.join(process.cwd(), "public", "images", "desen-radiant.svg"), "utf8"),
+  )
+
   return (
     <main style={{ width: "100%", backgroundColor: "#fff", minHeight: "100vh" }}>
       <style>{`
@@ -34,7 +44,9 @@ export default function ChessSetPage() {
           background-color: #202020;
         }
         .chess-hero-intro {
-          padding: 280px 24px 0;
+          /* 280px once; 60 of them taken back so the title and the ornament sit
+             closer to the menu. The phone keeps its own 30px below. */
+          padding: 220px 24px 0;
         }
         .chess-hero-eyebrow {
           color: #5f5f5f;
@@ -42,7 +54,10 @@ export default function ChessSetPage() {
         }
         .chess-hero-claim {
           color: #7d7d7d;
-          margin-top: 322px;
+          /* 322px once, less 60. The image below follows it in the flow, so it
+             comes up by the same 60 without a number of its own. The phone keeps
+             its 48px. */
+          margin-top: 262px;
         }
         .chess-hero-media {
           position: relative;
@@ -84,6 +99,7 @@ export default function ChessSetPage() {
           width: 100%;
           height: auto;
           display: block;
+          opacity: 0.8;
         }
         .chess-moon-media .chess-line {
           position: absolute;
@@ -111,11 +127,18 @@ export default function ChessSetPage() {
           margin-top: 34px;
         }
 
-        /* --- Pieces (reserved) ------------------------------------------ */
+        /* --- Pieces ----------------------------------------------------- */
         .chess-pieces-section {
           width: 100%;
           background-color: #fff;
-          min-height: 120px;
+          padding-top: 40px;
+          /* The bottom menu brings its own room above it — 80px on a desktop,
+             56 on a phone, the same on every page. This adds 44 more so the dots
+             sit ~130px under the logo: the set ends on six small marks, and they
+             need more air under them than a photograph's edge would. The
+             author's call, and the one page on the site where that space is not
+             the shared figure. */
+          margin-bottom: 44px;
         }
 
         @media (max-width: 768px) {
@@ -148,12 +171,21 @@ export default function ChessSetPage() {
             height: 78svh;
             margin-top: 24px;
           }
-          /* Blow the moon up and pin it to the bottom so the pieces stay in frame */
+          /* Blow the moon up and pin it to the bottom so the pieces stay in
+             frame. Held by its own middle rather than by a left offset: -60%
+             centres a 220% image and nothing else, so every change of scale used
+             to have to be paid for twice, and forgetting the second number left
+             the moon sitting well off to the left. */
           .chess-moon-image {
             position: absolute;
+            /* Tailwind's preflight caps every image at max-width 100%, which
+               was quietly clamping these 220% back to the width of the page —
+               the moon had never actually been enlarged here. */
+            max-width: none;
             width: 220%;
             height: auto;
-            left: -60%;
+            left: 50%;
+            transform: translateX(-50%);
             bottom: 0;
           }
           .chess-moon-media .moon-lift { top: 8%; }
@@ -181,10 +213,10 @@ export default function ChessSetPage() {
 
         <div className="chess-hero-media">
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Imagine%20headline-1gFGmN8gTyudB3LusnNvyBx8exNcr8.png"
+            src="/images/chess-set/hero.png"
             alt="Chess Set — PANDOV"
-            width={2400}
-            height={1350}
+            width={2667}
+            height={1861}
             className="chess-hero-image"
             priority
           />
@@ -201,10 +233,10 @@ export default function ChessSetPage() {
 
         <div className="chess-moon-media">
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/3-8FGGyC1sARx2W54iCHYqLGqHOs34Kx.jpg"
+            src="/images/chess-set/moon.jpg"
             alt="Chess pieces with moon — PANDOV"
-            width={3200}
-            height={1800}
+            width={4957}
+            height={2202}
             className="chess-moon-image"
           />
           <p className="chess-line moon-lift">Lift and gravity</p>
@@ -223,13 +255,12 @@ export default function ChessSetPage() {
       </section>
 
       {/* ================= Statement + ornament ================= */}
-      <ChessSetStatement />
+      <ChessSetStatement radiant={radiant} />
 
-      {/* ================= Pieces — black and white, face to face =================
-          Left intentionally empty: the full set of piece photographs will be
-          added here. See components/chess-pieces-gallery.tsx for the previous
-          side-by-side galleries. */}
-      <section className="chess-pieces-section" />
+      {/* ================= Pieces — gold and dark, face to face ================= */}
+      <section className="chess-pieces-section">
+        <ChessPieces />
+      </section>
 
       <BodyFooter activeLabel={null} />
     </main>
