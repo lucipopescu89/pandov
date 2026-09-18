@@ -5,20 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm dev      # dev server on :3000 (also available as the "dev" config in .claude/launch.json)
-pnpm build    # next build
-pnpm start    # serve the production build
+pnpm dev        # dev server on :3000 (also the "dev" config in .claude/launch.json)
+pnpm build      # next build — type-checks as it goes
+pnpm start      # serve the production build
+pnpm typecheck  # tsc --noEmit, on its own
 ```
 
-There is no test suite. `pnpm lint` is declared in package.json but **eslint is not installed and no eslint config exists** — the script fails; don't rely on it.
+There is no test suite and no linter. The build is the gate: `typescript.ignoreBuildErrors` was removed on 2026-09-18, so a build that passes is a build whose types are sound. Don't put it back.
 
-`next.config.mjs` sets `typescript.ignoreBuildErrors: true`, so a successful build proves nothing about types. Type-check explicitly:
-
-```bash
-pnpm exec tsc --noEmit
-```
-
-`images.unoptimized: true` is also set, so `next/image` serves files as-is — sizing and file weight are the author's responsibility.
+`images.unoptimized: true` remains, so `next/image` serves files exactly as they sit in `public/` — a 3MB photo is 3MB on the wire. Export images at the width they are drawn at, or a little over for finer screens.
 
 ## Architecture
 
@@ -34,7 +29,8 @@ The reason for all of it: animating `<g>` groups inside a single SVG makes the b
 |---|---|---|
 | `lib/mechanism.ts` | `splitMechanism` — cuts a concentric artwork into rings by radius, each into its own cropped `<svg>` | `components/mechanism-field.tsx` |
 | `lib/reveal.ts` | `splitReveal` — lifts a class of strokes onto their own layer under a repeating gradient mask, so a band of light climbs them by moving only `mask-position` | `components/particle-field.tsx` |
-| `lib/wings.ts` | `splitWings` — reads a bird out of 199 ungrouped sibling paths and bands the plumage by distance from the shoulder, so bands lag outward | `components/winged-field.tsx` |
+| `lib/wings.ts` | `splitWings` — reads a bird out of 199 ungrouped sibling paths and bands the plumage by distance from the shoulder, so bands lag outward | (no consumer at present) |
+| `lib/radiant.ts` | `splitRadiant` — measures the closing ornament's fifteen contours and ranks them from the centre out, each carrying the room it has to its neighbour | `components/chess-set-statement.tsx` |
 
 Motion is declarative: a `RingSpec[]` / `RevealSpec` / `WingSpec` describes *what moves how*, and the field component turns that into transforms, keyframes or canvas sprites. Add a ring or a reveal by writing a spec, not by hand-editing the SVG.
 
@@ -79,10 +75,9 @@ One exception the author has set, deliberately: `/mind/chess-set` ends on the si
 
 ## Known state of the tree
 
-- `components/ui/` holds 57 shadcn components and **nothing in the site imports any of them.** Same for `product-grid.tsx`, `collections.tsx`, `newsletter.tsx`, `theme-provider.tsx`, `winged-field.tsx`, and `chess-pieces-gallery.tsx` (kept only as a reference pointed at from a comment in `app/mind/chess-set/page.tsx`). Scaffolding from the v0 origin — don't assume a component is live because it exists.
-- `styles/globals.css` is dead; nothing imports it. `app/globals.css` is the real stylesheet and the two have drifted.
-- The nav links to `/space`, but `app/space/` does not exist — that link 404s.
-- `app/zz-making-only/` and `app/zz-making-test/` are temporary verification routes, marked in-file for deletion.
-- Roughly 20 image sources are external Vercel Blob URLs rather than files in `public/`.
-- `scripts/backup-frames.sh` hardcodes `/vercel/share/v0-project` paths and only ran inside v0.
+The v0 scaffolding was cleared out on 2026-09-18: `components/ui/` (57 shadcn files), `hooks/`, `styles/globals.css`, `lib/utils.ts`, six unused components, the `zz-*` verification routes, `components.json`, `scripts/`, and 43 npm packages nothing imported. Every component in `components/` is now live, and `package.json` lists only what the code actually uses. If something looks unused now, it probably is — check before assuming otherwise.
+
+- **Every image the site shows is a file in `public/`.** The last seven external Vercel Blob URLs were brought in on 2026-09-18. Don't reintroduce one: that storage belongs to an abandoned v0 project, and an image that lives there has no copy in this repo to restore from.
+- The nav links to `/space`, but `app/space/` does not exist — that link still 404s. It is the one known defect left, waiting on a decision about the Space collection.
+- `public/logo-pandov.{svg,png}`, `public/logo-pandov-icon.png`, `public/images/home/product-{1,a}.png`, `public/images/body/meditation.svg` and `public/images/second-wind-presentation.svg` are the author's own artwork and brand files that no page currently renders. They are kept deliberately. The live logos are `/logo-icon.svg` and `/logo-text.svg`.
 - `BACKUP_SNAPSHOT_2026-04-11.md` is a historical snapshot; parts of its TODO list are already done. Treat it as a record, not as a spec.
