@@ -100,19 +100,9 @@ export function Footer() {
         />
       </div>
 
-      {/* Bottom menu — the shared `BodyFooter` in its compact form, as in the
-          homepage design. */}
-      <div
-        style={{
-          maxWidth: 1920,
-          margin: "0 auto",
-          padding: "64px 0 34px",
-          containerType: "inline-size",
-        }}
-      >
-        <BodyFooter activeLabel={null} compact />
-      </div>
-
+      {/* Bottom menu — the shared `BodyFooter`, exactly as every other page
+          renders it: same logo, same type, same spacing, all its own. */}
+      <BodyFooter activeLabel={null} />
     </footer>
   )
 }

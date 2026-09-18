@@ -31,7 +31,7 @@ export default function ChessSetPage() {
         /* --- Hero ----------------------------------------------------- */
         .chess-hero {
           width: 100%;
-          background-color: #1a1a1a;
+          background-color: #202020;
         }
         .chess-hero-intro {
           padding: 280px 24px 0;
@@ -118,12 +118,6 @@ export default function ChessSetPage() {
           min-height: 120px;
         }
 
-        .chess-footer {
-          width: 100%;
-          background-color: #fff;
-          padding: 80px 0 64px;
-        }
-
         @media (max-width: 768px) {
           .chess-hero-intro {
             padding-top: 30px;
@@ -171,15 +165,12 @@ export default function ChessSetPage() {
           .chess-board-captions .chess-line + .chess-line {
             margin-top: 24px;
           }
-          .chess-footer {
-            padding: 56px 0 48px;
-          }
         }
       `}</style>
 
       {/* ================= Hero ================= */}
       <section className="chess-hero">
-        <Navigation dark bgColor="#1a1a1a" />
+        <Navigation bgColor="#202020" />
 
         <div className="chess-hero-intro">
           <p className="chess-line chess-hero-eyebrow">Chess Set</p>
@@ -240,9 +231,7 @@ export default function ChessSetPage() {
           side-by-side galleries. */}
       <section className="chess-pieces-section" />
 
-      <div className="chess-footer">
-        <BodyFooter activeLabel={null} />
-      </div>
+      <BodyFooter activeLabel={null} />
     </main>
   )
 }

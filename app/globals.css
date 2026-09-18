@@ -120,6 +120,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Hold the scrollbar's width on every page, whether or not that page
+       scrolls. Without it the centre line moves: a scrolling page measures
+       1425px where Contact — one viewport tall, overflow hidden — measures
+       1440, and the logo and both menus jump 7.5px sideways as you move
+       between them. */
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground;
   }

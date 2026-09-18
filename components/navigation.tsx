@@ -22,19 +22,16 @@ const menuItems = [
   { name: "Space", href: "/space" },
 ]
 
-export function Navigation({
-  dark = false,
-  bgColor: customBgColor,
-  linkColor,
-}: {
-  dark?: boolean
-  bgColor?: string
-  linkColor?: string
-}) {
+/**
+ * The top menu. `bgColor` is the band behind it — the page's own ground, the
+ * only thing a page may vary. The logo, the links, their colour, size, tracking
+ * and spacing are the component's and are the same on every route; there is
+ * deliberately no prop to override them.
+ */
+export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const textColor = linkColor || BRAND_GRAY
-  const bgColor = customBgColor || (dark ? "#202020" : "white")
+  const textColor = BRAND_GRAY
 
   return (
     <header style={{ width: "100%", backgroundColor: bgColor }}>

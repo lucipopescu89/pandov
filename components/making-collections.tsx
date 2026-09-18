@@ -3,7 +3,7 @@ import { BodyFooter } from "@/components/body-footer"
 
 /**
  * Making landing page — same dark shell as the Body/Mind pages
- * (background #202020, `Navigation dark`, `BodyFooter`).
+ * (background #202020, `Navigation`, `BodyFooter`).
  *
  * The hero is the Nujaad process video, full-bleed across the page width and
  * dropped to 20% opacity. As on the Contact page, the top and bottom menus are
@@ -46,7 +46,7 @@ export function MakingCollections() {
 
       {/* Top menu — fixed and transparent so the video scrolls behind it */}
       <div className="fixed inset-x-0 top-0 z-20">
-        <Navigation dark bgColor="transparent" />
+        <Navigation bgColor="transparent" />
       </div>
 
       {/* Title — fixed at the center of the screen. Font size matches the
@@ -69,12 +69,7 @@ export function MakingCollections() {
 
       {/* Bottom menu — fixed and transparent so the video scrolls behind it */}
       <div className="fixed inset-x-0 bottom-0 z-20">
-        <div
-          className="mx-auto w-full pb-[2%]"
-          style={{ maxWidth: 1920, containerType: "inline-size" }}
-        >
-          <BodyFooter activeLabel="making" />
-        </div>
+        <BodyFooter activeLabel="making" />
       </div>
     </main>
   )

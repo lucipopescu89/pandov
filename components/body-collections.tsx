@@ -39,7 +39,7 @@ export function BodyCollections() {
       style={{ backgroundColor: "#202020" }}
     >
       {/* Top menu with logo — same component as the rest of the site */}
-      <Navigation dark bgColor="#202020" />
+      <Navigation bgColor="#202020" />
 
       {/* Design canvas for the middle content */}
       <div
@@ -175,13 +175,8 @@ export function BodyCollections() {
         </div>
       </div>
 
-      {/* Bottom menu */}
-      <div
-        className="mx-auto w-full pt-[4%] pb-[2%]"
-        style={{ maxWidth: CANVAS_W, containerType: "inline-size" }}
-      >
-        <BodyFooter />
-      </div>
+      {/* Bottom menu — spacing is the component's own, shared with every page */}
+      <BodyFooter />
     </main>
   )
 }

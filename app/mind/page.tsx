@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
+import { BodyFooter } from "@/components/body-footer"
 
 export const metadata = {
   title: "Mind — PANDOV",
@@ -52,6 +53,8 @@ export default function MindPage() {
         </Link>
 
       </div>
+
+      <BodyFooter activeLabel={null} />
     </main>
   )
 }

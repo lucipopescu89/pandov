@@ -18,12 +18,15 @@ const CANVAS_W = 1920
 /** The page's ground, behind every section. */
 const GROUND = "#202020"
 /**
- * Top of the footer: 300px under the foot of the last pendant, Emperor's, which
- * ends at 7311. The export left over 700px there.
+ * The canvas ends 300px under the foot of the last pendant, Emperor's, which
+ * ends at 7311; the export left over 700px there. The bottom menu follows it in
+ * the page's own flow rather than being placed on the canvas, so it carries the
+ * same spacing as every other page. It used to sit at a percentage of the
+ * canvas with the export's 225px tail beneath it — but the menu is drawn in
+ * pixels and the tail scales with the page, so the room under it was right at
+ * one width only.
  */
-const FOOTER_TOP = 7610
-/** The export's 225px under the top of the footer is kept. */
-const CANVAS_H = FOOTER_TOP + 225
+const CANVAS_H = 7610
 
 /**
  * Mobile framing.
@@ -520,8 +523,8 @@ export async function BodyPresentation() {
       className="w-full overflow-x-hidden text-foreground"
       style={{ backgroundColor: GROUND }}
     >
-      {/* Top menu with logo — same as the other pages, in dark mode */}
-      <Navigation dark bgColor={GROUND} />
+      {/* Top menu with logo — same as the other pages, on this page's ground */}
+      <Navigation bgColor={GROUND} />
 
       {/* The window the canvas is seen through. On a phone the canvas is drawn
           wider than the page and centred in it, so the crop takes equally off
@@ -619,15 +622,13 @@ export async function BodyPresentation() {
           )
         })}
 
-        {/* Footer sits at the very bottom of the master canvas */}
-        <div
-          className="absolute inset-x-0"
-          style={{ top: `${(FOOTER_TOP / CANVAS_H) * 100}%` }}
-        >
-          <BodyFooter />
-        </div>
       </CaptionFade>
       </div>
+
+      {/* Bottom menu — in the page's flow under the canvas, so it is spaced and
+          centred on the page exactly as it is everywhere else, and is not
+          carried by the phone's crop. */}
+      <BodyFooter />
 
       <style>{`
         /* Starts a quarter of the way in, so it leaves its place rising. */

@@ -57,7 +57,7 @@ export function ContactCollections() {
       {/* Content layer on top of the video: menus + message + subscribe form */}
       <div className="relative z-10 flex h-full flex-col">
         {/* Top menu — transparent so the video shows through behind it */}
-        <Navigation dark bgColor="transparent" />
+        <Navigation bgColor="transparent" />
 
         {/* Overlaid message + subscribe form, vertically centered */}
         <div className="pointer-events-none flex-1 flex flex-col items-center justify-center px-6">
@@ -116,12 +116,7 @@ export function ContactCollections() {
         </div>
 
         {/* Bottom menu — transparent so the video shows through behind it */}
-        <div
-          className="mx-auto w-full pb-[2%]"
-          style={{ maxWidth: 1920, containerType: "inline-size" }}
-        >
-          <BodyFooter activeLabel="contact" />
-        </div>
+        <BodyFooter activeLabel="contact" />
       </div>
     </main>
   )
