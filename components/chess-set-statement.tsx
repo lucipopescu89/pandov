@@ -52,8 +52,51 @@ const PEAK = 1
  * enough to read as almost touching, with a hair of daylight left. The
  * neighbour itself is a step behind in the wave and has not begun to move when
  * this one is at its widest, so the two never meet.
+ *
+ * That is the figure the drawing keeps while the page is still. The scroll
+ * carries it well past 1 and the lines do then cross — see `DRIVE_NEAR`.
  */
 const NEAR = 0.9
+
+/**
+ * What the reader's scroll adds to the two figures above.
+ *
+ * The rosette at the centre already quickened under the hand while the contours
+ * around it kept one pace whatever happened, and the drawing read as two
+ * mechanisms sharing a centre rather than as one. They now run off the same
+ * velocity: while the page is moving the wave travels faster and every contour
+ * opens further into its own gap, and both ebb back to their resting figures
+ * within about a second of the page coming to rest.
+ *
+ * The drive is `v / (v + DRIVE_HALF)` — a share, never a multiple, and a very
+ * steep one: an easy turn of the wheel already stands at four fifths of it, and
+ * a hard flick spends the last fifth. The drawing has two readings and a short
+ * road between them — held, and driven — which is what was asked of it. Measured
+ * in the page: at rest a contour takes 0.9 of its gap, on an easy scroll 1.8, on
+ * a hard one 2.0, and there is nothing past 2.03 for a flick to find.
+ *
+ * Note that a jump — `scrollTo`, an anchor, the browser restoring a position —
+ * arrives as one enormous delta and drives the ornament as hard as anything a
+ * hand can do. That is left alone: a page that has just been thrown somewhere is
+ * exactly when the drawing may as well be at full tilt.
+ */
+const DRIVE_HALF = 12
+/** Turns of speed added at the top of the drive; 1 would be twice the pace. */
+const DRIVE_RATE = 3.2
+/**
+ * Share of its own gap a contour takes at the top of the drive, over NEAR.
+ *
+ * Past 1 — which a driven contour is, well past — it does not stop at the gap
+ * but crosses where its neighbour rests. That is deliberate and it is what makes
+ * the drive legible: at rest each contour holds its lane, and under the hand the
+ * lit band gathers and rides over the lines ahead of it. The band is three
+ * contours wide, so the neighbour being crossed is itself already rising, and
+ * the two swell together rather than one cutting through a line that is standing
+ * still. The outermost reaches some way past the artwork's own box; the section
+ * lifts the clip for it, and the room this ornament keeps from the text beside
+ * it absorbs the rest.
+ */
+const DRIVE_NEAR = 1.13
 
 /** The ornament's own centre, measured across all fifteen contours. */
 const CENTRE = 360.9
@@ -66,14 +109,18 @@ const CENTRE = 360.9
  *
  * The radiant itself is no longer a flat image: its fifteen contours arrive
  * ranked from the centre out (see `lib/radiant.ts`) and take the light in turn,
- * so a band climbs from the middle to the rim and begins again. It is Presence's
- * halo said in the only way this drawing allows — see the note in that file for
- * why its rings could not simply be copied here.
+ * so a band climbs from the middle to the rim and begins again. That band answers
+ * to the scroll as the rosette does — faster, and opening further, while the page
+ * is moving. It is Presence's halo said in the only way this drawing allows —
+ * see the note in that file for why its rings could not simply be copied here.
  */
 export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
   const rosetteRef = useRef<HTMLImageElement>(null)
+  const ornamentRef = useRef<HTMLDivElement>(null)
   const rotationRef = useRef(0)
   const velocityRef = useRef(0)
+  /** The share of the drive last written out, so a still page writes nothing. */
+  const driveRef = useRef(-1)
   const lastScrollYRef = useRef(0)
   const animationFrameRef = useRef<number>(0)
   // Degrees per second at rest, and how hard scrolling drives it on top. Both
@@ -94,15 +141,52 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
   useEffect(() => {
     let lastTime = performance.now()
 
+    /**
+     * The fifteen contours' own animations, taken on the first frame — by then
+     * the section has been painted once and the browser has certainly made
+     * them.
+     *
+     * Their speed is changed through `playbackRate`, not by rewriting
+     * `animation-duration`: the duration is what every contour's delay is
+     * measured against, so rewriting it would throw all fifteen to new points of
+     * the cycle and scatter the band. A playback rate leaves each animation
+     * exactly where it stands and only carries it on faster, so the wave keeps
+     * its shape and simply quickens.
+     *
+     * A reader who has asked the system for reduced motion has no animations
+     * here at all, and this stays empty for the life of the page.
+     */
+    let rings: Animation[] | null = null
+
     const animate = (currentTime: number) => {
       const deltaTime = (currentTime - lastTime) / 1000
       lastTime = currentTime
 
+      if (!rings) {
+        rings = Array.from(
+          ornamentRef.current?.querySelectorAll<SVGPathElement>(`.${RING_CLASS}`) ?? [],
+        ).flatMap((ring) => ring.getAnimations())
+      }
+
       velocityRef.current *= 0.95
-      const totalSpeed = baseSpeed + Math.abs(velocityRef.current) * scrollBoost
+      const speed = Math.abs(velocityRef.current)
+      const totalSpeed = baseSpeed + speed * scrollBoost
       rotationRef.current = (rotationRef.current + totalSpeed * deltaTime) % 360
       if (rosetteRef.current) {
         rosetteRef.current.style.transform = `rotate(${rotationRef.current}deg)`
+      }
+
+      // The same velocity the rosette turns on, read as a share of the drive
+      // rather than as a number of degrees.
+      const drive = speed / (speed + DRIVE_HALF)
+      // Written only once it has actually moved. The rate reaches fifteen
+      // animations and the share fifteen elements' styles; on a still page it is
+      // the same figure frame after frame, and not worth a recalculation apiece.
+      if (Math.abs(drive - driveRef.current) > 0.002) {
+        driveRef.current = drive
+        const rate = 1 + DRIVE_RATE * drive
+        for (const ring of rings) ring.playbackRate = rate
+        ornamentRef.current?.style.setProperty("--sr-near", (NEAR + DRIVE_NEAR * drive).toFixed(3))
       }
 
       animationFrameRef.current = requestAnimationFrame(animate)
@@ -200,6 +284,11 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
           flex: 0 0 auto;
           width: clamp(300px, 38vw, 560px);
           aspect-ratio: 1 / 1;
+          /* How much of its gap a lit contour takes: NEAR while the page is
+             still, driven up from the scroll loop below. It is written here,
+             once, rather than on each contour — the fifteen inherit it, so a
+             frame of drive costs one property write. */
+          --sr-near: ${NEAR};
         }
         .statement-radiant {
           width: 100%;
@@ -230,9 +319,10 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
         }
         @keyframes sr-wave {
           0%   { opacity: ${FLOOR}; transform: scale(1); }
-          /* Its own gap, less the hair NEAR leaves. The outermost carries
-             --g: 1, so it brightens where it stands. */
-          ${(lit * 35).toFixed(2)}%  { opacity: ${PEAK}; transform: scale(calc(1 + (var(--g) - 1) * ${NEAR})); }
+          /* Its own gap, less the hair the share above leaves. That share is a
+             variable and not a number because the scroll moves it; the outermost
+             carries --g: 1, so it brightens where it stands whatever it is. */
+          ${(lit * 35).toFixed(2)}%  { opacity: ${PEAK}; transform: scale(calc(1 + (var(--g) - 1) * var(--sr-near))); }
           ${(lit * 100).toFixed(2)}%  { opacity: ${FLOOR}; transform: scale(1); }
           100% { opacity: ${FLOOR}; transform: scale(1); }
         }
@@ -286,7 +376,7 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
             </Link>
           </div>
 
-          <div className="statement-ornament">
+          <div className="statement-ornament" ref={ornamentRef}>
             {/* Radiant frame — its contours take the light in turn, inside out */}
             <div
               className="statement-radiant"
