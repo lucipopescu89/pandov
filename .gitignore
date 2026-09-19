@@ -25,3 +25,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# claude code
+# The agent creates git worktrees under .claude/ for background tasks — whole
+# checkouts with their own .next, half a gigabyte of them. Only the dev-server
+# config belongs in the repo.
+/.claude/*
+!/.claude/launch.json

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
+import { RadiantRings } from "@/components/radiant-rings"
 
 const FRAME_COUNT = 20
 
@@ -35,7 +36,7 @@ function ease(t: number): number {
  * rather than the boundaries means a beat can be lengthened without hand-
  * retuning every number after it.
  *
- *   doors open ──┤ text 1: in ── hold ── out ┤ dark ┤ presence ── text 2
+ *   doors open ──┤ text 1: in ── hold ── out ┤ field ── presence ── line ┤ white
  *
  * Text 1 starts rising exactly as the sequence reaches frame 15, so its fade-in
  * overlaps the last of the door movement and completes just after it settles.
@@ -80,12 +81,48 @@ const T1_FIRST_FRAME = 5       // first glimmer through the crack
 const T1_FIRST_OPACITY = 0.05
 const T1_FULL_FRAME = 13       // fully lit
 const T1_HOLD_UNTIL_FRAME = 17 // then begins to fade
-const DARK_GAP_VH = 12         // empty beat before the presence
-const PRESENCE_IN_VH = 32      // fade + scale up
-const TEXT2_DELAY_VH = 12      // text 2 trails the presence
-const TEXT2_IN_VH = 26
-const STILL_VH = 20            // everything holds, nothing moves
-const EXIT_LEAD_VH = 45        // content starts lifting before the section unpins
+/**
+ * The last beat arrives in three, not at once: the field out of the dark
+ * first, then the sculpture standing in it, then the line under it. Each one
+ * starts while the one before is still coming up and takes a little longer to
+ * finish, so what you read is something opening rather than something
+ * switching on.
+ *
+ * Both delays are counted from the field, which opens the beat the moment
+ * text 1 has gone black — it takes over the empty beat that used to sit there.
+ *
+ * **These are floors, not preferences.** A beat is worth staggering only if a
+ * turn of the wheel can land inside it, and a wheel notch is about 100px of
+ * scroll. This stretch of the section runs at roughly 5px of real scrolling
+ * per vh, so anything under about 20vh apart arrives, to a hand on a mouse, at
+ * the same instant — which is what a first pass at 7vh did. 18 and 40 put a
+ * notch between the field and the sculpture and two between the field and the
+ * line. Don't tighten them back without checking at 100px steps rather than at
+ * 10px ones; the fine sweep shows a cascade that nobody scrolling can see.
+ *
+ * Only the fades are staggered. The scale is shared, because the ring is drawn
+ * at a fixed distance from the sculpture: letting the two grow on different
+ * curves would pull the composition apart while it arrives.
+ */
+const HALO_IN_VH = 22          // the field, first
+const PRESENCE_DELAY_VH = 18   // the sculpture trails it by a notch
+const PRESENCE_IN_VH = 28
+const TEXT2_DELAY_VH = 40      // and the line by another
+const TEXT2_IN_VH = 34
+
+/**
+ * The two tail beats. Both are counted in *eased* vh, and easeInOutCubic is
+ * nearly flat as it approaches 1, so a beat at the very end of the section
+ * buys several times its own number in real scrolling. At 20 + 45 the wheel
+ * had to travel a full viewport height after "we give form to presence" was
+ * lit before the section let go — which reads as the page having stalled
+ * rather than as a frame being held. Shortening them costs nothing visible:
+ * the 28px exit lift below still spreads across some 70vh of actual scroll.
+ * Don't answer a stall here by trimming the beats above instead — those are
+ * the ones you can see.
+ */
+const STILL_VH = 4             // everything holds, nothing moves
+const EXIT_LEAD_VH = 8         // content starts lifting before the section unpins
 
 /** Scroll position, in vh, at which the sequence reaches a given frame. */
 const frameVh = (f: number) => (f / (FRAME_COUNT - 1)) * DOORS_VH
@@ -95,9 +132,11 @@ const T1_IN_START_VH = frameVh(T1_FIRST_FRAME)
 const T1_IN_END_VH = frameVh(T1_FULL_FRAME)
 const T1_OUT_START_VH = frameVh(T1_HOLD_UNTIL_FRAME)
 const T1_OUT_END_VH = T1_OUT_START_VH + TEXT1_OUT_VH
-const PRESENCE_START_VH = T1_OUT_END_VH + DARK_GAP_VH
+const HALO_START_VH = T1_OUT_END_VH
+const HALO_END_VH = HALO_START_VH + HALO_IN_VH
+const PRESENCE_START_VH = HALO_START_VH + PRESENCE_DELAY_VH
 const PRESENCE_END_VH = PRESENCE_START_VH + PRESENCE_IN_VH
-const T2_START_VH = PRESENCE_START_VH + TEXT2_DELAY_VH
+const T2_START_VH = HALO_START_VH + TEXT2_DELAY_VH
 const T2_END_VH = T2_START_VH + TEXT2_IN_VH
 
 /**
@@ -106,7 +145,7 @@ const T2_END_VH = T2_START_VH + TEXT2_IN_VH
  * push the last one into the exit.
  */
 const SCROLL_VH =
-  Math.max(PRESENCE_END_VH, T2_END_VH) + STILL_VH + EXIT_LEAD_VH
+  Math.max(HALO_END_VH, PRESENCE_END_VH, T2_END_VH) + STILL_VH + EXIT_LEAD_VH
 
 /**
  * Vertical easing at the section's two edges, in px of content travel.
@@ -128,8 +167,113 @@ const EXIT_LIFT_PX = 28
  */
 const OVERSCAN_PX = Math.max(ENTRY_SETTLE_PX, EXIT_LIFT_PX)
 
+/**
+ * The Presence beat, composed as one thing: the sculpture, the line that names
+ * it, and the innermost ring drawn round the pair. Everything is a multiple of
+ * the height the sculpture is drawn at, so the composition holds at any screen
+ * size, and the pair is centred on the screen rather than lifted off it — the
+ * lift only existed to balance a caption that used to be pinned near the
+ * bottom of the viewport, and that caption now stands under the sculpture.
+ *
+ * The sculpture is drawn at 90% of the 55vh it used to be, which is what makes
+ * the room for the line beneath it without pushing the ring off the screen.
+ *
+ * ROOM is the one spacing unit, spent twice: between the sculpture's foot and
+ * the first line, and between the last line and the ring. It is the even
+ * rhythm the Presence section keeps on /body/second-wind, where the caption
+ * and the pendant sit centred in the innermost ring with about the same air on
+ * every side.
+ *
+ * CAPTION is what the two lines are allowed — enough for the 20px they reach
+ * on a desktop. A phone sets them at 11px and uses less, and since the pair is
+ * centred by the layout rather than placed by these numbers, the ring simply
+ * ends up with a little more room than it asked for.
+ */
+const PRESENCE_VH = 49.5
+const PRESENCE_ROOM = 0.1
+const PRESENCE_CAPTION = 0.16
+const PRESENCE_GROUP = 1 + PRESENCE_ROOM + PRESENCE_CAPTION
+
+/**
+ * That field, in thousandths of the drawn height.
+ *
+ * The height is derived, not chosen: the innermost ring clears the sculpture
+ * and its caption by PRESENCE_ROOM at the top and at the bottom, so nothing
+ * can be drawn taller without the ring opening to take it.
+ *
+ * The width is set by the caption's bottom corners, which is where the curve
+ * comes in closest to it — not by the sculpture, which is narrow and sits
+ * where the ellipse is widest. At 545 the ring still passes about 25px clear
+ * of the end of "WE GIVE FORM" on a 910px screen. That runs a little rounder
+ * than the Figma export's own ellipse (rx/ry 0.75 against 0.687), which is the
+ * price of hanging two lines of type inside it.
+ *
+ * The box is what the field finishes in: exactly the outermost ring's bounds,
+ * so the SVG's aspect equals the box's and one viewBox unit stays one
+ * thousandth of the sculpture's height however the page is measured. Derived
+ * from the radii rather than given, so drawing the ellipse in or out can't
+ * leave the last ring clipped or the box out of proportion.
+ */
+const HALO_RX = 545
+const HALO_RY = Math.round((PRESENCE_GROUP / 2 + PRESENCE_ROOM) * 1000)
+/**
+ * The hairline. A unit here is about half a pixel on a desktop screen, so the
+ * export's own 0.5 lands at a quarter of one and the rings all but disappear
+ * over this much ground. The field here is read from across a whole screen
+ * rather than inside a section of one, so it is drawn heavier, denser and
+ * brighter than the one on /body/second-wind — the same ornament, carrying
+ * further.
+ */
+const HALO_STROKE = 1.15
+const HALO_RINGS = 14
+const HALO_PEAK = 0.38
+
+/**
+ * How far a ring travels, and how it paces that travel.
+ *
+ * Evenly spaced rings read as a target rather than as something spreading, so
+ * the ring accelerates instead: the gap between two of them is the distance
+ * one covers in the time between them, and at 1.5 that gap runs from about
+ * 12px around the outline to about 65px by the time a ring leaves — roughly
+ * two and a half times as wide across the stretch you can actually see it,
+ * which is the whole of the effect and none of the lurch.
+ *
+ * Reach is up from the 1.85 the export travels because acceleration alone
+ * would have made the field smaller, not bigger: the same distance covered
+ * with more of the time spent near the middle leaves the rings small for
+ * longer. Carrying them to 2.8 puts the half-lit ring about a fifth further
+ * out than it stood before.
+ */
+const HALO_REACH = 2.8
+const HALO_GROWTH = 1.5
+const HALO_BOX_W = +((2 * HALO_RX * HALO_REACH) / 1000).toFixed(4)
+const HALO_BOX_H = +((2 * HALO_RY * HALO_REACH) / 1000).toFixed(4)
+const HALO_VIEW_BOX = [-HALO_RX, -HALO_RY, 2 * HALO_RX, 2 * HALO_RY]
+  .map((n) => +(n * HALO_REACH).toFixed(2))
+  .join(" ")
+
+/**
+ * The exit: the screen washes to white rather than handing the page on by
+ * scrolling the next section up behind it. `MindRow` in
+ * `components/categories-section.tsx` picks the screen up from there and holds
+ * For Mind still while it comes out of the same white, so the two read as one
+ * dissolve rather than as two sections meeting.
+ *
+ * This one beat is counted in **real scrolling**, not in the eased vh every
+ * beat above uses, and it is the only thing in the file that is. `ease` is
+ * nearly flat this close to 1, so a beat written here buys several times its
+ * own number in wheel — the 12 eased vh left after the line lands are already
+ * some 520px of it. Written raw, 32 is 32: about three turns of a wheel to
+ * wash a whole screen out, with the two turns before it holding the finished
+ * composition still.
+ */
+const WHITE_OUT_VH = 32
+
 /** vh of scroll → progress through the section (0 → 1). */
 const v = (vh: number) => vh / SCROLL_VH
+
+/** Where the wash begins, as a fraction of the section's *uneased* travel. */
+const WHITE_OUT_FROM = 1 - WHITE_OUT_VH / SCROLL_VH
 
 const FRAMES_END = v(DOORS_VH)
 
@@ -138,7 +282,9 @@ const TEXT1_IN_END = v(T1_IN_END_VH)
 const TEXT1_OUT_START = v(T1_OUT_START_VH)
 const TEXT1_OUT_END = v(T1_OUT_END_VH)
 
-/** Presence and its caption only begin once text 1 is fully back to black. */
+/** None of the three begins until text 1 is fully back to black. */
+const HALO_IN_START = v(HALO_START_VH)
+const HALO_IN_END = v(HALO_END_VH)
 const PRESENCE_IN_START = v(PRESENCE_START_VH)
 const PRESENCE_IN_END = v(PRESENCE_END_VH)
 const TEXT2_IN_START = v(T2_START_VH)
@@ -177,6 +323,8 @@ export function HeroAnimation() {
   const framesRef = useRef<HTMLImageElement[]>([])
   const [loaded, setLoaded] = useState(false)
   const [progress, setProgress] = useState(0)
+  // The wash to white is the one beat driven by raw scroll — see WHITE_OUT_VH.
+  const [rawProgress, setRawProgress] = useState(0)
   // 1 while the section is a full approach away from pinning, 0 once pinned.
   const [arrive, setArrive] = useState(1)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
@@ -282,6 +430,7 @@ export function HeroAnimation() {
       const eased = ease(raw)
       progressRef.current = eased
       setProgress(eased)
+      setRawProgress(raw)
 
       // Distance still to travel before the sticky child pins, normalised.
       const pinTravel = el.offsetTop || 1
@@ -337,12 +486,19 @@ export function HeroAnimation() {
       ? `inset(0 ${Math.max(0, viewport.w - clipRight)}px 0 ${Math.max(0, clipLeft)}px)`
       : "inset(0 50% 0 50%)"
 
-  // Presence follows only after text 1 has gone. Scrolling back up reverses it.
+  // The beat follows only after text 1 has gone, and comes up in three.
+  // Scrolling back up reverses all of it.
+  const haloOpacity = ramp(progress, HALO_IN_START, HALO_IN_END)
   const presenceProgress = ramp(progress, PRESENCE_IN_START, PRESENCE_IN_END)
-  const presenceScale = 0.65 + presenceProgress * (1 - 0.65)  // 0.65 → 1.0
   const presenceOpacity = presenceProgress
+  const captionOpacity = ramp(progress, TEXT2_IN_START, TEXT2_IN_END)
+  const whiteOut = ramp(rawProgress, WHITE_OUT_FROM, 1)
 
-  const text2Opacity = ramp(progress, TEXT2_IN_START, TEXT2_IN_END)
+  // One scale for the whole composition, taken from the sculpture's own
+  // arrival. The halo is sized in multiples of this height, so the field and
+  // the sculpture grow together however differently the two of them light up.
+  const presenceScale = 0.65 + presenceProgress * (1 - 0.65)  // 0.65 → 1.0
+  const presenceH = `calc(${PRESENCE_VH}vh * ${presenceScale})`
 
   // Content lags on the way in and leads on the way out. Cubed so the velocity
   // relative to the page reaches zero exactly at the pin and unpin boundaries.
@@ -389,7 +545,8 @@ export function HeroAnimation() {
             }}
           />
 
-          {/* Presence PNG — on desktop shifted up by 25% of its own height */}
+          {/* Presence: the sculpture, the line beneath it, and the field
+              radiating from the pair — all three on one centre. */}
           <div
             style={{
               position: "absolute",
@@ -397,25 +554,98 @@ export function HeroAnimation() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              opacity: presenceOpacity,
               pointerEvents: "none",
               zIndex: 2,
             }}
           >
-            <Image
-              src="/presence.png?v=3"
-              alt="Presence sculpture"
-              width={220}
-              height={440}
-              className="presence-img"
+            <div
               style={{
-                height: `calc(55vh * ${presenceScale})`,
-                width: "auto",
-                objectFit: "contain",
-                transform: "translateY(calc(-25% + 40px))",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
-              priority
-            />
+            >
+              {/* The rings grow far past the sculpture, so they are given a box
+                  of their own, centred on it and out of the flow. The sculpture
+                  is then positioned in turn: a positioned box paints over a
+                  static one whatever the order between them, and without this
+                  the field would rise in front of the sculpture rather than
+                  behind it. */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  width: `calc(${presenceH} * ${HALO_BOX_W})`,
+                  height: `calc(${presenceH} * ${HALO_BOX_H})`,
+                  transform: "translate(-50%, -50%)",
+                  opacity: haloOpacity,
+                }}
+              >
+                <RadiantRings
+                  cx={0}
+                  cy={0}
+                  rx={HALO_RX}
+                  ry={HALO_RY}
+                  viewBox={HALO_VIEW_BOX}
+                  strokeWidth={HALO_STROKE}
+                  rings={HALO_RINGS}
+                  peak={HALO_PEAK}
+                  reach={HALO_REACH}
+                  growth={HALO_GROWTH}
+                  // Nothing of this beat is on screen while the doors are still
+                  // opening, and that is the stretch the page can least spare.
+                  paused={haloOpacity === 0}
+                />
+              </div>
+              <Image
+                src="/presence.png?v=3"
+                alt="Presence sculpture"
+                width={220}
+                height={440}
+                className="presence-img"
+                style={{
+                  position: "relative",
+                  display: "block",
+                  opacity: presenceOpacity,
+                  height: presenceH,
+                  width: "auto",
+                  objectFit: "contain",
+                }}
+                priority
+              />
+
+              {/* The line the sculpture is given. It keeps its own fade — the
+                  last of the three — but it is laid out with the sculpture, so
+                  the ring is drawn round both and neither can drift out from
+                  under it. */}
+              <div
+                style={{
+                  position: "relative",
+                  marginTop: `calc(${presenceH} * ${PRESENCE_ROOM})`,
+                  opacity: captionOpacity,
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                  // A line's advance width carries the letter-spacing after its
+                  // last glyph, which would leave the type half of that left of
+                  // the centre line. Widening the box by the whole of it on the
+                  // right puts both lines back on centre.
+                  marginRight: "-0.2em",
+                  fontFamily: "'Julius Sans One', sans-serif",
+                  fontSize: "clamp(11px, 2vw, 20px)",
+                  letterSpacing: "0.2em",
+                  lineHeight: 1.8,
+                  color: "#888",
+                  fontWeight: 400,
+                  textTransform: "uppercase",
+                }}
+              >
+                We Give Form
+                <br />
+                To Presence
+              </div>
+            </div>
           </div>
 
           {/* Text 1 — clipped to the opening between the doors so it reads as
@@ -456,32 +686,21 @@ export function HeroAnimation() {
             </div>
           </div>
 
-          {/* Text 2 - below presence */}
+          {/* The wash. It covers everything the section draws — the doors as
+              well as the composition — so what leaves the screen is one white
+              field rather than a sculpture fading off a dark ground. It sits
+              inside the moving layer, which is overscanned past the viewport
+              on both edges, so no strip of #202020 can show under it. */}
           <div
             style={{
               position: "absolute",
-              bottom: "18%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              opacity: text2Opacity,
-              zIndex: 3,
+              inset: 0,
+              background: "#fff",
+              opacity: whiteOut,
               pointerEvents: "none",
-              whiteSpace: "nowrap",
+              zIndex: 4,
             }}
-          >
-            <span
-              style={{
-                fontFamily: "'Julius Sans One', sans-serif",
-                fontSize: "clamp(11px, 2vw, 20px)",
-                letterSpacing: "0.2em",
-                color: "#888",
-                fontWeight: 400,
-                textTransform: "uppercase",
-              }}
-            >
-              We Give Form To Presence
-            </span>
-          </div>
+          />
         </div>
       </div>
     </div>
