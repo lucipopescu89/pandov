@@ -8,6 +8,7 @@ import { ChessSetGallery } from "@/components/chess-set-gallery"
 import { ChessSetOrnament } from "@/components/chess-set-ornament"
 import { ChessSetStatement } from "@/components/chess-set-statement"
 import { ChessPieces } from "@/components/chess-pieces"
+import { SeamDrops } from "@/components/seam-drops"
 
 export const metadata = {
   title: "Chess Set — PANDOV",
@@ -76,6 +77,10 @@ export default async function ChessSetPage() {
           bottom: 156px;
           color: #6e6e6e;
           line-height: 1;
+          /* Over the water at the seam. The rising drops reach 240px and this
+             line sits 156px above it — 32px on a phone — so they pass straight
+             through it: the line is read, the water goes behind. */
+          z-index: 2;
         }
 
         /* --- Moon ------------------------------------------------------ */
@@ -84,6 +89,13 @@ export default async function ChessSetPage() {
           background-color: #fff;
           padding-top: 106px;
           overflow: hidden;
+        }
+        .chess-moon-intro {
+          /* As the hero's answer line above: the descending drops reach 240px
+             and this caption sits 106px under the seam — 40 on a phone — so
+             it is kept over them rather than under. */
+          position: relative;
+          z-index: 2;
         }
         .chess-moon-intro .chess-line {
           color: #999;
@@ -223,6 +235,11 @@ export default async function ChessSetPage() {
           <p className="chess-line chess-hero-answer">Just like everybody else</p>
         </div>
       </section>
+
+      {/* The line the photograph ends on, coming apart in both directions:
+          water rising white into the dark, descending dark into the page.
+          It belongs to neither section, so it lives between them. */}
+      <SeamDrops />
 
       {/* ================= Moon ================= */}
       <section className="chess-moon-section">
