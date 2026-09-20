@@ -8,6 +8,8 @@ import { ChessSetGallery } from "@/components/chess-set-gallery"
 import { ChessSetOrnament } from "@/components/chess-set-ornament"
 import { ChessSetStatement } from "@/components/chess-set-statement"
 import { ChessPieces } from "@/components/chess-pieces"
+import { ChessHeroLines } from "@/components/chess-hero-lines"
+import { ScrollFade } from "@/components/scroll-fade"
 import { SeamDrops } from "@/components/seam-drops"
 
 export const metadata = {
@@ -55,10 +57,14 @@ export default async function ChessSetPage() {
         }
         .chess-hero-claim {
           color: #7d7d7d;
-          /* 322px once, less 60. The image below follows it in the flow, so it
-             comes up by the same 60 without a number of its own. The phone keeps
-             its 48px. */
-          margin-top: 262px;
+          /* 262px once, when this line stood alone in the middle of the dark
+             and the answer to it was set over the photograph below. The two
+             are now read one after the other under the ornament — see the
+             ChessHeroLines component — so the claim stands on its own under
+             the drawing rather than adrift in the middle of the dark. Chosen
+             against 110 and 210 seen side by side: at 110 the line still hangs
+             off the ornament, at 210 the block comes apart. */
+          margin-top: 160px;
         }
         .chess-hero-media {
           position: relative;
@@ -71,15 +77,37 @@ export default async function ChessSetPage() {
           display: block;
         }
         .chess-hero-answer {
+          /* It was set over the bottom of the photograph, 156px up from its
+             edge. It now follows the claim it answers, and it no longer needs
+             a place of its own above the water at the seam. The gap is wider
+             than the claim's own 160, and deliberately so: the two lines are
+             a claim and its answer, and the pause between them is the joke. */
+          color: #6e6e6e;
+          line-height: 1;
+          margin-top: 250px;
+        }
+
+        /* --- The seam ---------------------------------------------------
+           Two lines, one either side of the line the photograph ends on, each
+           120px from it — the same distance, so they are read as one pair
+           split by the edge rather than as two captions that happen to be
+           near it. The water that comes off that line reaches 240px each way,
+           so both sit inside it and both are lifted over it: the type is read
+           and the drops pass behind.
+           ---------------------------------------------------------------- */
+        .chess-seam-above {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 156px;
+          bottom: 120px;
           color: #6e6e6e;
           line-height: 1;
-          /* Over the water at the seam. The rising drops reach 240px and this
-             line sits 156px above it — 32px on a phone — so they pass straight
-             through it: the line is read, the water goes behind. */
+          z-index: 2;
+        }
+        .chess-seam-below {
+          position: relative;
+          color: #999;
+          line-height: 1;
           z-index: 2;
         }
 
@@ -87,21 +115,11 @@ export default async function ChessSetPage() {
         .chess-moon-section {
           width: 100%;
           background-color: #fff;
-          padding-top: 106px;
+          /* 106px once, under two lines since removed. It is now the lower
+             half of the seam's pair: the line below it begins exactly 120px
+             under the edge, as its twin ends 120px above. */
+          padding-top: 120px;
           overflow: hidden;
-        }
-        .chess-moon-intro {
-          /* As the hero's answer line above: the descending drops reach 240px
-             and this caption sits 106px under the seam — 40 on a phone — so
-             it is kept over them rather than under. */
-          position: relative;
-          z-index: 2;
-        }
-        .chess-moon-intro .chess-line {
-          color: #999;
-        }
-        .chess-moon-intro .chess-line + .chess-line {
-          margin-top: 34px;
         }
         .chess-moon-media {
           position: relative;
@@ -157,9 +175,10 @@ export default async function ChessSetPage() {
           .chess-hero-intro {
             padding-top: 30px;
           }
-          .chess-hero-claim {
-            margin-top: 48px;
-          }
+          /* The claim's 48px here was the phone's share of a 262px gap. The
+             phone now keeps the desktop's own 160 and 250: the pair reads as
+             one block at either size, and the ornament above it is already
+             smaller on a phone. */
           .chess-hero-media {
             margin-top: 32px;
             height: 64svh;
@@ -170,15 +189,10 @@ export default async function ChessSetPage() {
             object-fit: cover;
             object-position: 80% center;
           }
-          .chess-hero-answer {
-            bottom: 32px;
-          }
-          .chess-moon-section {
-            padding-top: 40px;
-          }
-          .chess-moon-intro .chess-line + .chess-line {
-            margin-top: 24px;
-          }
+          /* The phone's 40px here was the top of a block of two lines. The
+             seam's pair is a measured distance from an edge rather than a
+             heading over a section, so it keeps its 120 at either size — as
+             the line above the edge keeps its own. */
           .chess-moon-media {
             height: 78svh;
             margin-top: 24px;
@@ -220,7 +234,9 @@ export default async function ChessSetPage() {
           <p className="chess-line chess-hero-eyebrow">Chess Set</p>
           {/* Square ornament — the golden band travels across it on scroll */}
           <ChessSetOrnament />
-          <p className="chess-line chess-hero-claim">Remember you are unique</p>
+          {/* The claim and its answer, read one after the other: the second
+              comes up out of the space the first leaves. */}
+          <ChessHeroLines />
         </div>
 
         <div className="chess-hero-media">
@@ -232,7 +248,9 @@ export default async function ChessSetPage() {
             className="chess-hero-image"
             priority
           />
-          <p className="chess-line chess-hero-answer">Just like everybody else</p>
+          {/* The upper half of the seam's pair, 120px over the edge, where the
+              white drops are climbing. */}
+          <ScrollFade className="chess-line chess-seam-above">Grow in Darkness</ScrollFade>
         </div>
       </section>
 
@@ -243,10 +261,9 @@ export default async function ChessSetPage() {
 
       {/* ================= Moon ================= */}
       <section className="chess-moon-section">
-        <div className="chess-moon-intro">
-          <p className="chess-line">Rise and descend</p>
-          <p className="chess-line">Light and weight</p>
-        </div>
+        {/* And its lower half, 120px under the edge, where the dark ones are
+            falling. */}
+        <ScrollFade className="chess-line chess-seam-below">Fall into Heaven</ScrollFade>
 
         <div className="chess-moon-media">
           <Image
