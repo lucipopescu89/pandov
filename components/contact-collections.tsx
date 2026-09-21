@@ -2,6 +2,7 @@
 
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
+import { FadeInVideo } from "@/components/fade-in-video"
 
 /**
  * Contact landing page — an exact copy of the Making page shell (full-page
@@ -40,18 +41,23 @@ export function ContactCollections() {
     >
       {/* Fixed full-screen background video — pinned to the viewport, filling
           the whole screen (cropped as needed) behind the transparent top and
-          bottom menus, at 80% opacity. */}
-      <video
+          bottom menus, at 80% opacity, coming up out of the dark ground as it
+          starts to play.
+
+          The footage is landscape, 1280 × 720, and a portrait screen covered
+          by it shows only the middle of it: 720 tall and as wide as the
+          screen's proportion allows, on a phone a quarter to a third. The
+          phone's cut is the middle 540 × 720, all that any screen up to 3:4
+          shows, so up to 3:4 it frames exactly as before; it weighs 306KB
+          against 713KB. 3:4 rather than a phone's own 9:16, because a phone's
+          browser takes some of the height for its bars and the page is then
+          wider than 9:16 — an iPhone SE's Safari opens at about 375 × 548. */}
+      <FadeInVideo
         className="fixed inset-0 h-screen w-screen"
-        src="/videos/contact-bg.mp4"
-        poster="/videos/contact-bg-poster.jpg"
-        preload="auto"
-        autoPlay
-        loop
-        muted
-        playsInline
-        aria-hidden="true"
-        style={{ objectFit: "cover", objectPosition: "center", opacity: 0.8 }}
+        src="/videos/contact-bg.mp4?v=1"
+        phone={{ src: "/videos/contact-bg-phone.mp4?v=1", media: "(max-aspect-ratio: 3/4)" }}
+        poster="/videos/contact-bg-poster.jpg?v=1"
+        opacity={0.8}
       />
 
       {/* Content layer on top of the video: menus + message + subscribe form */}
