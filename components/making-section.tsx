@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { FOOTER_STAGE_ID } from "@/components/footer"
 
 const headingStyle = {
   fontFamily: "'Julius Sans One', sans-serif",
@@ -34,7 +35,14 @@ const BAND_GRADIENT =
  * the photo slides under it, and it is clipped to the photo so it never
  * washes the sections around it.
  *
- * The whole block links to the /making page.
+ * Last, the whole section dissolves as the footer's hand comes up under it,
+ * and is gone by the time the whole hand is on screen, so the hand has the
+ * screen to itself (see the finale in `components/footer.tsx`). It is timed
+ * off the hand's box itself, found by FOOTER_STAGE_ID: from the box's top
+ * edge at the bottom of the screen to its foot there.
+ *
+ * The whole block links to the /making page — except once it has dissolved,
+ * when an invisible link over the top of the screen would still take clicks.
  */
 export function MakingSection() {
   const ref = useRef<HTMLDivElement>(null)
@@ -43,6 +51,8 @@ export function MakingSection() {
   const [progress, setProgress] = useState(0)
   // 0 = photo top at the viewport bottom, 1 = photo fills the screen
   const [band, setBand] = useState(0)
+  // 0 = the footer's hand not yet on screen, 1 = all of it on screen, this gone
+  const [leave, setLeave] = useState(0)
 
   useEffect(() => {
     const onScroll = () => {
@@ -62,6 +72,12 @@ export function MakingSection() {
       const imgRect = img.getBoundingClientRect()
       const filledTop = Math.max(0, vh - imgRect.height)
       setBand(clamp01((vh - imgRect.top) / (vh - filledTop)))
+
+      const hand = document.getElementById(FOOTER_STAGE_ID)
+      if (hand) {
+        const s = hand.getBoundingClientRect()
+        setLeave(clamp01((vh - s.top) / s.height))
+      }
     }
     window.addEventListener("scroll", onScroll, { passive: true })
     window.addEventListener("resize", onScroll)
@@ -104,6 +120,8 @@ export function MakingSection() {
           display: "block",
           width: "100%",
           textDecoration: "none",
+          opacity: 1 - leave,
+          pointerEvents: leave < 1 ? "auto" : "none",
         }}
       >
         {/* Clipping wrapper — trims 80px off the top and 30px off the bottom.
