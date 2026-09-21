@@ -49,9 +49,9 @@ const HAND_FADE = "linear-gradient(to top, #fff 0%, #fff 30%, rgba(255,255,255,0
  *
  * Fractions rather than lengths because the stretch is whatever the page has
  * left, which differs a lot by screen — measured, 460px on a 1026×800 window,
- * 510 at 1280×720, 540 at 1440×900, 640 at 1920×1080, and 280 on a phone,
- * where the footer is shorter than the screen. A fixed length would outrun the
- * page on the short ones and stop part-way.
+ * 510 at 1280×720, 540 at 1440×900 and at 1920×1080, 470 at 2560×960, and 280
+ * on a phone, where the footer is shorter than the screen. A fixed length would
+ * outrun the page on the short ones and stop part-way.
  */
 const CLEAN_TO = 0.25
 const WHITE_TO = 0.62
@@ -82,20 +82,47 @@ function ramp(v: number, from: number, to: number): number {
 
 /**
  * Design canvas the footer was measured on: the page width of the design, from
- * the Making photo's bottom edge down to the bottom menu. Everything on it is a
- * percentage, so the composition scales with the page like a single picture.
+ * the Making photo's bottom edge down to the bottom menu, 1600 × 1074.
+ *
+ * Down to the words it scales with the page like a single picture: the hand is
+ * a photograph drawn wider than the page, and "Get in touch" hangs under its
+ * ring, so both are lengths of the page's width. Below the words it scales only
+ * until the page is as wide as the canvas and then holds: the gap, the bird and
+ * the white under it stay the size they were drawn at however wide the screen.
+ *
+ * It all scaled once, and on a very wide screen that made the canvas far taller
+ * than the screen — 1708px on a 2560 × 960 window, with a 573px bird — and left
+ * the words so far above the end of the page that they were never on screen
+ * there: they finished fading in 29px from the top edge and ended the page 86px
+ * above it. Held, what lies under the words is never more than the 495px it was
+ * drawn at, so at the end of the page the words and the bird stand where they do
+ * on a laptop. Up to 1600px wide nothing moved.
  */
 const CANVAS_W = 1600
 const CANVAS_H = 1074
+/** Where the words stand, down the canvas, and where it stops scaling. */
+const WORDS_Y = 579
+
+/** A length on the canvas, px at its 1600 width, growing with the page. */
+function wide(px: number): string {
+  return `${(px / CANVAS_W) * 100}cqw`
+}
+
+/** A length below the words: grows with the page up to 1600px, then holds. */
+function held(px: number): string {
+  return `min(${(px / CANVAS_W) * 100}cqw, ${px}px)`
+}
+
+/**
+ * The canvas's own height. It can't be given in cqw — those measure the
+ * container around an element, and around the canvas there is none — so it is
+ * padding, whose percentages are of the width the canvas fills.
+ */
+const CANVAS_HEIGHT = `calc(${(WORDS_Y / CANVAS_W) * 100}% + min(${((CANVAS_H - WORDS_Y) / CANVAS_W) * 100}%, ${CANVAS_H - WORDS_Y}px))`
 
 /** The banner image's own size. */
 const HAND_W = 2792
 const HAND_H = 1230
-
-/** left/top/width are px on the 1600 x 1074 design canvas */
-function pct(px: number, axis: "w" | "h") {
-  return `${(px / (axis === "w" ? CANVAS_W : CANVAS_H)) * 100}%`
-}
 
 export function Footer() {
   const handRef = useRef<HTMLDivElement>(null)
@@ -145,10 +172,11 @@ export function Footer() {
       }}
     >
       {/* One centred column: the hand wearing the golden ring, GET IN TOUCH
-          below the ring, then the bird in its rings. */}
+          below the ring, then the bird in its rings. A container, so what is
+          on it can be placed in lengths of its width. */}
       <div
         className="relative w-full overflow-hidden"
-        style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}` }}
+        style={{ containerType: "inline-size", paddingBottom: CANVAS_HEIGHT }}
       >
         {/* The white sculptural hand (Figma "Rectangle 2"), mirrored so the
             fingers point right. The image carries empty white space past the
@@ -159,9 +187,9 @@ export function Footer() {
           id={FOOTER_STAGE_ID}
           style={{
             position: "absolute",
-            left: pct(22, "w"),
-            top: pct(-2, "h"),
-            width: pct(1720, "w"),
+            left: wide(22),
+            top: wide(-2),
+            width: wide(1720),
             aspectRatio: `${HAND_W} / ${HAND_H}`,
           }}
         >
@@ -191,7 +219,7 @@ export function Footer() {
             pointerEvents: ctaIn > 0 ? "auto" : "none",
             position: "absolute",
             left: "50%",
-            top: pct(579, "h"),
+            top: wide(WORDS_Y),
             transform: "translate(-50%, -50%)",
             padding: "12px 16px",
             fontSize: "clamp(9px, 0.75vw, 12px)",
@@ -205,18 +233,36 @@ export function Footer() {
           <span style={{ opacity: ctaIn }}>&rarr; Get in touch</span>
         </Link>
 
-        {/* The bird in its rings. Decorative, not a link: GET IN TOUCH just above
-            and the menu below already lead to Contact. */}
-        <BirdRings
-          size={pct(360, "w")}
+        {/* The bird in its rings, a way to Contact like the words above it. It
+            was left decorative at first, GET IN TOUCH and the menu already
+            leading there; the author asked for the bird to lead there too.
+
+            It keeps the words' two rules: the scroll's fade is on the mark
+            inside and the hover on the link, so neither overrides the other,
+            and it takes no click until it has begun to show.
+
+            Round, because the mark is. The link's own box is what takes the
+            click, rounded, and the rings and the bird inside take none; left
+            to them, the square each ring is drawn in would make the empty
+            white in the corners a link to Contact. */}
+        <Link
+          href="/contact"
+          aria-label="Get in touch"
+          className="transition-opacity hover:opacity-50"
           style={{
+            pointerEvents: birdIn > 0 ? "auto" : "none",
             position: "absolute",
             left: "50%",
-            top: pct(862, "h"),
+            // Hung from the words by a held length, so the two stay a pair.
+            top: `calc(${wide(WORDS_Y)} + ${held(862 - WORDS_Y)})`,
+            width: held(360),
+            aspectRatio: "1",
             transform: "translate(-50%, -50%)",
-            opacity: birdIn,
+            borderRadius: "50%",
           }}
-        />
+        >
+          <BirdRings size="100%" style={{ opacity: birdIn, pointerEvents: "none" }} />
+        </Link>
       </div>
 
       {/* Bottom menu — the shared `BodyFooter`, exactly as every other page
