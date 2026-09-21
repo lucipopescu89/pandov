@@ -262,8 +262,10 @@ export function SeamDrops() {
     }
 
     const frame = (now: number) => {
-      // Clamp so a backgrounded tab doesn't jump the clock forward on return.
-      const dt = Math.min(0.1, (now - last) / 1000)
+      // Clamp so a backgrounded tab doesn't jump the clock forward on return,
+      // and so the first frame never runs it backwards: a frame's timestamp is
+      // when the frame began, which can be a moment before `last` was taken.
+      const dt = Math.max(0, Math.min(0.1, (now - last) / 1000))
       last = now
 
       // Scroll events are bursty, so turn them into a speed and let the boost
@@ -387,7 +389,12 @@ export function SeamDrops() {
     // The band is the thing to watch, not the zero-height wrapper: its drops
     // are still on screen for 240px after the seam itself has left.
     const io = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        // The newest entry, not the first: a busy page can have the observer
+        // deliver two for the canvas at once, oldest first, and reading only
+        // the first could leave the loop stopped while the seam is in view.
+        // See the same in `ParticleField`.
+        const entry = entries[entries.length - 1]
         if (entry.isIntersecting === visible) return
         visible = entry.isIntersecting
         if (visible) {

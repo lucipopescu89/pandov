@@ -145,6 +145,222 @@ function fallen(t: number) {
 }
 
 /**
+ * A stretch of a stroke drawn without lifting the pen: its length, and its
+ * points sampled into a flat [x,y,x,y,…] array between any two lengths along
+ * it — either way round.
+ */
+type Stretch = {
+  span: number
+  sample: (from: number, to: number) => Float32Array
+}
+
+/**
+ * Longest straight piece a curve is cut into when it is read off the path
+ * data, in artwork units. At one unit the polyline's length is within a
+ * hundred-thousandth of the curve's, well under anything a dot could show.
+ */
+const FLAT_STEP = 1
+/** Cap on the pieces one curve is cut into, whatever its size. */
+const FLAT_MAX = 1024
+
+/**
+ * A stroke's stretches, read straight off its `d` attribute.
+ *
+ * This is what the dots' tracks are measured with. The browser's own
+ * `getPointAtLength` walks the path from its start on every call, so sampling
+ * a track a few hundred times cost a few hundred walks: 310ms for Waterfall's
+ * ten streams and 650ms for Chaos's eight strokes, on a desktop, all of it
+ * before the page could do anything else — and twice over in development,
+ * where React runs every effect twice. That was the page starting slowly.
+ * Read here, each stroke is cut into a polyline once and every sample is a
+ * lookup along it.
+ *
+ * The strokes are Figma's and the written tracks are ours, and between them
+ * they use nothing but M, L and C; the other lines and curves are read too.
+ * Anything else — an arc — returns null, and that stroke is measured the old
+ * way instead (`domStretches`).
+ *
+ * A subpath that starts where the last one ended, within `LIFT`, carries on the
+ * same stretch; one that starts anywhere else is a new stretch, as with a
+ * mirrored pair exported as one path.
+ */
+function readStretches(d: string): Stretch[] | null {
+  const tokens = d.match(/[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g)
+  if (!tokens) return null
+
+  const subpaths: number[][] = []
+  let pts: number[] | null = null
+  let x = 0
+  let y = 0
+  let startX = 0
+  let startY = 0
+  // The last control point, for S and T, which reflect it.
+  let ctrlX = 0
+  let ctrlY = 0
+  let prev = ""
+  let cmd = ""
+  let i = 0
+
+  const num = () => {
+    const v = Number(tokens[i++])
+    if (!Number.isFinite(v)) throw new Error("bad path data")
+    return v
+  }
+  const open = () => {
+    if (!pts) {
+      pts = [x, y]
+      subpaths.push(pts)
+    }
+    return pts
+  }
+  const cubic = (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) => {
+    const out = open()
+    const net = Math.hypot(x1 - x, y1 - y) + Math.hypot(x2 - x1, y2 - y1) + Math.hypot(x3 - x2, y3 - y2)
+    const n = Math.min(FLAT_MAX, Math.max(4, Math.ceil(net / FLAT_STEP)))
+    for (let k = 1; k <= n; k++) {
+      const t = k / n
+      const u = 1 - t
+      out.push(
+        u * u * u * x + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3,
+        u * u * u * y + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3,
+      )
+    }
+    ctrlX = x2
+    ctrlY = y2
+    x = x3
+    y = y3
+  }
+  const line = (x1: number, y1: number) => {
+    open().push(x1, y1)
+    x = x1
+    y = y1
+  }
+
+  while (i < tokens.length) {
+    if (/[a-zA-Z]/.test(tokens[i])) cmd = tokens[i++]
+    else if (!cmd) return null
+    const rel = cmd === cmd.toLowerCase()
+    const ox = rel ? x : 0
+    const oy = rel ? y : 0
+    switch (cmd.toUpperCase()) {
+      case "M": {
+        x = ox + num()
+        y = oy + num()
+        startX = x
+        startY = y
+        pts = null
+        // Further pairs after a moveto are linetos.
+        cmd = rel ? "l" : "L"
+        break
+      }
+      case "L":
+        line(ox + num(), oy + num())
+        break
+      case "H":
+        line(ox + num(), y)
+        break
+      case "V":
+        line(x, oy + num())
+        break
+      case "C": {
+        const x1 = ox + num()
+        const y1 = oy + num()
+        const x2 = ox + num()
+        const y2 = oy + num()
+        cubic(x1, y1, x2, y2, ox + num(), oy + num())
+        break
+      }
+      case "S": {
+        const smooth = /[CS]/i.test(prev)
+        const x1 = smooth ? 2 * x - ctrlX : x
+        const y1 = smooth ? 2 * y - ctrlY : y
+        const x2 = ox + num()
+        const y2 = oy + num()
+        cubic(x1, y1, x2, y2, ox + num(), oy + num())
+        break
+      }
+      case "Q":
+      case "T": {
+        const smooth = cmd.toUpperCase() === "T"
+        const qx = smooth ? (/[QT]/i.test(prev) ? 2 * x - ctrlX : x) : ox + num()
+        const qy = smooth ? (/[QT]/i.test(prev) ? 2 * y - ctrlY : y) : oy + num()
+        const x3 = ox + num()
+        const y3 = oy + num()
+        // A quadratic is the cubic with its controls two thirds of the way
+        // to the one control point.
+        cubic(x + (2 / 3) * (qx - x), y + (2 / 3) * (qy - y), x3 + (2 / 3) * (qx - x3), y3 + (2 / 3) * (qy - y3), x3, y3)
+        ctrlX = qx
+        ctrlY = qy
+        break
+      }
+      case "Z":
+        line(startX, startY)
+        pts = null
+        break
+      default:
+        return null
+    }
+    prev = cmd
+  }
+
+  // Join each subpath onto the last where the pen was not really lifted.
+  const joined: number[][] = []
+  for (const sp of subpaths) {
+    if (sp.length < 4) continue
+    const last = joined[joined.length - 1]
+    if (last && Math.hypot(sp[0] - last[last.length - 2], sp[1] - last[last.length - 1]) <= LIFT) {
+      for (let k = 2; k < sp.length; k++) last.push(sp[k])
+    } else {
+      joined.push(sp)
+    }
+  }
+
+  return joined.map((flat) => {
+    const count = flat.length / 2
+    const at = new Float64Array(count)
+    for (let k = 1; k < count; k++) {
+      at[k] = at[k - 1] + Math.hypot(flat[k * 2] - flat[k * 2 - 2], flat[k * 2 + 1] - flat[k * 2 - 1])
+    }
+    const span = at[count - 1]
+    const pointAt = (len: number, out: Float32Array, o: number) => {
+      const l = Math.max(0, Math.min(span, len))
+      let lo = 1
+      let hi = count - 1
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (at[mid] < l) lo = mid + 1
+        else hi = mid
+      }
+      const piece = at[lo] - at[lo - 1]
+      const t = piece > 0 ? (l - at[lo - 1]) / piece : 1
+      out[o] = flat[lo * 2 - 2] + (flat[lo * 2] - flat[lo * 2 - 2]) * t
+      out[o + 1] = flat[lo * 2 - 1] + (flat[lo * 2 + 1] - flat[lo * 2 - 1]) * t
+    }
+    return {
+      span,
+      sample: (from: number, to: number) => {
+        const out = new Float32Array(SAMPLES * 2)
+        for (let k = 0; k < SAMPLES; k++) pointAt(from + ((to - from) * k) / (SAMPLES - 1), out, k * 2)
+        return out
+      },
+    }
+  })
+}
+
+/**
+ * A stroke's stretches measured by the browser, for path data `readStretches`
+ * does not read. Slow — see there — but exact for anything.
+ */
+function domStretches(path: SVGPathElement): Stretch[] {
+  const len = path.getTotalLength()
+  if (!len) return []
+  return stretches(path, len).map(([from, to]) => ({
+    span: to - from,
+    sample: (a: number, b: number) => sample(path, from + a, from + b),
+  }))
+}
+
+/**
  * Samples a stretch of a stroke into a flat [x,y,x,y,…] array, from `from` to
  * `to` along its length — either way round.
  */
@@ -368,18 +584,19 @@ export function ParticleField({
     const twins: number[] = []
     const tail = (SAMPLES - 1) * 2
     for (const path of paths) {
-      let len = 0
+      let parts: Stretch[]
       try {
-        len = path.getTotalLength()
+        parts = readStretches(path.getAttribute("d") ?? "") ?? domStretches(path)
       } catch {
         continue
       }
+      const len = parts.reduce((sum, part) => sum + part.span, 0)
       if (!len) continue
-      for (const [from, to] of stretches(path, len)) {
-        const span = to - from
+      for (const part of parts) {
+        const span = part.span
         if (span < 1) continue
         const share = span / len
-        const pts = sample(path, from, to)
+        const pts = part.sample(0, span)
         // A rising field starts every dot at the bottom of its stroke. Where
         // the bottom is in the middle — Icarus's aura is a loop hung under the
         // pendant — the stroke is cut there and each arm becomes a track of
@@ -391,10 +608,10 @@ export function ParticleField({
             if (pts[i * 2 + 1] > pts[low * 2 + 1]) low = i
           }
           if (low > SAMPLES * SPLIT_EDGE && low < SAMPLES * (1 - SPLIT_EDGE)) {
-            const at = from + (low / (SAMPLES - 1)) * span
+            const at = (low / (SAMPLES - 1)) * span
             const n = tracks.length
-            tracks.push(sample(path, at, from), sample(path, at, to))
-            trackLens.push(at - from, to - at)
+            tracks.push(part.sample(at, 0), part.sample(at, span))
+            trackLens.push(at, span - at)
             trackShares.push(share, share)
             twins.push(n + 1, n)
             continue
@@ -546,8 +763,10 @@ export function ParticleField({
     }
 
     const frame = (now: number) => {
-      // Clamp so a backgrounded tab doesn't jump the clock forward on return.
-      const dt = Math.min(0.1, (now - last) / 1000)
+      // Clamp so a backgrounded tab doesn't jump the clock forward on return,
+      // and so the first frame never runs it backwards: a frame's timestamp is
+      // when the frame began, which can be a moment before `last` was taken.
+      const dt = Math.max(0, Math.min(0.1, (now - last) / 1000))
       last = now
 
       // Scroll events are bursty, so turn them into a speed and let the boost
@@ -720,7 +939,14 @@ export function ParticleField({
     measure()
 
     const io = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        // The newest entry, not the first. When the page is busy the observer
+        // can hold back more than one for the same element and deliver them
+        // together, oldest first — off screen, then on. Reading only the first
+        // left the field believing it was still off screen while it was in
+        // view, its loop never started and its dots never appeared, until
+        // scrolling away and back or reloading.
+        const entry = entries[entries.length - 1]
         if (entry.isIntersecting === visible) return
         visible = entry.isIntersecting
         if (visible) {
