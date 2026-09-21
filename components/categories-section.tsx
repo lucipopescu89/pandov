@@ -95,9 +95,13 @@ function onColumn(left: string, lift = 0): React.CSSProperties {
  * The hero ends by washing the whole screen to white (see `WHITE_OUT_VH` in
  * `components/hero-animation.tsx`). This row picks the screen up there: it is
  * pinned for MIND_IN_VH of scroll and comes up out of that same white — fading
- * in, easing forward from MIND_ZOOM and rising from below into its place, see
- * MIND_RISE_VH — and when the row unpins it is already travelling with the
- * page, so it goes on up the screen with For Body and For Space behind it.
+ * in and rising from below into its place, see MIND_RISE_VH — and when the row
+ * unpins it is already travelling with the page, so it goes on up the screen
+ * with For Body and For Space behind it.
+ *
+ * It does not grow as it comes. Until 2026-09-21 it also eased forward from
+ * 94% of its size over the fade; the author asked for that to go, and the
+ * entrance is now the fade and the rise alone.
  *
  * WHITE is a breath of empty white before it starts, REVEAL the stretch it
  * fades in over, and what is left of MIND_IN lets it finish rising before the
@@ -108,7 +112,6 @@ function onColumn(left: string, lift = 0): React.CSSProperties {
 const MIND_IN_VH = 50
 const MIND_WHITE_VH = 12
 const MIND_REVEAL_VH = 34
-const MIND_ZOOM = 0.94
 
 /**
  * How far below its place the picture starts, and why it is exactly this far.
@@ -445,7 +448,7 @@ function MindRow() {
           style={{
             width: "100%",
             opacity: reveal,
-            transform: `translateY(${rise}vh) scale(${MIND_ZOOM + reveal * (1 - MIND_ZOOM)})`,
+            transform: `translateY(${rise}vh)`,
             willChange: "opacity, transform",
             pointerEvents: reveal > 0 ? "auto" : "none",
           }}
