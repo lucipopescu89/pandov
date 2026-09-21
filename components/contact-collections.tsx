@@ -55,7 +55,11 @@ export function ContactCollections() {
       <FadeInVideo
         className="fixed inset-0 h-screen w-screen"
         src="/videos/contact-bg.mp4?v=1"
-        phone={{ src: "/videos/contact-bg-phone.mp4?v=1", media: "(max-aspect-ratio: 3/4)" }}
+        phone={{
+          src: "/videos/contact-bg-phone.mp4?v=1",
+          poster: "/videos/contact-bg-phone-poster.jpg?v=1",
+          media: "(max-aspect-ratio: 3/4)",
+        }}
         poster="/videos/contact-bg-poster.jpg?v=1"
         opacity={0.8}
       />

@@ -52,7 +52,11 @@ export function MakingCollections() {
       <FadeInVideo
         className="absolute inset-0 w-full h-full"
         src="/videos/making.mp4?v=1"
-        phone={{ src: "/videos/making-phone.mp4?v=1", media: "(max-width: 767px)" }}
+        phone={{
+          src: "/videos/making-phone.mp4?v=1",
+          poster: "/videos/making-phone-poster.jpg?v=1",
+          media: "(max-width: 767px)",
+        }}
         poster="/videos/making-poster.jpg?v=1"
         opacity={0.2}
         rate={MAKING_RATE}
