@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
+import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { ParticleField, type DripSpec, type RainSpec } from "@/components/particle-field"
@@ -289,6 +290,12 @@ const HALO_FILES = new Set(["presence.svg"])
 const FLOATING = new Set(["emperor.svg"])
 
 /**
+ * Pendants whose photograph opens a page of their own. Icarus is the first,
+ * opening onto its model in three dimensions as a trial of the idea.
+ */
+const PENDANT_PAGES: Record<string, string> = { "icarus.svg": "/body/second-wind/icarus" }
+
+/**
  * How far the pendant rises above its place and sinks below it, in canvas
  * units — a breath, not a bounce, on a photo 486 tall. Given to CSS in `cqw`, so
  * it scales with the canvas like everything else on it.
@@ -510,6 +517,29 @@ function splitFloat(svg: string) {
   }
 }
 
+/**
+ * Where an artwork's pendant photograph lands on the canvas, as percentages of
+ * it, read off the export's own pattern rect — so a fresh export carries the
+ * link over the picture with it. `left` and `width` are the artwork's place on
+ * the canvas in canvas units, which with the viewBox gives the artwork's scale.
+ */
+function pendantBox(svg: string, left: number, width: number) {
+  const box = svg.match(/<svg\b[^>]*\sviewBox="([^"]+)"/)?.[1].split(/[\s,]+/).map(Number)
+  const rect = svg.match(/<rect class="bp-pendant"([^>]*)>/)?.[1]
+  if (!box || !rect) return null
+  const read = (name: string) => Number(rect.match(new RegExp(`\\s${name}="([^"]+)"`))?.[1])
+  const unit = box[2] / width
+  const [x, y, w, h] = [read("x"), read("y"), read("width"), read("height")]
+  if (![x, y, w, h].every(Number.isFinite)) return null
+  return {
+    left: `${((left + (x - box[0]) / unit) / CANVAS_W) * 100}%`,
+    width: `${(w / unit / CANVAS_W) * 100}%`,
+    // `top` joins the section's own offset, which the caller knows.
+    y: (y - box[1]) / unit,
+    height: `${(h / unit / CANVAS_H) * 100}%`,
+  }
+}
+
 export async function BodyPresentation() {
   const svgs = await Promise.all(
     SECTIONS.map(async (s) => {
@@ -622,6 +652,31 @@ export async function BodyPresentation() {
           )
         })}
 
+        {/* Links over the photographs that open a page of their own, laid on
+            top of every section so neither particles nor line work take the
+            click. Scaled with the photograph under the phone framing. */}
+        {SECTIONS.map((section, i) => {
+          const href = PENDANT_PAGES[section.file]
+          if (!href) return null
+          const wide = FULL_WIDTH.has(section.file)
+          const box = pendantBox(svgs[i], wide ? 0 : section.left, wide ? CANVAS_W : section.w)
+          if (!box) return null
+          return (
+            <Link
+              key={`${section.file}-page`}
+              href={href}
+              aria-label={`${section.label}, in three dimensions`}
+              className="bp-pendant-link absolute block"
+              style={{
+                left: box.left,
+                top: `${((section.top + box.y) / CANVAS_H) * 100}%`,
+                width: box.width,
+                height: box.height,
+              }}
+            />
+          )
+        })}
+
       </CaptionFade>
       </div>
 
@@ -649,6 +704,7 @@ export async function BodyPresentation() {
             transform-origin: center;
             transform: scale(${PENDANT_SCALE});
           }
+          .bp-pendant-link { transform: scale(${PENDANT_SCALE}); }
         }
       `}</style>
     </main>

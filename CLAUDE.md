@@ -54,6 +54,12 @@ Three things about that photograph, each of which has caught someone already:
 
 That weight is not only a bandwidth question. React begins hydrating before the page has settled, and if it has to block on data part-way in it re-runs the render with its hydration cursor already inside `<main>` — which it then reports as "Hydration failed because the server rendered HTML didn't match the client", pointing at `<main>` although nothing in the markup differs. On a 15MB page that happened on roughly three quarters of production loads; at 1.6MB it stopped. Keep this page small.
 
+### Pendants in three dimensions (a trial, 2026-09-22)
+
+`/body/second-wind/icarus` shows Icarus's model alone, turning in gold on Second Wind's ground. Clicking Icarus's photograph on Second Wind opens it; the pages are listed in `PENDANT_PAGES` in `body-presentation.tsx`, and the link is laid over the photograph by reading the export's own pattern rect. The viewer, `components/pendant-viewer.tsx`, is three.js, imported inside its effect so it never touches another page or the first paint. The gold is set in code, not taken from the export, and so is the dark studio it reflects, which turns with the camera. So is the satin finish: a grain generated at load from a fixed seed, so nothing is downloaded. The model has no texture coordinates, so the grain is projected onto it from three axes. The first grain was far too coarse and read as hammered foil; the file records both the old settings and the ones that replaced them. The file header gives the reasons, including the first room, which left the gold dark olive.
+
+The models are `public/models/<name>.glb`, made from the collection's 3ds Max OBJ exports (`D:\PANDOV\2_BODY\1_SECOND_WIND\Export OBJ\`) with `node scripts/obj-to-glb.mjs "<in.obj>" public/models/<name>.glb`. The script records what it keeps and drops; Icarus came out at 269KB from a 4.2MB OBJ. The OBJs stay out of the repo.
+
 ### `components/body-presentation.tsx`
 
 The whole `/body/second-wind` page in one ~650-line server component, and the most involved thing here. Two conventions govern it:
@@ -82,6 +88,14 @@ These are the author's rules, not inferences from the code. Where the code disag
 **The top menu and the bottom menu are centred, and they hold still between pages.** Logo and menu are centred on the page on every route, and a visitor moving from one page to another must not see them shift, resize or re-space. Anything that changes the centre line (a scrollbar appearing on one page and not another) or the rhythm (different padding above and below the bottom menu, a different logo size, different type) is a bug, not a per-page choice.
 
 One exception the author has set, deliberately: `/mind/chess-set` ends on the six dots of the pieces gallery and gives the bottom menu 44px more room above it than the rest of the site — 130px from the dots to the logo on a desktop, 106 on a phone — because a row of small marks needs more air under it than a photograph's edge does. It lives as a `margin-bottom` on `.chess-pieces-section`. Don't "correct" it back.
+
+**The gold of the pendants in three dimensions is one material, set by the author on 2026-09-22, and every pendant wears it.** It was arrived at on Icarus over several rounds, and the author asked for it to be kept as the standard:
+
+- **Colour:** yellow gold, base colour `#EBD399` (linear 0.83, 0.65, 0.32). That is the metal's reflectance: on screen it reads deeper and warmer, because a metal shows the colour of what it reflects. It is the measured colour of pure gold, a tenth of the way toward grey and 15% darker. A paler gold a fifth of the way toward grey was tried and turned down.
+- **Finish:** satin, roughness 0.3, with a fine grain and hairline scratches (a 12mm tile, tilt 0.35). A more matte 0.37 was tried and turned down.
+- **Light:** reflections of a dark studio that turns with the viewer, shown with Khronos PBR Neutral tone mapping, on `#202020`.
+
+All of it lives in the constants at the top of `components/pendant-viewer.tsx` (`GOLD`, `ROUGHNESS`, `GRAIN_TILE`, `GRAIN_STRENGTH`, `darkStudio`). Every pendant page renders through that one viewer, so a new pendant gets the gold without anything being set for it. Don't tune the material for one pendant; a change is a change to all seven, and it is the author's to make.
 
 ## Conventions
 
