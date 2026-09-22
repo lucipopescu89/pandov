@@ -11,17 +11,27 @@ const HAND_OPACITY = 0.77
 
 /**
  * White over the hand's lower half, at full strength; the scroll brings it up
- * to it. Solid for the bottom 30% of the image, which is where the lower
+ * to it. Solid for the bottom 30% of the hand's box, which is where the lower
  * fingers end, then thinning to nothing at 60%, just short of the ring and
- * the knuckles, so what is left of the hand at the end is the ring on the
- * back of it.
+ * the knuckles.
  *
  * It was 90% at the bottom edge and gone by the middle. Over a white hand on
  * a white page that never read as a fade at all: at the height of "Get in
  * touch" it came to under half, and every fingertip still showed through.
  * Solid, rather than 90%, is what lets the fingers go altogether.
+ *
+ * It belongs to the page, not to the photograph. It is laid on the hand's box,
+ * which moves with the page, while the photograph under it settles (see the
+ * finale below), so as the hand slows the white goes on rising at the page's
+ * speed and the hand sinks into it from the fingertips up. "Get in touch" hangs
+ * in its solid part, and so stands on clean white wherever the hand has got to.
+ * That is also why it runs on below the box, solid, to VEIL_H box heights in
+ * all: on a phone the photograph settles by more than its own height — 212px,
+ * against 185, on a 390px screen — and would come out from under a white that
+ * ended with the box.
  */
-const HAND_FADE = "linear-gradient(to top, #fff 0%, #fff 30%, rgba(255,255,255,0) 60%)"
+const VEIL_H = 2.5
+const HAND_FADE = `linear-gradient(to bottom, rgba(255,255,255,0) ${40 / VEIL_H}%, #fff ${70 / VEIL_H}%)`
 
 /**
  * The footer's finale, read off the scroll and never holding it up.
@@ -33,8 +43,10 @@ const HAND_FADE = "linear-gradient(to top, #fff 0%, #fff 30%, rgba(255,255,255,0
  * yet. From there to the end of the page is the stretch everything else
  * happens in, and the beats are fractions of it:
  *
- *   clean ─ white rises ─ words
- *                   └─ bird
+ *       clean ─ white rises ─ words
+ *                       └─ bird
+ *   ├── the hand slows ───────────────────┤ at rest
+ *            └── and fades into white ───┤ gone
  *
  * CLEAN_TO: the hand alone, before anything touches it.
  * WHITE_TO: the white over the lower fingers has come up to full strength.
@@ -43,9 +55,21 @@ const HAND_FADE = "linear-gradient(to top, #fff 0%, #fff 30%, rgba(255,255,255,0
  * at the end of the page — it is below the hand, and seen any earlier it
  * would share the screen the hand is meant to have alone.
  *
+ * Under those beats the photograph settles: it leaves the page's speed a
+ * little before the whole hand is on screen (SETTLE_FROM) and slows until, at
+ * the end of the page, it stands still (see `settle`). From CLEAN_TO it
+ * also fades into the white, and it is gone as it comes to rest, so the page
+ * ends on the words and the bird with no hand left to stop. Both ease out to
+ * nothing rather than running on into the end of the page, which is a hard
+ * stop: anything still moving there would be cut off by it, and the author
+ * asked for the page to finish gently.
+ *
  * The hand was held still in the middle of the screen for a while, with the
  * beats played out while it waited; the page seemed to stop under the hand,
- * and the hold was taken out. Everything now moves with the page.
+ * and the hold was taken out. Settling is not that. The hand never stands
+ * still while the page moves — it comes to rest only as the page ends, and by
+ * then it is gone — and everything else, the words, the bird, the menu, moves
+ * with the page throughout.
  *
  * Fractions rather than lengths because the stretch is whatever the page has
  * left, which differs a lot by screen — measured, 460px on a 1026×800 window,
@@ -57,6 +81,16 @@ const CLEAN_TO = 0.25
 const WHITE_TO = 0.62
 const TEXT_TO = 0.85
 const BIRD_FROM = 0.6
+
+/**
+ * Where the settling begins: half the stretch before the whole hand is on
+ * screen, while the last of it is still coming up. It began exactly as the hand
+ * came on screen whole at first; the author asked for it a little sooner, and
+ * then a little sooner again, a quarter of the stretch each time. By the time
+ * the hand has the screen to itself it is already slowing — at three quarters
+ * of the page's speed — rather than only starting to once it has.
+ */
+const SETTLE_FROM = -0.5
 
 /**
  * The hand's box, for `MakingSection`, which dissolves as it comes up. It
@@ -78,6 +112,75 @@ function clamp01(v: number): number {
 function ramp(v: number, from: number, to: number): number {
   if (to <= from) return v >= to ? 1 : 0
   return clamp01((v - from) / (to - from))
+}
+
+/** 0 → 1 across 0..1, leaving and arriving with no speed. */
+function smooth(t: number): number {
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * How far the photograph has fallen behind the page at u through its settling
+ * — from SETTLE_FROM to the end of the page — as a share of that span. It is
+ * the integral of `smooth`, so the hand's own speed on screen, 1 − smooth(u),
+ * is the page's as the span begins and nothing at its end, and it changes
+ * without a jolt at either: the handover from moving with the page is exact,
+ * and so is the arrival. By the end it is half the span behind, having covered
+ * half the ground the page has.
+ *
+ * It starts a little before the whole hand is on screen, not as the hand first
+ * appears. Slowing from the bottom edge up, it would on most screens never be
+ * on screen whole at all — at 1440 × 900 it would still be 70px short at the
+ * end. Begun half the stretch early, it is 25px behind when its box comes on
+ * screen whole at 1440 × 900, and 13px on a phone: less, both times, than the
+ * empty white under the fingertips, so the whole hand is on screen as before.
+ * SETTLE_FROM has to stay above −1 for that, and well above it.
+ */
+function settle(u: number): number {
+  return u * u * u * (1 - u / 2)
+}
+
+/**
+ * The photograph at scroll position y: how far it has settled behind the page,
+ * and how much of it is left, with `whole` and `pageEnd` the scroll positions
+ * the finale runs between.
+ */
+function photoAt(y: number, whole: number, pageEnd: number): { transform: string; opacity: string } {
+  const span = Math.max(0, pageEnd - whole) * (1 - SETTLE_FROM)
+  const behind = span * settle(ramp(y, pageEnd - span, pageEnd))
+  const left = 1 - smooth(ramp(ramp(y, whole, pageEnd), CLEAN_TO, 1))
+  return { transform: `translate3d(0, ${behind.toFixed(2)}px, 0)`, opacity: (HAND_OPACITY * left).toFixed(3) }
+}
+
+/**
+ * The browser's own scroll-linked timeline, where it has one: an animation on
+ * it is played by the scroll position itself, on the same step that moves the
+ * page, rather than by a script told about the scroll afterwards. Not yet in
+ * TypeScript's DOM types, hence the shape given here.
+ */
+type ScrollTimelineConstructor = new (options: { source: Element | null }) => AnimationTimeline
+
+/**
+ * Straight steps the settling is drawn in, across its span, when the browser
+ * plays it. Thirty-two keep the photograph within a sixth of a pixel of the
+ * curve on the longest span measured, 812px at 1440 × 900.
+ */
+const SETTLE_STEPS = 32
+
+/**
+ * The settling and the fade as keyframes over the whole scroll of the page, 0
+ * at the top and 1 at the end: flat until the span begins, then SETTLE_STEPS
+ * samples of `photoAt` across it.
+ */
+function settlingKeyframes(whole: number, pageEnd: number): Keyframe[] {
+  const span = Math.max(0, pageEnd - whole) * (1 - SETTLE_FROM)
+  const from = Math.max(0, pageEnd - span)
+  const frames: Keyframe[] = [{ offset: 0, ...photoAt(0, whole, pageEnd) }]
+  for (let i = 0; i <= SETTLE_STEPS; i++) {
+    const y = from + ((pageEnd - from) * i) / SETTLE_STEPS
+    frames.push({ offset: Math.min(1, y / pageEnd), ...photoAt(y, whole, pageEnd) })
+  }
+  return frames
 }
 
 /**
@@ -126,24 +229,60 @@ const HAND_H = 1230
 
 export function Footer() {
   const handRef = useRef<HTMLDivElement>(null)
+  const photoRef = useRef<HTMLDivElement>(null)
   const [white, setWhite] = useState(0)
   const [ctaIn, setCtaIn] = useState(0)
   const [birdIn, setBirdIn] = useState(0)
 
   useEffect(() => {
+    const Timeline = (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline
+    let settling: Animation | null = null
+    let builtFor = { whole: NaN, pageEnd: NaN }
+
     const onScroll = () => {
       const hand = handRef.current
       if (!hand) return
       const vh = window.innerHeight
       const y = window.scrollY
       // From the whole hand on screen — its box's foot at the bottom of the
-      // screen — to the end of the page.
+      // screen — to the end of the page. The box, not the photograph: the box
+      // never moves off the page, so this is not thrown by the settling below.
       const whole = y + hand.getBoundingClientRect().bottom - vh
       const pageEnd = document.documentElement.scrollHeight - vh
       const p = ramp(y, whole, pageEnd)
       setWhite(ramp(p, CLEAN_TO, WHITE_TO))
       setCtaIn(ramp(p, WHITE_TO, TEXT_TO))
       setBirdIn(ramp(p, BIRD_FROM, 1))
+
+      // The photograph is handed to the browser as an animation on the scroll
+      // itself, and only rebuilt when the page's measurements change. It was
+      // written from here on every scroll event at first, and every turn of
+      // the wheel it jumped up and dropped back: the page moves the moment the
+      // wheel turns, and the script only hears of it afterwards, so for a frame
+      // the photograph went up with the page by as much as it should have been
+      // held back — 44px a notch as it began to slow, 91 near the end, measured
+      // in Chrome. Played by the scroll, it is placed on the same step the page
+      // moves on. The fades above only change strength, which a frame late
+      // does not show. Nothing may set the photograph's transform or opacity
+      // with !important: Chrome then plays the animation a frame late again.
+      //
+      // Where there is no such timeline — Safari before 26, which takes in the
+      // iPhones that cannot update to it — it is still written from here, and
+      // the jump is the price of the settling there.
+      const photo = photoRef.current
+      if (!photo) return
+      if (!Timeline) {
+        Object.assign(photo.style, photoAt(y, whole, pageEnd))
+        return
+      }
+      if (pageEnd <= 0) return
+      if (Math.abs(whole - builtFor.whole) < 0.5 && Math.abs(pageEnd - builtFor.pageEnd) < 0.5) return
+      builtFor = { whole, pageEnd }
+      const frames = settlingKeyframes(whole, pageEnd)
+      // Rebuilt in place: cancelling one animation and starting another would
+      // leave a frame with neither, and the photograph unsettled, between them.
+      if (settling?.effect instanceof KeyframeEffect) settling.effect.setKeyframes(frames)
+      else settling = photo.animate(frames, { timeline: new Timeline({ source: document.documentElement }), fill: "both" })
     }
     window.addEventListener("scroll", onScroll, { passive: true })
     // The measurements themselves move on a resize, and a tab that loaded in
@@ -157,6 +296,7 @@ export function Footer() {
       window.removeEventListener("resize", onScroll)
       window.removeEventListener("pageshow", onScroll)
       document.removeEventListener("visibilitychange", onScroll)
+      settling?.cancel()
     }
   }, [])
 
@@ -181,7 +321,13 @@ export function Footer() {
         {/* The white sculptural hand (Figma "Rectangle 2"), mirrored so the
             fingers point right. The image carries empty white space past the
             fingertips, so it is set wider than the page and right of centre to
-            centre the hand itself; only that white margin is cropped. */}
+            centre the hand itself; only that white margin is cropped.
+
+            The box stays where the page puts it, and is what the finale and
+            Making measure; the photograph inside it is what settles and fades,
+            on a layer of its own so that it is drawn once and then only moved.
+            The white is laid over it on the box, which is what lets the hand
+            sink into it (see HAND_FADE). */}
         <div
           ref={handRef}
           id={FOOTER_STAGE_ID}
@@ -193,14 +339,22 @@ export function Footer() {
             aspectRatio: `${HAND_W} / ${HAND_H}`,
           }}
         >
-          <Image
-            src="/images/home/footer-banner.png"
-            alt="White sculptural hand wearing the Pandov golden ring"
-            fill
-            sizes="108vw"
-            style={{ objectFit: "contain", opacity: HAND_OPACITY, transform: "scaleX(-1)" }}
+          <div
+            ref={photoRef}
+            style={{ position: "absolute", inset: 0, opacity: HAND_OPACITY, willChange: "transform, opacity" }}
+          >
+            <Image
+              src="/images/home/footer-banner.png"
+              alt="White sculptural hand wearing the Pandov golden ring"
+              fill
+              sizes="108vw"
+              style={{ objectFit: "contain", transform: "scaleX(-1)" }}
+            />
+          </div>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0"
+            style={{ height: `${VEIL_H * 100}%`, background: HAND_FADE, opacity: white }}
           />
-          <div className="pointer-events-none absolute inset-0" style={{ background: HAND_FADE, opacity: white }} />
         </div>
 
         {/* Call to action, centred on the page below the ring. The padding only
