@@ -533,11 +533,16 @@ function splitFloat(svg: string) {
  */
 function pendantBox(svg: string, left: number, width: number) {
   const box = svg.match(/<svg\b[^>]*\sviewBox="([^"]+)"/)?.[1].split(/[\s,]+/).map(Number)
-  const rect = svg.match(/<rect class="bp-pendant"([^>]*)>/)?.[1]
-  if (!box || !rect) return null
+  // Presence and Emperor set their photograph lower than the export drew it by
+  // wrapping the rect in a `<g transform="translate(…)">`; the link has to
+  // follow that move, or it sits over the empty place the photograph left —
+  // 431 units above Presence's, where no one clicks.
+  const found = svg.match(/(?:<g transform="translate\(([-\d.]+),\s*([-\d.]+)\)">\s*)?<rect class="bp-pendant"([^>]*)>/)
+  if (!box || !found) return null
+  const [, dx = "0", dy = "0", rect] = found
   const read = (name: string) => Number(rect.match(new RegExp(`\\s${name}="([^"]+)"`))?.[1])
   const unit = box[2] / width
-  const [x, y, w, h] = [read("x"), read("y"), read("width"), read("height")]
+  const [x, y, w, h] = [read("x") + Number(dx), read("y") + Number(dy), read("width"), read("height")]
   if (![x, y, w, h].every(Number.isFinite)) return null
   return {
     left: `${((left + (x - box[0]) / unit) / CANVAS_W) * 100}%`,
