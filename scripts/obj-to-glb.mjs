@@ -34,6 +34,20 @@ for (const line of text.split(/\r?\n/)) {
   }
 }
 
+// Stand the pendant up. The viewer takes +Y as up, and Icarus was exported
+// that way, but the other six came out of 3ds Max in its own Z-up and lay on
+// their backs, seen from the end. A pendant is always taller than it is wide
+// or deep, so its longest axis is its height: if that is Z, turn the model a
+// quarter round X, (x, y, z) -> (x, z, -y), which is the same turn 3ds Max
+// makes when it is asked for a Y-up export.
+{
+  const ext = (k) => Math.max(...V.map((p) => p[k])) - Math.min(...V.map((p) => p[k]))
+  if (ext(2) > ext(1)) {
+    for (const a of [V, N]) for (const p of a) [p[1], p[2]] = [p[2], -p[1]]
+    console.error("Z-up export: turned upright")
+  }
+}
+
 // Bounding box of everything, to recentre.
 const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity]
 for (const p of V) for (let k = 0; k < 3; k++) { min[k] = Math.min(min[k], p[k]); max[k] = Math.max(max[k], p[k]) }

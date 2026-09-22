@@ -93,9 +93,15 @@ type Props = {
   label: string
   className?: string
   style?: React.CSSProperties
+  /**
+   * How large the pendant is drawn, as a share of the size that fits it to
+   * the stage. 1 fills the stage but for MARGIN; a page that frames the model
+   * among photographs may want it smaller, standing in room of its own.
+   */
+  size?: number
 }
 
-export function PendantViewer({ src, label, className, style }: Props) {
+export function PendantViewer({ src, label, className, style, size = 1 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(false)
 
@@ -193,7 +199,7 @@ export function PendantViewer({ src, label, className, style }: Props) {
         // and a portrait stage has little width to fit it in.
         const vHalf = Math.tan(THREE.MathUtils.degToRad(FOV) / 2)
         const hHalf = vHalf * camera.aspect
-        const distance = Math.max(halfHeight / vHalf, reach / hHalf) * MARGIN + reach
+        const distance = (Math.max(halfHeight / vHalf, reach / hHalf) * MARGIN) / size + reach
         camera.position.setLength(distance)
         camera.near = distance / 100
         camera.far = distance * 10

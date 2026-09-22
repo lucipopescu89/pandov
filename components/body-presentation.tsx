@@ -290,10 +290,18 @@ const HALO_FILES = new Set(["presence.svg"])
 const FLOATING = new Set(["emperor.svg"])
 
 /**
- * Pendants whose photograph opens a page of their own. Icarus is the first,
- * opening onto its model in three dimensions as a trial of the idea.
+ * Each pendant's photograph opens its page of its own: photographs, the model
+ * in three dimensions and the prices. The slugs are `SECOND_WIND`'s keys.
  */
-const PENDANT_PAGES: Record<string, string> = { "icarus.svg": "/body/second-wind/icarus" }
+const PENDANT_PAGES: Record<string, string> = {
+  "icarus.svg": "/body/second-wind/icarus",
+  "waterfall.svg": "/body/second-wind/waterfall",
+  "chaos.svg": "/body/second-wind/chaos",
+  "silence.svg": "/body/second-wind/silence",
+  "mnature.svg": "/body/second-wind/mother-nature",
+  "presence.svg": "/body/second-wind/presence",
+  "emperor.svg": "/body/second-wind/emperor",
+}
 
 /**
  * How far the pendant rises above its place and sinks below it, in canvas
@@ -665,7 +673,7 @@ export async function BodyPresentation() {
             <Link
               key={`${section.file}-page`}
               href={href}
-              aria-label={`${section.label}, in three dimensions`}
+              aria-label={section.label}
               className="bp-pendant-link absolute block"
               style={{
                 left: box.left,
