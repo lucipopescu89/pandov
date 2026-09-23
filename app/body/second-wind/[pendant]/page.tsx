@@ -13,12 +13,13 @@ export async function generateMetadata({ params }: Params) {
   if (!pendant) return {}
   return {
     title: `${pendant.name} — Second Wind — PANDOV`,
-    description: `${pendant.name}, from the Second Wind collection: ${pendant.lines[0].toLowerCase()}`,
+    description: `${pendant.name}, from the Second Wind collection: ${pendant.line.toLowerCase()}`,
   }
 }
 
 export default async function SecondWindPendantPage({ params }: Params) {
-  const pendant = SECOND_WIND[(await params).pendant]
+  const slug = (await params).pendant
+  const pendant = SECOND_WIND[slug]
   if (!pendant) notFound()
-  return <PendantPage pendant={pendant} />
+  return <PendantPage slug={slug} pendant={pendant} />
 }

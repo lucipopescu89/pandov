@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useRef, useState } from "react"
 import { PendantViewer } from "@/components/pendant-viewer"
 import { u } from "@/lib/canvas-length"
 
 /**
- * A photograph of the pendant, as two files: one for a computer and a
- * narrower cut for a phone, which downloads only what a phone can show.
+ * A photograph of the pendant, as three files: one for a computer, a narrower
+ * cut for a phone, which downloads only what a phone can show, and a thumbnail
+ * for the gallery's column, a few kilobytes each.
  */
-export type PendantPhoto = { src: string; phone: string; alt: string }
+export type PendantPhoto = { src: string; phone: string; thumb: string; alt: string }
 
 /** Screens this narrow and narrower get a photograph's phone file. */
 const PHONE_MEDIA = "(max-width: 640px)"
@@ -21,65 +22,115 @@ const PHONE_MEDIA = "(max-width: 640px)"
 const MODEL_SIZE = 0.35
 
 /**
- * The frame's proportion, width to height: the author's own crop, set on
- * Icarus's photographs on 2026-09-23 (1440 × 1968) and to be carried to the
- * other six. It was 2:3 before, which cut 4–5% off either side of those
- * photographs; the six still in 2:3 lose a little top and bottom instead
- * until they are recropped. Export a photograph at this proportion and it is
- * shown whole.
+ * The frame's proportion, width to height: the author's own crop, 1440 × 1968,
+ * which every photograph was recropped to on 2026-09-23 but the ones worn,
+ * which stay 2:3 and lose a little top and bottom here. The author's design
+ * draws the frame 640 wide, so 875 tall.
  */
 const FRAME = "30 / 41"
 
 /** How long one photograph takes to give way to the next. */
 const FADE_MS = 700
 
-/** The marks' grey, the site's own, and the gold of the one that means the model. */
-const MARK = "#888888"
-const MARK_GOLD = "#C9A461"
+/** The thumbnails not shown, as the design dims them. */
+const DIM = 0.45
+
+/** The active thumbnail's hairline: one device pixel on a 2× screen, as drawn. */
+const EDGE = "#8E8982"
 
 /**
- * The stage of a pendant's page: its photographs, one at a time, and its
- * model in three dimensions in the same frame, with a column of marks beside
- * them — a grey ring for each photograph, filled for the one shown, and a
- * gold one below for the model.
+ * The gallery of a pendant's page: its photographs one at a time in a frame,
+ * and a column of thumbnails beside it that choose between them — the one
+ * shown at full strength inside a hairline, the rest dimmed. The last
+ * thumbnail is the pendant itself, small on the collection's ground, marked
+ * 3D: it puts the model in the frame, to be turned by hand.
  *
- * A click on a photograph fades to the next, and after the last back to the
- * first; the model is reached only from its mark. On the model a click cannot
- * mean "next", because a drag there turns the pendant, so the way back to the
- * photographs is the marks too.
+ * A thumbnail crossfades the frame to its photograph; so does a click on the
+ * photograph, to the next one, and after the last back to the first. On the
+ * model a click cannot mean "next", because a drag there turns the pendant,
+ * so the way back to the photographs is the thumbnails.
  *
- * Only the photograph shown and the one after it are fetched: a page of six
- * would otherwise download all six for a visitor who looks at one. The model's
- * viewer, and three.js with it, is mounted only while the model is shown, so
- * it is not drawing sixty frames a second under a photograph, and a visitor
- * who never asks for it never downloads it.
+ * A photograph is fetched only when it is shown or next in line, or when the
+ * pointer comes to its thumbnail, and the frame changes to it only once it has
+ * arrived, so a fade never passes through an empty frame. The model's viewer,
+ * and three.js with it, is mounted only while the model is shown, so it is not
+ * drawing sixty frames a second under a photograph, and a visitor who never
+ * asks for it never downloads it.
  *
- * `children` is the text column, laid beside the marks on a computer and
- * under them on a phone. On a phone the marks run in a row under the stage.
+ * On a computer the thumbnails stand in a column to the left of the frame; on
+ * a phone they run in a row under it.
  */
 export function PendantGallery({
   name,
   model,
+  cutout,
   photos,
-  children,
 }: {
   name: string
   model: string
+  cutout: string
   photos: PendantPhoto[]
-  children: ReactNode
 }) {
   const MODEL = photos.length
+  // What the frame shows, and what was last asked for: they differ only while
+  // a photograph asked for is still on its way.
   const [shown, setShown] = useState(0)
+  const [wanted, setWanted] = useState(0)
+  const wantedRef = useRef(0)
   const [fetched, setFetched] = useState(() => new Set([0, 1 % MODEL]))
+  const loaded = useRef(new Set<number>())
 
-  const show = (i: number) => {
+  const request = (i: number) => {
+    if (i < MODEL) setFetched((prev) => (prev.has(i) ? prev : new Set(prev).add(i)))
+  }
+
+  const arrive = (i: number) => {
     setShown(i)
-    if (i < MODEL) setFetched((prev) => new Set(prev).add(i).add((i + 1) % MODEL))
+    request((i + 1) % MODEL)
+  }
+
+  const ask = (i: number) => {
+    setWanted(i)
+    wantedRef.current = i
+    if (i === MODEL || loaded.current.has(i)) arrive(i)
+    else request(i)
+  }
+
+  const onLoad = (i: number) => {
+    loaded.current.add(i)
+    if (wantedRef.current === i) arrive(i)
   }
 
   return (
-    <div className="pg flex w-full flex-col lg:flex-row lg:items-start lg:justify-center">
-      <div className="pg-stage relative w-full shrink-0 overflow-hidden" style={{ aspectRatio: FRAME }}>
+    <div className="pg">
+      <div className="pg-thumbs">
+        {photos.map((photo, i) => (
+          <button
+            key={photo.src}
+            type="button"
+            className="pg-thumb"
+            aria-label={`Photograph ${i + 1} of ${MODEL}`}
+            aria-pressed={wanted === i}
+            onClick={() => ask(i)}
+            onPointerEnter={() => request(i)}
+            onFocus={() => request(i)}
+          >
+            <img src={photo.thumb} alt="" decoding="async" />
+          </button>
+        ))}
+        <button
+          type="button"
+          className="pg-thumb pg-thumb-model"
+          aria-label={`${name} in three dimensions`}
+          aria-pressed={wanted === MODEL}
+          onClick={() => ask(MODEL)}
+        >
+          <img src={cutout.replace(/\.avif$/, "-thumb.avif")} alt="" decoding="async" />
+          <span aria-hidden="true">3D</span>
+        </button>
+      </div>
+
+      <div className="pg-stage">
         {photos.map((photo, i) =>
           fetched.has(i) ? (
             <picture
@@ -93,11 +144,15 @@ export function PendantGallery({
             >
               <source srcSet={photo.phone} media={PHONE_MEDIA} />
               <img
+                ref={(img) => {
+                  if (img?.complete && img.naturalWidth) loaded.current.add(i)
+                }}
                 src={photo.src}
                 alt={photo.alt}
                 decoding="async"
                 fetchPriority={i === 0 ? "high" : "low"}
-                onClick={() => show((i + 1) % MODEL)}
+                onLoad={() => onLoad(i)}
+                onClick={() => ask((i + 1) % MODEL)}
                 style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }}
               />
             </picture>
@@ -114,63 +169,32 @@ export function PendantGallery({
         )}
       </div>
 
-      <div className="pg-marks flex flex-row items-center justify-center">
-        {photos.map((photo, i) => (
-          <Mark key={photo.src} label={`Photograph ${i + 1} of ${MODEL}`} on={shown === i} onClick={() => show(i)} />
-        ))}
-        <Mark label={`${name} in three dimensions`} on={shown === MODEL} gold onClick={() => show(MODEL)} />
-      </div>
-
-      {children}
-
-      {/* The stage and the marks at the design's own sizes on a computer; on a
-          phone the stage is the page's width and the marks a row under it.
-          The gold mark stands apart from the grey ones by four of their own
-          steps, at the author's asking, so the model reads as another kind of
-          thing than a photograph. On a computer the marks, like the text
-          beside them, stay on screen while the photograph scrolls by. */}
+      {/* The column and the frame at the design's own sizes on a computer:
+          thumbnails 64 × 86, 18 apart, the frame 60 to their right. On a phone
+          the frame is the page's width, or 560 at most on a tablet, and the
+          thumbnails a row under it. */}
       <style>{`
-        .pg-marks { gap: 16px; padding: 24px 0; }
-        .pg-marks > button { margin: -6px; }
-        .pg-marks > button:last-child { margin-left: calc(4 * 24px - 6px); }
+        .pg { display: flex; flex-direction: column-reverse; }
+        .pg-stage { position: relative; width: min(100%, 560px); margin: 0 auto; aspect-ratio: ${FRAME}; overflow: hidden; }
+        .pg-thumbs { display: flex; justify-content: center; gap: 10px; margin-top: 12px; }
+        .pg-thumb { position: relative; flex: none; width: 44px; aspect-ratio: 64 / 86; padding: 0; border: 0; background: none; cursor: pointer;
+          opacity: ${DIM}; transition: opacity 300ms ease; }
+        .pg-thumb:hover { opacity: 0.75; }
+        .pg-thumb[aria-pressed="true"] { opacity: 1; cursor: default; }
+        .pg-thumb::after { content: ""; position: absolute; inset: 0; border: 0.5px solid ${EDGE}; opacity: 0; transition: opacity 300ms ease; pointer-events: none; }
+        .pg-thumb[aria-pressed="true"]::after { opacity: 1; }
+        .pg-thumb > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+        .pg-thumb-model > img { object-fit: contain; padding: 10% 0 26%; }
+        .pg-thumb-model > span { position: absolute; left: 0; right: 0; bottom: 9%; text-align: center;
+          font-family: var(--font-heading); font-size: 8px; letter-spacing: 0.2em; line-height: 1; color: #E9E4DC; }
         @media (min-width: 1024px) {
-          .pg-stage { width: ${u(753)}; }
-          .pg-marks { flex-direction: column; gap: ${u(13)}; padding: 0; margin: ${u(192)} 0 0 ${u(97)}; position: sticky; top: ${u(192)}; }
-          .pg-marks > button:last-child { margin: calc(4 * (${u(13)} + 8px) - 6px) -6px -6px; }
+          .pg { flex-direction: row; align-items: flex-start; }
+          .pg-thumbs { flex-direction: column; justify-content: flex-start; gap: ${u(18)}; margin: 0; width: max(40px, ${u(64)}); }
+          .pg-thumb { width: 100%; }
+          .pg-thumb-model > span { font-size: max(8px, ${u(9)}); }
+          .pg-stage { width: ${u(640)}; margin: 0 0 0 ${u(60)}; }
         }
       `}</style>
     </div>
-  )
-}
-
-/**
- * One mark: a small ring, filled when what it stands for is shown. The gold one
- * is always filled, as the design draws it, and is marked when shown by the grey
- * ones all standing empty. The button is larger than the ring, so a finger can
- * find it.
- */
-function Mark({ label, on, gold = false, onClick }: { label: string; on: boolean; gold?: boolean; onClick: () => void }) {
-  const color = gold ? MARK_GOLD : MARK
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={on}
-      onClick={onClick}
-      className="flex items-center justify-center"
-      style={{ width: 20, height: 20, padding: 0, background: "none", border: 0, cursor: "pointer" }}
-    >
-      <span
-        style={{
-          display: "block",
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          border: `1px solid ${color}`,
-          backgroundColor: on || gold ? color : "transparent",
-          transition: "background-color 300ms ease",
-        }}
-      />
-    </button>
   )
 }
