@@ -41,7 +41,8 @@ const photos = (folder: string, list: [string, string][]) =>
 /*
  * The photographs open on the cleanest picture of the pendant, then show it
  * hanging on its cord, then worn, and end on the stone the collection was
- * first shot on.
+ * first shot on. Icarus's are the exception: the author cropped them and set
+ * their order on 2026-09-23, numbered 01–04 in the source folder.
  */
 export const SECOND_WIND: Record<string, Pendant> = {
   icarus: {
@@ -50,12 +51,10 @@ export const SECOND_WIND: Record<string, Pendant> = {
     height: "48mm",
     model: "/models/icarus.glb",
     photos: photos("icarus", [
-      ["3", "Icarus hanging on a fine cord against white feathers"],
-      ["5", "Icarus swinging on its cord against a black top"],
-      ["6", "Icarus hanging still on its cord against a black top"],
-      ["4", "Icarus worn on a fine chain at the collarbone"],
       ["1", "Icarus on grey stone, in the middle of a splash of ink"],
-      ["2", "A pair of Icarus pendants on dark stone, one turned to show its side"],
+      ["2", "Icarus hanging on a fine cord against white marble"],
+      ["3", "Icarus worn on a fine cord at the collarbone"],
+      ["4", "A pair of Icarus pendants on dark stone, one turned to show its side"],
     ]),
     materials: PLACEHOLDER_PRICES,
   },
