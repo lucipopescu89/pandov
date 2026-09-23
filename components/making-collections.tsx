@@ -88,7 +88,7 @@ export function MakingCollections() {
 
       {/* Bottom menu — fixed and transparent so the video scrolls behind it */}
       <div className="fixed inset-x-0 bottom-0 z-20">
-        <BodyFooter activeLabel="making" />
+        <BodyFooter activeLabel="making" mark={false} />
       </div>
     </main>
   )

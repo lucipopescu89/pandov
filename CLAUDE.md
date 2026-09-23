@@ -95,6 +95,8 @@ These are the author's rules, not inferences from the code. Where the code disag
 
 One exception the author has set, deliberately: `/mind/chess-set` ends on the six dots of the pieces gallery and gives the bottom menu 44px more room above it than the rest of the site — 130px from the dots to the logo on a desktop, 106 on a phone — because a row of small marks needs more air under it than a photograph's edge does. It lives as a `margin-bottom` on `.chess-pieces-section`. Don't "correct" it back.
 
+A second, set on 2026-09-23: `/making` and `/contact` show the bottom menu without its small mark above it (`<BodyFooter mark={false} />`). On those two pages the menu is pinned to the screen and there is nothing to scroll back to. The padding under the row is unchanged, so the words sit where they sit everywhere else. `mark` is the one prop `BodyFooter` takes besides `activeLabel`; don't grow it into a per-page styling switch.
+
 **The gold of the pendants in three dimensions is one material, set by the author on 2026-09-22, and every pendant wears it.** It was arrived at on Icarus over several rounds, and the author asked for it to be kept as the standard:
 
 - **Colour:** yellow gold, base colour `#EBD399` (linear 0.83, 0.65, 0.32). That is the metal's reflectance: on screen it reads deeper and warmer, because a metal shows the colour of what it reflects. It is the measured colour of pure gold, a tenth of the way toward grey and 15% darker. A paler gold a fifth of the way toward grey was tried and turned down.

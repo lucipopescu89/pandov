@@ -126,7 +126,7 @@ export function ContactCollections() {
         </div>
 
         {/* Bottom menu — transparent so the video shows through behind it */}
-        <BodyFooter activeLabel="contact" />
+        <BodyFooter activeLabel="contact" mark={false} />
       </div>
     </main>
   )

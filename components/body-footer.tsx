@@ -39,11 +39,19 @@ const LOGO_GAP = 50
  * render a quieter variant — a smaller logo set closer to 11px labels with only
  * the first letter capitalised, 38px apart — which made the bottom of the site
  * change voice the moment you left the homepage.
+ *
+ * One exception, set by the author on 2026-09-23: Making and Contact show the
+ * menu row without the mark (`mark={false}`). On those two pages the bottom
+ * menu is pinned to the screen and there is nothing to scroll back up to, so
+ * the mark had no work to do. The row keeps its place: the padding below it is
+ * unchanged, so the words sit exactly where they sit on every other page.
  */
 export function BodyFooter({
   activeLabel = "body",
+  mark = true,
 }: {
   activeLabel?: string | null
+  mark?: boolean
 }) {
   const scrollToTop = () => {
     // Honour the OS "reduce motion" setting rather than always animating.
@@ -53,26 +61,28 @@ export function BodyFooter({
 
   return (
     <footer className={`flex w-full flex-col items-center ${PADDING}`}>
-      <button
-        type="button"
-        onClick={scrollToTop}
-        aria-label="Back to top"
-        className="cursor-pointer border-none bg-transparent p-0 transition-opacity hover:opacity-60"
-        style={{ marginBottom: LOGO_GAP }}
-      >
-        <svg
-          className={`w-auto ${MARK_H}`}
-          viewBox="0 0 44 46"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
+      {mark && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Back to top"
+          className="cursor-pointer border-none bg-transparent p-0 transition-opacity hover:opacity-60"
+          style={{ marginBottom: LOGO_GAP }}
         >
-          <path
-            d="M44 46H43.1334C41.9852 46 40.902 45.4295 40.2738 44.4998C34.1211 35.5195 27.9685 26.5393 21.7942 17.559C20.386 15.5094 17.2014 15.7418 16.1398 17.9816C11.677 27.3211 7.21418 36.6605 2.72969 46H0C5.97932 33.491 11.9803 21.0032 22.0108 0C27.0586 10.5227 35.5293 28.2508 44 46ZM20.646 13.3542C20.646 12.4456 19.8877 11.706 18.9562 11.706C18.0246 11.706 17.2664 12.4456 17.2664 13.3542C17.2664 14.2627 18.0246 15.0023 18.9562 15.0023C19.8877 15.0023 20.646 14.2627 20.646 13.3542Z"
-            fill={NAV_COLOR}
-          />
-        </svg>
-      </button>
+          <svg
+            className={`w-auto ${MARK_H}`}
+            viewBox="0 0 44 46"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M44 46H43.1334C41.9852 46 40.902 45.4295 40.2738 44.4998C34.1211 35.5195 27.9685 26.5393 21.7942 17.559C20.386 15.5094 17.2014 15.7418 16.1398 17.9816C11.677 27.3211 7.21418 36.6605 2.72969 46H0C5.97932 33.491 11.9803 21.0032 22.0108 0C27.0586 10.5227 35.5293 28.2508 44 46ZM20.646 13.3542C20.646 12.4456 19.8877 11.706 18.9562 11.706C18.0246 11.706 17.2664 12.4456 17.2664 13.3542C17.2664 14.2627 18.0246 15.0023 18.9562 15.0023C19.8877 15.0023 20.646 14.2627 20.646 13.3542Z"
+              fill={NAV_COLOR}
+            />
+          </svg>
+        </button>
+      )}
 
       <nav className="flex items-center justify-center gap-20">
         {NAV.map((item) => (
