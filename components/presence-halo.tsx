@@ -38,12 +38,28 @@ const RY = 383.5
 const SCALE = 0.748
 
 /**
+ * The field: eleven rings, the last reaching 2.17 times the ellipse. It was
+ * eight reaching 1.85 until 2026-09-23, when the author asked for three more on
+ * the outside. The reach grew with the count, 0.85 × 11/8, so the rings keep
+ * the spacing they had and the three are simply added beyond the eighth.
+ */
+const RINGS = 11
+const REACH = 2.17
+
+/**
+ * Brightest a ring gets. The shared default, 0.22, left the field barely there
+ * on the dark ground; the author asked for it to be more visible (2026-09-23).
+ */
+const PEAK = 0.45
+
+/**
  * Room around the section for the rings to grow into. The overlay keeps the
  * artwork's aspect so its viewBox stays in the artwork's own units — a ring at
- * full reach spans ±365 x ±531 around the centre, well inside this.
+ * full reach spans ±428 x ±623 around the centre, and reaches down to 1607;
+ * 0.25 of the artwork's height below it is 1610.
  */
 const SPREAD_X = 0.5
-const SPREAD_Y = 0.2
+const SPREAD_Y = 0.25
 
 const VIEW_BOX = [
   -SPREAD_X * ART_W,
@@ -80,6 +96,9 @@ export function PresenceHalo({ label, html, className, style }: Props) {
           rx={RX * SCALE}
           ry={RY * SCALE}
           viewBox={VIEW_BOX}
+          rings={RINGS}
+          reach={REACH}
+          peak={PEAK}
         />
       </div>
 

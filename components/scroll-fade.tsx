@@ -46,24 +46,51 @@ const IN_LIT = 0.62
 const OUT_LIT = 0.38
 const OUT_GONE = 0.06
 
+/**
+ * How far a line given `from` travels as it comes up: it starts this many px
+ * below (or above) its place and arrives there as it reaches full light, over
+ * the same stretch of the window as the fade. It only arrives; going, it
+ * fades where it stands.
+ */
+const TRAVEL = 40
+
 /** Non-finite to 0: the ratios below are NaN before anything is measured. */
 const clamp01 = (t: number) => (t > 0 ? (t < 1 ? t : 1) : 0)
 const smooth = (t: number) => t * t * (3 - 2 * t)
 
+/**
+ * The browser's own scroll-linked timeline, where it has one. Not yet in
+ * TypeScript's DOM types, hence the shape given here (as in `footer.tsx`).
+ */
+type ScrollTimelineConstructor = new (options: { source: Element | null }) => AnimationTimeline
+
 export function ScrollFade({
   className,
   style,
+  from,
   children,
 }: {
   className?: string
   style?: React.CSSProperties
+  /**
+   * Where the line comes in from as it is lit: "below" rises into place,
+   * "above" drops into it. Left out, it fades where it stands. Set by the
+   * author on 2026-09-23 for the seam's pair: RISE IN HELL comes up out of
+   * the dark, FALL INTO HEAVEN comes down into the white.
+   */
+  from?: "below" | "above"
   children: React.ReactNode
 }) {
   const ref = useRef<HTMLParagraphElement>(null)
+  const travelRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    const inner = travelRef.current
+    const offset = from === "above" ? -TRAVEL : TRAVEL
+    const Timeline = (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline
+    let travel: Animation | null = null
 
     /** The line's middle, from the top of the document. */
     let middle = 0
@@ -88,6 +115,26 @@ export function ScrollFade({
       inLit = Math.max(IN_LIT * vh, middle - maxScroll)
       inGone = inLit + (IN_GONE - IN_LIT) * vh
       outGone = outLit - (OUT_LIT - OUT_GONE) * vh
+
+      // The travel is a position that parts from the page's own motion, so it
+      // is played by the browser on the scroll itself rather than written from
+      // the handler, which hears of each step a frame late and would leave the
+      // line jumping back and forth against the page (see `footer.tsx`, where
+      // that was measured). The inner span is what moves, so the line's own
+      // box, which everything here is measured from, stays put.
+      if (inner && from && Timeline && maxScroll > 0) {
+        const at = (y: number) => Math.min(1, Math.max(0, y / maxScroll))
+        const start = at(middle - inGone)
+        const end = Math.max(start, at(middle - inLit))
+        const frames: Keyframe[] = [
+          { offset: 0, transform: `translateY(${offset}px)` },
+          { offset: start, transform: `translateY(${offset}px)`, easing: "cubic-bezier(0.45, 0, 0.55, 1)" },
+          { offset: end, transform: "none" },
+          { offset: 1, transform: "none" },
+        ]
+        if (travel?.effect instanceof KeyframeEffect) travel.effect.setKeyframes(frames)
+        else travel = inner.animate(frames, { timeline: new Timeline({ source: document.documentElement }), fill: "both" })
+      }
       update()
     }
 
@@ -96,6 +143,11 @@ export function ScrollFade({
       const at = middle - window.scrollY
       const rising = clamp01((inGone - at) / (inGone - inLit))
       const leaving = clamp01((at - outGone) / (outLit - outGone))
+      // Where the browser has no scroll timeline — Safari before 26 — the
+      // travel is written from here, a frame late, which is the price there.
+      if (inner && from && !Timeline) {
+        inner.style.transform = `translateY(${(offset * (1 - smooth(rising))).toFixed(1)}px)`
+      }
       const o = Math.round(smooth(Math.min(rising, leaving)) * 100) / 100
       if (o === shown) return
       shown = o
@@ -120,16 +172,23 @@ export function ScrollFade({
       window.removeEventListener("resize", measure)
       window.removeEventListener("scroll", onScroll)
       if (raf) cancelAnimationFrame(raf)
+      travel?.cancel()
       el.style.opacity = ""
     }
-  }, [])
+  }, [from])
 
   // Lit in the markup, not dark: these lines sit far below the fold, so there
   // is nothing to flash, and a reader without JavaScript is left with the page
   // as written rather than with a blank band.
   return (
     <p ref={ref} className={className} style={style}>
-      {children}
+      {from ? (
+        <span ref={travelRef} style={{ display: "inline-block", willChange: "transform" }}>
+          {children}
+        </span>
+      ) : (
+        children
+      )}
     </p>
   )
 }

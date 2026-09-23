@@ -43,17 +43,21 @@ const HAND_FADE = `linear-gradient(to bottom, rgba(255,255,255,0) ${40 / VEIL_H}
  * yet. From there to the end of the page is the stretch everything else
  * happens in, and the beats are fractions of it:
  *
- *       clean ─ white rises ─ words
- *                       └─ bird
+ *       clean ─ white rises ─ words ─ bird
  *   ├── the hand slows ───────────────────┤ at rest
  *            └── and fades into white ───┤ gone
  *
  * CLEAN_TO: the hand alone, before anything touches it.
  * WHITE_TO: the white over the lower fingers has come up to full strength.
  * TEXT_TO: "Get in touch" has faded in, into white that is already there.
- * BIRD_FROM: the bird starts to come in, as the words do, and is fully there
- * at the end of the page — it is below the hand, and seen any earlier it
- * would share the screen the hand is meant to have alone.
+ * BIRD_FROM: the bird starts to come in, once the words are fully there, and
+ * is fully there at the end of the page — it is below the hand, and seen any
+ * earlier it would share the screen the hand is meant to have alone.
+ *
+ * The words and the bird came in together at first (from 0.62 and 0.6); on
+ * 2026-09-23 the author asked for the words to come first. The white was
+ * brought forward to make room for them (0.62 → 0.5), so they still fade into
+ * white that is already there, and the bird waits for them to finish.
  *
  * Under those beats the photograph settles: it leaves the page's speed a
  * little before the whole hand is on screen (SETTLE_FROM) and slows until, at
@@ -78,9 +82,9 @@ const HAND_FADE = `linear-gradient(to bottom, rgba(255,255,255,0) ${40 / VEIL_H}
  * outrun the page on the short ones and stop part-way.
  */
 const CLEAN_TO = 0.25
-const WHITE_TO = 0.62
-const TEXT_TO = 0.85
-const BIRD_FROM = 0.6
+const WHITE_TO = 0.5
+const TEXT_TO = 0.72
+const BIRD_FROM = 0.72
 
 /**
  * Where the settling begins: half the stretch before the whole hand is on

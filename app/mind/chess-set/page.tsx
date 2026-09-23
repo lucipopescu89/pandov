@@ -89,23 +89,29 @@ export default async function ChessSetPage() {
 
         /* --- The seam ---------------------------------------------------
            Two lines, one either side of the line the photograph ends on, each
-           120px from it — the same distance, so they are read as one pair
+           170px from it — the same distance, so they are read as one pair
            split by the edge rather than as two captions that happen to be
            near it. The water that comes off that line reaches 240px each way,
            so both sit inside it and both are lifted over it: the type is read
            and the drops pass behind.
+
+           They were 120px from it until 2026-09-23, when the author moved
+           each 50px further out. The lower one is moved on its own (top:
+           50px), not by the section's padding, so the moon stays where it
+           was and the line comes to sit just over its upper edge.
            ---------------------------------------------------------------- */
         .chess-seam-above {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 120px;
+          bottom: 170px;
           color: #6e6e6e;
           line-height: 1;
           z-index: 2;
         }
         .chess-seam-below {
           position: relative;
+          top: 50px;
           color: #999;
           line-height: 1;
           z-index: 2;
@@ -248,9 +254,11 @@ export default async function ChessSetPage() {
             className="chess-hero-image"
             priority
           />
-          {/* The upper half of the seam's pair, 120px over the edge, where the
-              white drops are climbing. */}
-          <ScrollFade className="chess-line chess-seam-above">Grow in Darkness</ScrollFade>
+          {/* The upper half of the seam's pair, 170px over the edge, where the
+              white drops are climbing — and rising into place as they do. */}
+          <ScrollFade className="chess-line chess-seam-above" from="below">
+            Rise in Hell
+          </ScrollFade>
         </div>
       </section>
 
@@ -261,9 +269,11 @@ export default async function ChessSetPage() {
 
       {/* ================= Moon ================= */}
       <section className="chess-moon-section">
-        {/* And its lower half, 120px under the edge, where the dark ones are
-            falling. */}
-        <ScrollFade className="chess-line chess-seam-below">Fall into Heaven</ScrollFade>
+        {/* And its lower half, 170px under the edge, where the dark ones are
+            falling — and dropping into place as they do. */}
+        <ScrollFade className="chess-line chess-seam-below" from="above">
+          Fall into Heaven
+        </ScrollFade>
 
         <div className="chess-moon-media">
           <Image
