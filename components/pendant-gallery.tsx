@@ -20,6 +20,16 @@ const PHONE_MEDIA = "(max-width: 640px)"
  */
 const MODEL_SIZE = 0.35
 
+/**
+ * The frame's proportion, width to height: the author's own crop, set on
+ * Icarus's photographs on 2026-09-23 (1440 × 1968) and to be carried to the
+ * other six. It was 2:3 before, which cut 4–5% off either side of those
+ * photographs; the six still in 2:3 lose a little top and bottom instead
+ * until they are recropped. Export a photograph at this proportion and it is
+ * shown whole.
+ */
+const FRAME = "30 / 41"
+
 /** How long one photograph takes to give way to the next. */
 const FADE_MS = 700
 
@@ -69,7 +79,7 @@ export function PendantGallery({
 
   return (
     <div className="pg flex w-full flex-col lg:flex-row lg:items-start lg:justify-center">
-      <div className="pg-stage relative w-full shrink-0 overflow-hidden" style={{ aspectRatio: "2 / 3" }}>
+      <div className="pg-stage relative w-full shrink-0 overflow-hidden" style={{ aspectRatio: FRAME }}>
         {photos.map((photo, i) =>
           fetched.has(i) ? (
             <picture
