@@ -3,7 +3,7 @@ import { Assistant } from "next/font/google"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { PendantGallery } from "@/components/pendant-gallery"
-import { PendantOrder } from "@/components/pendant-order"
+import { PendantChoice, PendantOrder } from "@/components/pendant-order"
 import { CORD, MADE, STUDIO_EMAIL, moreFrom, type Pendant } from "@/lib/second-wind"
 import { u } from "@/lib/canvas-length"
 
@@ -63,6 +63,13 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
     <main className={`w-full ${assistant.variable}`} style={{ backgroundColor: GROUND, color: TEXT }}>
       <Navigation bgColor={GROUND} />
       <div className="pp">
+        {/* Smaller and airier than the design, on the author's asking on
+            2026-09-25: the top menu's size and tracking, 12px at 0.2em, the
+            lines two and a half apart, and 230 canvas units under the menu
+            instead of 146.7. It keeps its lines as stored, on every screen.
+            A phone tracks it at 0.06em, as before: at the menu's 0.2em,
+            Silence's and Mother Nature's longer lines broke in two on a 390px
+            screen, and at 0.06em every line of all seven holds. */}
         <p className="pp-statement">
           {statement.map((words, i) => (
             <span key={i}>
@@ -73,32 +80,35 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
           ))}
         </p>
 
-        <div className="pp-row">
-          <PendantGallery name={name} model={model} cutout={cutout} photos={photos} />
-          <section className="pp-info">
-            <h1 className="pp-name">{name}</h1>
-            <p className="pp-line">{line}</p>
-            <PendantOrder name={name} materials={materials} email={STUDIO_EMAIL} />
-            <dl className="pp-details">
-              <div>
-                <dt>Height</dt>
-                <dd>{height}</dd>
-              </div>
-              <div>
-                <dt>Cord</dt>
-                <dd>{CORD}</dd>
-              </div>
-              <div>
-                <dt>Made</dt>
-                <dd>
-                  {MADE.map((step) => (
-                    <span key={step}>{step}</span>
-                  ))}
-                </dd>
-              </div>
-            </dl>
-          </section>
-        </div>
+        {/* The metal chosen beside the photograph is the one the model wears. */}
+        <PendantChoice materials={materials}>
+          <div className="pp-row">
+            <PendantGallery name={name} model={model} cutout={cutout} photos={photos} />
+            <section className="pp-info">
+              <h1 className="pp-name">{name}</h1>
+              <p className="pp-line">{line}</p>
+              <PendantOrder name={name} materials={materials} email={STUDIO_EMAIL} />
+              <dl className="pp-details">
+                <div>
+                  <dt>Height</dt>
+                  <dd>{height}</dd>
+                </div>
+                <div>
+                  <dt>Cord</dt>
+                  <dd>{CORD}</dd>
+                </div>
+                <div>
+                  <dt>Made</dt>
+                  <dd>
+                    {MADE.map((step) => (
+                      <span key={step}>{step}</span>
+                    ))}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        </PendantChoice>
 
         <section className="pp-more">
           <h2>More from Second Wind</h2>
@@ -119,11 +129,12 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
           each gives it back on its right to sit on the centre as drawn. */}
       <style>{`
         .pp { max-width: 1920px; margin: 0 auto; }
-        .pp-statement { max-width: 560px; margin: 8px auto 0; padding: 0 28px 0 calc(28px + 0.06em); text-align: center; text-wrap: balance;
-          font-family: var(--font-heading); font-size: 19px; line-height: 1.7; letter-spacing: 0.06em; color: ${TEXT}; }
+        .pp-statement { max-width: 560px; margin: 40px auto 0; padding: 0 28px 0 calc(28px + 0.06em); text-align: center; text-wrap: balance;
+          font-family: var(--font-heading); font-size: 12px; line-height: 2.5; letter-spacing: 0.06em; color: ${TEXT}; }
+        .pp-statement > span { display: block; }
         .pp-row { margin-top: 32px; }
         .pp-info { max-width: 560px; margin: 40px auto 0; padding: 0 24px; }
-        .pp-name { font-family: var(--font-heading); font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: 0.18em; color: ${INK}; }
+        .pp-name { font-family: var(--font-heading); font-weight: 400; font-size: 12px; line-height: 1; letter-spacing: 0.18em; color: ${INK}; }
         .pp-line { margin: 14px 0 32px; font-family: var(--font-body); font-weight: 300; font-size: 15px; line-height: 1.3; letter-spacing: 0.025em; color: ${TEXT}; }
         .pp-details { margin-top: 36px; }
         .pp-details > div { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 0 12px; border-top: 1px solid ${RULE}; }
@@ -141,11 +152,10 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
           letter-spacing: 0.24em; text-transform: uppercase; text-wrap: balance; color: ${INK}; }
 
         @media (min-width: 1024px) {
-          .pp-statement { max-width: none; margin: ${u(146.7)} auto 0; padding: 0 0 0 0.06em; font-size: ${fit(28, 20)}; line-height: ${50 / 28}; }
-          .pp-statement > span { display: block; }
+          .pp-statement { max-width: none; margin: ${u(230)} auto 0; padding: 0 0 0 0.2em; letter-spacing: 0.2em; }
           .pp-row { display: flex; align-items: flex-start; margin-top: ${u(189.3)}; padding-left: ${u(200)}; }
           .pp-info { flex: none; width: max(340px, ${u(500)}); max-width: none; margin: 0 0 0 ${u(166)}; padding: 0; }
-          .pp-name { margin-top: ${u(1.8)}; font-size: ${fit(44, 28)}; }
+          .pp-name { margin-top: ${u(1.8)}; }
           .pp-line { margin: ${u(20.5)} 0 ${u(46.7)}; font-size: ${fit(17, 14)}; line-height: 1; }
           .pp-details { margin-top: ${u(42.5)}; }
           .pp-details > div { padding: ${u(16)} 0 ${u(15)}; }

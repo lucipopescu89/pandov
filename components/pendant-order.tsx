@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { createContext, useCallback, useContext, useState } from "react"
 import type { Material } from "@/lib/second-wind"
 import { u } from "@/lib/canvas-length"
 
@@ -14,8 +14,8 @@ const TEXT = "#8E8982"
 const MUTED = "#7C7770"
 const RULE = "#343230"
 const GOLD = "#C6A36B"
-/** The dots: a yellow metal and a white one. */
-const DOT = { gold: "#B8904A", white: "#979799" }
+/** The dots: a yellow metal, a white one, and black rhodium's dark one. */
+const DOT = { gold: "#B8904A", white: "#979799", dark: "#4E4E52" }
 
 /** A length that follows the canvas down to a floor, for type that must stay legible. */
 const fit = (n: number, floor: number) => `clamp(${floor}px, ${((n / 1920) * 100).toFixed(4)}vw, ${n}px)`
@@ -44,6 +44,40 @@ const mailto = (email: string, subject: string, body: string) =>
   `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
 /**
+ * The metal chosen and its finish or karat. `picks` counts the visitor's own
+ * choices, so that whatever follows them can tell a choice from the one the
+ * page opens on.
+ */
+export type Picked = { metal: string; option: string | null; picks: number }
+
+const ChoiceContext = createContext<{ picked: Picked; choose: (metal: string, option: string | null) => void } | null>(null)
+
+/**
+ * Holds the panel's choice above both the panel and the gallery, which are
+ * siblings on the page: the gallery dresses the model in the metal chosen,
+ * and turns the frame to the model at each new choice, so that a visitor who
+ * picks Silver sees silver. The page opens on the first metal and its first
+ * finish or karat, as the panel always has.
+ */
+export function PendantChoice({ materials, children }: { materials: Material[][]; children: React.ReactNode }) {
+  const [picked, setPicked] = useState<Picked>(() => {
+    const first = materials[0][0]
+    return { metal: first.metal, option: firstOf(choiceOf(first)), picks: 0 }
+  })
+  const choose = useCallback(
+    (metal: string, option: string | null) => setPicked((p) => ({ metal, option, picks: p.picks + 1 })),
+    [],
+  )
+  return <ChoiceContext value={{ picked, choose }}>{children}</ChoiceContext>
+}
+
+export function useChoice() {
+  const context = useContext(ChoiceContext)
+  if (!context) throw new Error("useChoice needs a PendantChoice around it")
+  return context
+}
+
+/**
  * The metals a pendant is made in, the finish or karat of the chosen one, its
  * price, and the two ways to act on it: ORDER, and a question.
  *
@@ -53,7 +87,8 @@ const mailto = (email: string, subject: string, body: string) =>
  * the chosen metal has one, and closes when it has none, fading as it goes and
  * easing the price below it up or down rather than letting it jump; changing
  * the metal sets it back to its first option. The price follows the choice at
- * once, with a short fade, and beside it the choice in words.
+ * once, with a short fade, and beside it the choice in words. The choice itself
+ * is held by `PendantChoice`, because the model in the gallery wears it too.
  *
  * There is no shop behind the site. ORDER and "Ask a question" open the
  * visitor's own mail program on a message to the studio already written: the
@@ -61,10 +96,10 @@ const mailto = (email: string, subject: string, body: string) =>
  */
 export function PendantOrder({ name, materials, email }: { name: string; materials: Material[][]; email: string }) {
   const all = materials.flat()
-  const [metal, setMetal] = useState(all[0].metal)
+  const { picked, choose } = useChoice()
+  const { metal, option } = picked
   const chosen = all.find((m) => m.metal === metal) ?? all[0]
   const choice = choiceOf(chosen)
-  const [option, setOption] = useState<string | null>(firstOf(choice))
 
   // What the finish-or-karat row shows while it closes: the last one it had,
   // so it fades out with its words still in it instead of emptying first.
@@ -72,10 +107,7 @@ export function PendantOrder({ name, materials, email }: { name: string; materia
   if (choice && choice !== lastChoice && choice.title !== lastChoice?.title) setLastChoice(choice)
   const shownChoice = choice ?? lastChoice
 
-  const pick = (m: Material) => {
-    setMetal(m.metal)
-    setOption(firstOf(choiceOf(m)))
-  }
+  const pick = (m: Material) => choose(m.metal, firstOf(choiceOf(m)))
 
   const price = priceOf(chosen, option)
   const words = option ? `${chosen.metal} · ${option}` : chosen.metal
@@ -129,7 +161,7 @@ export function PendantOrder({ name, materials, email }: { name: string; materia
                   type="button"
                   className="po-option"
                   aria-pressed={choice?.title === shownChoice.title && o === option}
-                  onClick={() => setOption(o)}
+                  onClick={() => choose(chosen.metal, o)}
                 >
                   {o}
                 </button>

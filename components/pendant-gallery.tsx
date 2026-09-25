@@ -1,7 +1,8 @@
 "use client"
 
-import { useRef, useState } from "react"
-import { PendantViewer } from "@/components/pendant-viewer"
+import { useEffect, useRef, useState } from "react"
+import { PendantViewer, lookOf } from "@/components/pendant-viewer"
+import { useChoice } from "@/components/pendant-order"
 import { u } from "@/lib/canvas-length"
 
 /**
@@ -15,11 +16,13 @@ export type PendantPhoto = { src: string; phone: string; thumb: string; alt: str
 const PHONE_MEDIA = "(max-width: 640px)"
 
 /**
- * The model, drawn at 35% of the size that would fill the frame: the author
+ * The model, drawn at 45.5% of the size that would fill the frame. The author
  * found it overbearing at full size beside the photographs, where the pendant
- * is a small thing in a large picture.
+ * is a small thing in a large picture, and it was set at 35%; on 2026-09-25,
+ * with the metals to be looked at in it, the author asked for it 1.3 times
+ * that.
  */
-const MODEL_SIZE = 0.35
+const MODEL_SIZE = 0.455
 
 /**
  * The frame's proportion, width to height: the author's own crop, 1440 × 1968,
@@ -56,6 +59,12 @@ const EDGE = "#8E8982"
  * and three.js with it, is mounted only while the model is shown, so it is not
  * drawing sixty frames a second under a photograph, and a visitor who never
  * asks for it never downloads it.
+ *
+ * The model wears the metal chosen in the order panel beside it, and each new
+ * choice there turns the frame to the model, from whichever photograph it was
+ * on: the author asked for it on 2026-09-25, because a metal chosen while a
+ * photograph is shown would otherwise change nothing that can be seen. The
+ * choice the page opens on does not; the frame opens on the first photograph.
  *
  * On a computer the thumbnails stand in a column to the left of the frame; on
  * a phone they run in a row under it.
@@ -100,6 +109,13 @@ export function PendantGallery({
     loaded.current.add(i)
     if (wantedRef.current === i) arrive(i)
   }
+
+  const { picked } = useChoice()
+  useEffect(() => {
+    // Only a new choice turns the frame, so only the count is watched; `ask`
+    // is remade every render and reads nothing that would go stale.
+    if (picked.picks) ask(MODEL)
+  }, [picked.picks])
 
   return (
     <div className="pg">
@@ -165,6 +181,7 @@ export function PendantGallery({
             className="absolute inset-0"
             style={{ width: "100%", height: "100%", cursor: "grab" }}
             size={MODEL_SIZE}
+            look={lookOf(picked.metal, picked.option)}
           />
         )}
       </div>

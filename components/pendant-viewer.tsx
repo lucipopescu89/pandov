@@ -4,20 +4,21 @@ import { useEffect, useRef, useState } from "react"
 import type { DataTexture, Material, Mesh, MeshStandardMaterial, Object3D, Texture, WebGLRenderer } from "three"
 
 /* --------------------------------------------------------------------------
-   A pendant in three dimensions, in gold, turning slowly on the page's own
-   ground until it is taken in hand.
+   A pendant in three dimensions, in the metal chosen beside it, turning slowly
+   on the page's own ground until it is taken in hand.
 
    The model is the collection's 3ds Max export, converted to a compressed GLB
    (positions and the exported normals only, in metres, centred on the origin;
-   the recipe is in CLAUDE.md). Its material is not the export's: gold is set
-   here, because gold in real time is almost entirely what it reflects, and the
-   reflections are made here too.
+   the recipe is in CLAUDE.md). Its material is not the export's: the metal is
+   set here, because metal in real time is almost entirely what it reflects,
+   and what it reflects is chosen here too.
 
-   What it reflects is a dark studio: a room close to black, lit by a few long
-   softboxes. That is how metal is photographed on a dark ground, and it is
-   what the pendants' own photographs look like — gold against near-black, the
-   form drawn by bright streaks running along it. A light room, which is what
-   three.js supplies ready-made, turns gold pale and flat on a dark page.
+   What it reflects is the author's own studio, a 360° photograph of softboxes
+   over a floor, given on 2026-09-25 so that the metals would read as they do
+   in Sculpteo's previews. It is used for reflections only; it is never drawn
+   behind the pendant, which stands on the page's ground. It replaced a studio
+   built here out of seven softbox panels on near-black walls, which suited a
+   single satin gold but left polished silver dull.
 
    three.js is loaded only once the page is up (a dynamic import inside the
    effect), so it is not in the way of the page's first paint or its
@@ -25,30 +26,79 @@ import type { DataTexture, Material, Mesh, MeshStandardMaterial, Object3D, Textu
    -------------------------------------------------------------------------- */
 
 /*
- * The four constants below and `darkStudio` are the pendants' gold, and the
- * author has made it a brand rule (CLAUDE.md, "Brand rules"): one material for
- * every pendant, changed only for all of them and only by the author.
+ * The looks below are the pendants' metals, one for each metal and finish or
+ * karat the order panel offers, and the author has made them a brand rule
+ * (CLAUDE.md, "Brand rules"): every pendant wears the same ones, and they are
+ * changed only for all of them and only by the author. Colours are the
+ * metal's reflectance at normal incidence, in linear RGB — what a metal
+ * multiplies the room by — so a lighter colour is a more reflective metal,
+ * not a paler paint.
  */
 
-/**
- * Yellow gold as metal reflects it: its reflectance at normal incidence, in
- * linear RGB. It began as the measured value for pure gold (1.00, 0.77, 0.34)
- * taken a shade deeper, (1.00, 0.76, 0.33), after a lighter one went cream on
- * the flat of the stem. Taken a fifth of the way toward grey, and made more
- * matte with it, it went pale, and the author asked for the first one back —
- * only a tenth of the way toward a grey of its own brightness, and 15%
- * darker.
- */
-const GOLD: [number, number, number] = [0.83, 0.65, 0.32]
+export type Look = {
+  /** Reflectance at normal incidence, linear RGB. */
+  color: [number, number, number]
+  /** How rough the surface is, 0 a mirror. */
+  roughness: number
+  /** How much of the satin grain is on it: 1 all of it, 0 none, as polished. */
+  grain: number
+}
 
 /**
- * How rough the surface is, 0 a mirror. The pendants are finished satin, not
- * polished — in the photographs the light lies along them as soft bands with
- * a grain in it, not as sharp reflections — so the softboxes are blurred into
- * bands rather than mirrored. Tried at 0.37, more matte, together with a
- * paler gold, and taken back to this with the gold.
+ * Each metal, by its name in `lib/second-wind.ts` and then by its finish or
+ * karat ("" for a metal that comes one way only). The references were the
+ * author's screenshots of Sculpteo's previews, and the author's word where
+ * there was none:
+ *
+ * - Brass, Natural is Sculpteo's Raw: satin, olive, a good deal deeper than
+ *   gold. Taken first from brass's measured reflectance, it came out a pale
+ *   clean yellow beside their dull olive, and was darkened and greened.
+ *   Polished is their Mirror Polished, which reads almost as gold.
+ * - Silver, Natural is Sculpteo's Polished, which the author found flat and
+ *   grey, and asked to have nearer their Mirror Polished; it keeps a little
+ *   grain and a little blur, so that the two still differ. Polished is Mirror
+ *   Polished: the room seen in it, sharp.
+ * - Gold-plated brass is their Gold Plated (3µm) over mirror-polished brass:
+ *   the measured reflectance of pure gold.
+ * - The two golds follow it, on the author's asking, as there is no preview of
+ *   them. 18 karat is the author's own gold of 2026-09-22, (0.83, 0.65, 0.32),
+ *   without the 15% it was darkened by then: that darkening was for a satin
+ *   gold in a near-black room, and beside the plated gold in this brighter one
+ *   it read as tarnished. Its hue, a tenth of the way from pure gold toward
+ *   grey, is the author's and is kept. 14 karat is 18 a quarter of the way
+ *   further toward grey, as the lower karat is paler.
+ * - Black rhodium-plated brass is Sculpteo's Black Rhodium: dark, and still
+ *   mirror-bright at the edges of its reflections.
+ * - Platinum had no reference and was left to judgement: its measured
+ *   reflectance, a grey darker and warmer than silver, polished like the golds.
  */
-const ROUGHNESS = 0.3
+const LOOKS: Record<string, Record<string, Look>> = {
+  Brass: {
+    Natural: { color: [0.66, 0.57, 0.26], roughness: 0.42, grain: 1 },
+    Polished: { color: [0.9, 0.78, 0.38], roughness: 0.07, grain: 0 },
+  },
+  Silver: {
+    Natural: { color: [0.95, 0.94, 0.91], roughness: 0.1, grain: 0.2 },
+    Polished: { color: [0.97, 0.96, 0.92], roughness: 0.05, grain: 0 },
+  },
+  "Gold-plated brass": { "": { color: [1, 0.77, 0.34], roughness: 0.07, grain: 0 } },
+  "Black rhodium-plated brass": { "": { color: [0.3, 0.3, 0.31], roughness: 0.07, grain: 0 } },
+  Gold: {
+    "14K": { color: [0.93, 0.77, 0.48], roughness: 0.07, grain: 0 },
+    "18K": { color: [0.98, 0.76, 0.38], roughness: 0.07, grain: 0 },
+  },
+  Platinum: { "": { color: [0.67, 0.64, 0.59], roughness: 0.08, grain: 0 } },
+}
+
+/** The look of a metal and its finish or karat; 18 karat gold for anything unknown. */
+export function lookOf(metal: string, option: string | null): Look {
+  const looks = LOOKS[metal]
+  if (!looks) return LOOKS.Gold["18K"]
+  return looks[option ?? ""] ?? Object.values(looks)[0]
+}
+
+/** Seconds for a change of metal to settle: it eases over about three times this. */
+const CHANGE = 0.14
 
 /**
  * The satin grain, in the metal's own scale: one tile of it spans this much of
@@ -62,10 +112,10 @@ const ROUGHNESS = 0.3
 const GRAIN_TILE = 0.012
 
 /**
- * How far the grain tips the surface, as a factor on the tilt baked into it.
- * It is what breaks the softboxes' long highlights into the fine, broken
- * light the photographs show, instead of the smooth bands of a polished
- * surface.
+ * How far the grain tips the surface, as a factor on the tilt baked into it,
+ * at a look's full grain. It is what breaks the softboxes' long highlights
+ * into the fine, broken light of a satin finish, instead of the smooth bands
+ * of a polished one.
  *
  * The first grain was a 12mm tile at full strength, with a coarser relief
  * under the fine one and the roughness swinging by 30% across it. Up close it
@@ -75,6 +125,27 @@ const GRAIN_TILE = 0.012
  * tilt a third and the swing 7%, and at those the same 12mm tile is satin.
  */
 const GRAIN_STRENGTH = 0.35
+
+/** The author's studio, prepared by `scripts/env-360.mjs`, which records how it is stored. */
+const STUDIO = "/models/studio.webp"
+
+/**
+ * Which way the studio faces the pendant, in radians round the vertical, on
+ * top of following the camera. Left as the photograph was taken, the camera
+ * stood in front of the one stretch of bare black wall, and every face turned
+ * toward the viewer mirrored it: silver read as dark steel. Tried every eighth
+ * of a turn, and between 1.4 and 2.4 rad the softboxes and the floor fall on
+ * the front of the pendant; this is the middle of that.
+ */
+const STUDIO_TURN = 1.9
+
+/**
+ * How bright the studio is in the metal. At 1 the metals were a stop darker
+ * than Sculpteo's; lifting the darkest parts of the room instead, to brighten
+ * it, turned gold to yellow plastic, because it was the dark in the reflections
+ * that made it read as metal. Brighter all through keeps that.
+ */
+const STUDIO_INTENSITY = 2.2
 
 /** Vertical field of view: long, like a product lens, so the form is not bent. */
 const FOV = 26
@@ -91,6 +162,8 @@ const TURN_SPEED = 1.33
 type Props = {
   src: string
   label: string
+  /** The metal it is shown in; a change eases from one to the other. */
+  look: Look
   className?: string
   style?: React.CSSProperties
   /**
@@ -101,9 +174,15 @@ type Props = {
   size?: number
 }
 
-export function PendantViewer({ src, label, className, style, size = 1 }: Props) {
+export function PendantViewer({ src, label, look, className, style, size = 1 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
+  const lookRef = useRef(look)
   const [shown, setShown] = useState(false)
+
+  // Read every frame by the loop below, which is set up once per model.
+  useEffect(() => {
+    lookRef.current = look
+  }, [look])
 
   useEffect(() => {
     const host = hostRef.current
@@ -129,8 +208,9 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setClearColor(0x000000, 0)
       renderer.outputColorSpace = THREE.SRGBColorSpace
-      // Khronos PBR Neutral: keeps the gold's own colour through to the screen.
-      // ACES, the usual choice, pushes yellow toward orange as it brightens.
+      // Khronos PBR Neutral: keeps each metal's own colour through to the
+      // screen. ACES, the usual choice, pushes yellow toward orange as it
+      // brightens.
       renderer.toneMapping = THREE.NeutralToneMapping
       renderer.toneMappingExposure = 1
       const canvas = renderer.domElement
@@ -140,8 +220,7 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
       host.appendChild(canvas)
 
       const scene = new THREE.Scene()
-      const environment = darkStudio(THREE, renderer)
-      scene.environment = environment
+      scene.environmentIntensity = STUDIO_INTENSITY
 
       const camera = new THREE.PerspectiveCamera(FOV, 1, 0.001, 10)
       // A three-quarter view to begin with, a little from above, the way the
@@ -172,14 +251,20 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
         resume = window.setTimeout(() => (controls.autoRotate = true), RESUME_AFTER * 1000)
       })
 
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setRGB(...GOLD),
-        metalness: 1,
-        roughness: ROUGHNESS,
-      })
+      const material = new THREE.MeshStandardMaterial({ metalness: 1 })
       const grain = satinGrain(THREE)
       grain.anisotropy = renderer.capabilities.getMaxAnisotropy()
-      withSatin(material, grain)
+      const grainAmount = { value: 0 }
+      withSatin(material, grain, grainAmount)
+
+      // The look the metal is easing toward, and a way to jump straight to it.
+      const target = new THREE.Color()
+      const wear = (look: Look, ease: number) => {
+        target.setRGB(...look.color)
+        material.color.lerp(target, ease)
+        material.roughness += (look.roughness - material.roughness) * ease
+        grainAmount.value += (look.grain - grainAmount.value) * ease
+      }
 
       // Half the pendant's height, and the farthest it reaches from its axis as
       // it turns, so it can be fitted to the stage one way and the other.
@@ -207,27 +292,7 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
       }
 
       let model: Object3D | null = null
-      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
-      loader.load(src, (gltf) => {
-        if (disposed) return
-        model = gltf.scene
-        model.traverse((o) => {
-          const mesh = o as Mesh
-          if (!mesh.isMesh) return
-          ;(mesh.material as Material).dispose()
-          mesh.material = material
-        })
-        const box = new THREE.Box3().setFromObject(model)
-        model.position.sub(box.getCenter(new THREE.Vector3()))
-        const size = box.getSize(new THREE.Vector3())
-        halfHeight = size.y / 2
-        reach = Math.hypot(size.x, size.z) / 2
-        scene.add(model)
-        fit()
-        start()
-        setShown(true)
-      })
-
+      let environment: Texture | null = null
       let frame = 0
       let last = 0
       const tick = (now: number) => {
@@ -235,11 +300,12 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
         const dt = last ? Math.min((now - last) / 1000, 0.1) : 0
         last = now
         controls.update(dt)
+        wear(lookRef.current, 1 - Math.exp(-dt / CHANGE))
         // The studio turns with the camera, so the pendant turns under lights
         // that stay where the viewer is — as it would in the hand, or on a
         // turntable in front of a photographer — instead of the viewer walking
         // round it into the dark side of the room.
-        scene.environmentRotation.y = Math.atan2(camera.position.x, camera.position.z)
+        scene.environmentRotation.y = Math.atan2(camera.position.x, camera.position.z) + STUDIO_TURN
         renderer.render(scene, camera)
       }
       const start = () => {
@@ -271,10 +337,50 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
         model?.traverse((o) => (o as Mesh).isMesh && (o as Mesh).geometry.dispose())
         material.dispose()
         grain.dispose()
-        environment.dispose()
+        environment?.dispose()
         renderer.dispose()
         canvas.remove()
       }
+
+      // The studio and the model come down together, and the pendant appears
+      // only once it has both: gold with nothing to reflect is black.
+      let studioMap: DataTexture
+      let loaded: Object3D
+      try {
+        ;[studioMap, { scene: loaded }] = await Promise.all([
+          studioTexture(THREE),
+          new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(src),
+        ])
+      } catch {
+        return // the stage stays empty ground
+      }
+      if (disposed) {
+        loaded.traverse((o) => (o as Mesh).isMesh && (o as Mesh).geometry.dispose())
+        return
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer)
+      environment = pmrem.fromEquirectangular(studioMap).texture
+      pmrem.dispose()
+      studioMap.dispose()
+      scene.environment = environment
+
+      model = loaded
+      model.traverse((o) => {
+        const mesh = o as Mesh
+        if (!mesh.isMesh) return
+        ;(mesh.material as Material).dispose()
+        mesh.material = material
+      })
+      const box = new THREE.Box3().setFromObject(model)
+      model.position.sub(box.getCenter(new THREE.Vector3()))
+      const extent = box.getSize(new THREE.Vector3())
+      halfHeight = extent.y / 2
+      reach = Math.hypot(extent.x, extent.z) / 2
+      scene.add(model)
+      wear(lookRef.current, 1)
+      fit()
+      start()
+      setShown(true)
     })()
 
     return () => {
@@ -295,53 +401,48 @@ export function PendantViewer({ src, label, className, style, size = 1 }: Props)
 }
 
 /**
- * The room the gold reflects, rendered once into an environment map and laid
- * out as seen from the camera, which looks in from +z: walls close to black; a
- * broad softbox front left for the key and a narrower one front right; a large
- * dim diffuser behind the camera, which is what the faces turned toward the
- * viewer reflect; a bank overhead; two thin strips behind for the edges; a
- * faint floor. The values above 1 are light, not colour; the map is kept in
- * half floats, so they survive as brightness.
- *
- * The first room had only the strips, on walls at 1% grey. Every face turned
- * to the viewer then mirrored the black behind the camera, and the gold read
- * as dark olive on the page, not as gold.
+ * The studio, read back into its true brightness: the stored eight bits are
+ * unfolded by the curve `scripts/env-360.mjs` folded them with, into half
+ * floats, which keep a softbox eight times brighter than white as eight times
+ * brighter. The rows are turned bottom first, as WebGL reads a data texture.
  */
-function darkStudio(THREE: typeof import("three"), renderer: WebGLRenderer): Texture {
-  const room = new THREE.Scene()
-  const geometries: { dispose(): void }[] = []
-  const materials: { dispose(): void }[] = []
+async function studioTexture(THREE: typeof import("three")): Promise<DataTexture> {
+  const blob = await (await fetch(STUDIO)).blob()
+  const bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" })
+  const { width: w, height: h } = bitmap
+  const canvas = document.createElement("canvas")
+  canvas.width = w
+  canvas.height = h
+  const context = canvas.getContext("2d", { willReadFrequently: true })!
+  context.drawImage(bitmap, 0, 0)
+  bitmap.close()
+  const pixels = context.getImageData(0, 0, w, h).data
 
-  const wallGeometry = new THREE.SphereGeometry(10, 32, 16)
-  const wallMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color().setScalar(0.035), side: THREE.BackSide })
-  room.add(new THREE.Mesh(wallGeometry, wallMaterial))
-  geometries.push(wallGeometry)
-  materials.push(wallMaterial)
-
-  const softbox = (w: number, h: number, light: number, at: [number, number, number]) => {
-    const geometry = new THREE.PlaneGeometry(w, h)
-    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color().setScalar(light), side: THREE.DoubleSide })
-    const panel = new THREE.Mesh(geometry, material)
-    panel.position.set(...at)
-    panel.lookAt(0, 0, 0)
-    room.add(panel)
-    geometries.push(geometry)
-    materials.push(material)
+  const unfold = new Uint16Array(256)
+  for (let i = 0; i < 256; i++) {
+    const s = Math.min(Math.pow(i / 255, 2.2), 0.999)
+    unfold[i] = THREE.DataUtils.toHalfFloat(s / (1 - s))
   }
-  softbox(2.2, 8, 9, [-4, 1, 3.5]) // key
-  softbox(1.6, 8, 4.5, [4.2, 0, 3]) // fill
-  softbox(6, 6, 1, [0, 0.5, 6]) // diffuser behind the camera
-  softbox(8, 3, 5, [0, 6, 0.5]) // overhead
-  softbox(0.8, 7, 5, [-2.5, 0, -5]) // edge strips, behind
-  softbox(0.8, 7, 5, [2.5, 0, -5])
-  softbox(10, 10, 0.35, [0, -6, 0]) // floor
+  const one = THREE.DataUtils.toHalfFloat(1)
+  const data = new Uint16Array(w * h * 4)
+  for (let y = 0; y < h; y++) {
+    const from = (h - 1 - y) * w * 4
+    const to = y * w * 4
+    for (let x = 0; x < w * 4; x += 4) {
+      data[to + x] = unfold[pixels[from + x]]
+      data[to + x + 1] = unfold[pixels[from + x + 1]]
+      data[to + x + 2] = unfold[pixels[from + x + 2]]
+      data[to + x + 3] = one
+    }
+  }
 
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  const map = pmrem.fromScene(room, 0.03).texture
-  pmrem.dispose()
-  for (const g of geometries) g.dispose()
-  for (const m of materials) m.dispose()
-  return map
+  const texture = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.HalfFloatType)
+  texture.mapping = THREE.EquirectangularReflectionMapping
+  texture.colorSpace = THREE.LinearSRGBColorSpace
+  texture.magFilter = THREE.LinearFilter
+  texture.minFilter = THREE.LinearFilter
+  texture.needsUpdate = true
+  return texture
 }
 
 /**
@@ -438,19 +539,22 @@ function satinGrain(THREE: typeof import("three")): DataTexture {
 }
 
 /**
- * Lays the grain on the gold by projecting it from the three axes and blending
- * by which way the surface faces. The model carries no texture coordinates —
- * the export's own were dropped, since an unwrap made for 3ds Max would seam
- * and stretch a grain this fine — and a projection needs none. It is done in
- * world space, where the pendant stands still while the camera goes round, so
- * the grain stays on the metal.
+ * Lays the grain on the metal by projecting it from the three axes and
+ * blending by which way the surface faces. The model carries no texture
+ * coordinates — the export's own were dropped, since an unwrap made for 3ds
+ * Max would seam and stretch a grain this fine — and a projection needs none.
+ * It is done in world space, where the pendant stands still while the camera
+ * goes round, so the grain stays on the metal. `amount` scales both what the
+ * grain tilts and what it roughens, so a polished metal (0) is left smooth,
+ * and a change of finish eases in and out of it.
  */
-function withSatin(material: MeshStandardMaterial, grain: DataTexture) {
+function withSatin(material: MeshStandardMaterial, grain: DataTexture, amount: { value: number }) {
   material.customProgramCacheKey = () => "pandov-satin"
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uGrain = { value: grain }
     shader.uniforms.uGrainScale = { value: 1 / GRAIN_TILE }
     shader.uniforms.uGrainStrength = { value: GRAIN_STRENGTH }
+    shader.uniforms.uGrainAmount = amount
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vGrainPos;\nvarying vec3 vGrainNormal;")
       .replace(
@@ -466,6 +570,7 @@ function withSatin(material: MeshStandardMaterial, grain: DataTexture) {
         uniform sampler2D uGrain;
         uniform float uGrainScale;
         uniform float uGrainStrength;
+        uniform float uGrainAmount;
         varying vec3 vGrainPos;
         varying vec3 vGrainNormal;`,
       )
@@ -478,14 +583,15 @@ function withSatin(material: MeshStandardMaterial, grain: DataTexture) {
         vec4 grainX = texture2D(uGrain, vGrainPos.zy * uGrainScale);
         vec4 grainY = texture2D(uGrain, vGrainPos.xz * uGrainScale);
         vec4 grainZ = texture2D(uGrain, vGrainPos.xy * uGrainScale);
-        roughnessFactor *= 2.0 * (grainX.a * grainW.x + grainY.a * grainW.y + grainZ.a * grainW.z);`,
+        roughnessFactor *= mix(1.0, 2.0 * (grainX.a * grainW.x + grainY.a * grainW.y + grainZ.a * grainW.z), uGrainAmount);`,
       )
       .replace(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
-        vec2 tiltX = (grainX.xy * 2.0 - 1.0) * uGrainStrength;
-        vec2 tiltY = (grainY.xy * 2.0 - 1.0) * uGrainStrength;
-        vec2 tiltZ = (grainZ.xy * 2.0 - 1.0) * uGrainStrength;
+        float grainTilt = uGrainStrength * uGrainAmount;
+        vec2 tiltX = (grainX.xy * 2.0 - 1.0) * grainTilt;
+        vec2 tiltY = (grainY.xy * 2.0 - 1.0) * grainTilt;
+        vec2 tiltZ = (grainZ.xy * 2.0 - 1.0) * grainTilt;
         vec3 grained = normalize(grainN
           + vec3(0.0, tiltX.y, tiltX.x) * grainW.x
           + vec3(tiltY.x, 0.0, tiltY.y) * grainW.y

@@ -38,8 +38,8 @@ export type Material = {
   metal: string
   /** As listed in the panel, where that is shorter than `metal`. */
   label?: string
-  /** The dot beside it: a yellow metal or a white one. */
-  tone: "gold" | "white"
+  /** The dot beside it: a yellow metal, a white one or a dark one. */
+  tone: "gold" | "white" | "dark"
 } & ({ price: number } | { finish: Record<string, number> } | { karat: Record<string, number> })
 
 /**
@@ -57,7 +57,9 @@ const PRICES: Material[][] = [
   ],
   [
     { metal: "Gold-plated brass", label: "Gold-plated", tone: "gold", price: 120 },
-    { metal: "Rhodium-plated brass", label: "Rhodium-plated", tone: "white", price: 120 },
+    // Black rhodium only: Sculpteo plates white rhodium too, but the author
+    // kept it out on 2026-09-25, as it would look like silver at silver's price.
+    { metal: "Black rhodium-plated brass", label: "Black rhodium", tone: "dark", price: 120 },
   ],
   [
     { metal: "Gold", tone: "gold", karat: { "14K": 1300, "18K": 1800 } },
