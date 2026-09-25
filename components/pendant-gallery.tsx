@@ -16,13 +16,20 @@ export type PendantPhoto = { src: string; phone: string; thumb: string; alt: str
 const PHONE_MEDIA = "(max-width: 640px)"
 
 /**
- * The model, drawn at 45.5% of the size that would fill the frame. The author
+ * The model, drawn at 54.6% of the size that would fill the frame. The author
  * found it overbearing at full size beside the photographs, where the pendant
- * is a small thing in a large picture, and it was set at 35%; on 2026-09-25,
+ * is a small thing in a large picture, and it was set at 35%. On 2026-09-25,
  * with the metals to be looked at in it, the author asked for it 1.3 times
- * that.
+ * that, 45.5%, and later the same day 1.2 times that again.
  */
-const MODEL_SIZE = 0.455
+const MODEL_SIZE = 0.546
+
+/**
+ * How far above the frame's middle the model stands, as a share of the
+ * frame's height: 50px in the 875px frame of a computer screen, asked for by
+ * the author on 2026-09-25, and in proportion on a smaller frame.
+ */
+const MODEL_LIFT = 50 / 875
 
 /**
  * The frame's proportion, width to height: the author's own crop, 1440 × 1968,
@@ -181,6 +188,7 @@ export function PendantGallery({
             className="absolute inset-0"
             style={{ width: "100%", height: "100%", cursor: "grab" }}
             size={MODEL_SIZE}
+            lift={MODEL_LIFT}
             look={lookOf(picked.metal, picked.option)}
           />
         )}

@@ -14,8 +14,15 @@ const TEXT = "#8E8982"
 const MUTED = "#7C7770"
 const RULE = "#343230"
 const GOLD = "#C6A36B"
-/** The dots: a yellow metal, a white one, and black rhodium's dark one. */
-const DOT = { gold: "#B8904A", white: "#979799", dark: "#4E4E52" }
+/** The dots: a yellow metal, a white one, steel's grey between white and black rhodium's dark one. */
+const DOT = { gold: "#B8904A", white: "#979799", steel: "#737376", dark: "#4E4E52" }
+
+/**
+ * The metal the page opens on, chosen in the panel and worn by the model:
+ * brass, the collection's own metal, although stainless steel is listed above
+ * it as the least of them.
+ */
+const OPENS_ON = "Brass"
 
 /** A length that follows the canvas down to a floor, for type that must stay legible. */
 const fit = (n: number, floor: number) => `clamp(${floor}px, ${((n / 1920) * 100).toFixed(4)}vw, ${n}px)`
@@ -56,12 +63,12 @@ const ChoiceContext = createContext<{ picked: Picked; choose: (metal: string, op
  * Holds the panel's choice above both the panel and the gallery, which are
  * siblings on the page: the gallery dresses the model in the metal chosen,
  * and turns the frame to the model at each new choice, so that a visitor who
- * picks Silver sees silver. The page opens on the first metal and its first
- * finish or karat, as the panel always has.
+ * picks Silver sees silver, and the details under the panel say how the metal
+ * chosen is made. The page opens on `OPENS_ON` and its first finish or karat.
  */
 export function PendantChoice({ materials, children }: { materials: Material[][]; children: React.ReactNode }) {
   const [picked, setPicked] = useState<Picked>(() => {
-    const first = materials[0][0]
+    const first = materials.flat().find((m) => m.metal === OPENS_ON) ?? materials[0][0]
     return { metal: first.metal, option: firstOf(choiceOf(first)), picks: 0 }
   })
   const choose = useCallback(
@@ -78,10 +85,27 @@ export function useChoice() {
 }
 
 /**
+ * How the pendant is made, in the metal chosen: `made` for every metal that is
+ * cast from a wax print, or the metal's own steps where it has them, as
+ * stainless steel, printed in the metal itself. A step the two share stays
+ * where it is when the metal changes; a new one fades in, as the price does.
+ */
+export function PendantMade({ materials, made }: { materials: Material[][]; made: string[] }) {
+  const { picked } = useChoice()
+  const steps = materials.flat().find((m) => m.metal === picked.metal)?.made ?? made
+  return steps.map((step) => (
+    <span key={step} className="po-fade">
+      {step}
+    </span>
+  ))
+}
+
+/**
  * The metals a pendant is made in, the finish or karat of the chosen one, its
  * price, and the two ways to act on it: ORDER, and a question.
  *
- * One metal is chosen at a time, Brass at first. Brass and Silver come in a
+ * One metal is chosen at a time, Brass at first, though Stainless steel has
+ * the first row, alone, as the least of them. Brass and Silver come in a
  * choice of finish (Brass natural or polished, Silver polished or mirror
  * polished, as Sculpteo names them), Gold in 14 or 18 karat; the others come one
  * way only. The row for the finish or the karat opens under the metals when

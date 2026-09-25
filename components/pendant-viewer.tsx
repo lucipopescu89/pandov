@@ -42,6 +42,8 @@ export type Look = {
   roughness: number
   /** How much of the satin grain is on it: 1 all of it, 0 none, as polished. */
   grain: number
+  /** How much of the printed surface is on it: 1 as it leaves the printer; none if left out. */
+  printed?: number
 }
 
 /**
@@ -71,6 +73,22 @@ export type Look = {
  *   mirror-bright at the edges of its reflections.
  * - Platinum had no reference and was left to judgement: its measured
  *   reflectance, a grey darker and warmer than silver, polished like the golds.
+ * - Stainless steel is printed in the metal itself, by selective laser
+ *   melting at in3dtec, and left as it comes from the printer. The reference
+ *   was the author's photograph of such parts, on 2026-09-25: a plain grey,
+ *   matt, sandy with the powder fused into it and finely lined by the
+ *   laser's passes. The sand, its hollows and the lines are the printed
+ *   surface, `printedSurface`, not the satin grain. The grey is darker than
+ *   steel's measured reflectance (0.56), since at that the metal read as
+ *   silver gone matt. It keeps the photograph's faint warmth, which the
+ *   author noticed on 2026-09-25 after a cooler, neutral grey: measured against
+ *   the photograph's white ground, which is neutral, the metal's blue is 7%
+ *   under its red and green. That warmth is real in the metal: steel's nickel
+ *   and iron reflect a little less blue than red, and a printed part can
+ *   carry a faint straw tint from the laser. Matched to it first, the
+ *   pendant rendered with red = green and blue at 0.927 of them, as the
+ *   photograph has it; the author then asked for it a little warmer, and
+ *   the blue is at 0.89, half as warm again as the photograph.
  */
 const LOOKS: Record<string, Record<string, Look>> = {
   Brass: {
@@ -88,6 +106,7 @@ const LOOKS: Record<string, Record<string, Look>> = {
     "18K": { color: [0.98, 0.76, 0.38], roughness: 0.07, grain: 0 },
   },
   Platinum: { "": { color: [0.67, 0.64, 0.59], roughness: 0.08, grain: 0 } },
+  "Stainless steel": { "": { color: [0.5, 0.5, 0.46], roughness: 0.55, grain: 0, printed: 1 } },
 }
 
 /** The look of a metal and its finish or karat; 18 karat gold for anything unknown. */
@@ -125,6 +144,17 @@ const GRAIN_TILE = 0.012
  * tilt a third and the swing 7%, and at those the same 12mm tile is satin.
  */
 const GRAIN_STRENGTH = 0.35
+
+/**
+ * The printed surface, as the satin grain is measured: one tile of it spans
+ * this much of the pendant, in metres. In it the fused powder is a few
+ * hundredths of a millimetre to a tenth, and the laser's lines are a third of
+ * a millimetre apart, as they are in the author's photograph of printed steel.
+ */
+const PRINTED_TILE = 0.014
+
+/** How far the printed surface tips the metal, as GRAIN_STRENGTH does the grain. */
+const PRINTED_STRENGTH = 1.2
 
 /** The author's studio, prepared by `scripts/env-360.mjs`, which records how it is stored. */
 const STUDIO = "/models/studio.webp"
@@ -172,9 +202,15 @@ type Props = {
    * among photographs may want it smaller, standing in room of its own.
    */
   size?: number
+  /**
+   * How far above the stage's middle the pendant is drawn, as a share of the
+   * stage's height. It moves the picture, not the pendant, so the pendant
+   * still turns about its own axis.
+   */
+  lift?: number
 }
 
-export function PendantViewer({ src, label, look, className, style, size = 1 }: Props) {
+export function PendantViewer({ src, label, look, className, style, size = 1, lift = 0 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const lookRef = useRef(look)
   const [shown, setShown] = useState(false)
@@ -253,9 +289,11 @@ export function PendantViewer({ src, label, look, className, style, size = 1 }: 
 
       const material = new THREE.MeshStandardMaterial({ metalness: 1 })
       const grain = satinGrain(THREE)
-      grain.anisotropy = renderer.capabilities.getMaxAnisotropy()
+      const printed = printedSurface(THREE)
+      grain.anisotropy = printed.anisotropy = renderer.capabilities.getMaxAnisotropy()
       const grainAmount = { value: 0 }
-      withSatin(material, grain, grainAmount)
+      const printedAmount = { value: 0 }
+      withFinish(material, grain, grainAmount, printed, printedAmount)
 
       // The look the metal is easing toward, and a way to jump straight to it.
       const target = new THREE.Color()
@@ -264,6 +302,7 @@ export function PendantViewer({ src, label, look, className, style, size = 1 }: 
         material.color.lerp(target, ease)
         material.roughness += (look.roughness - material.roughness) * ease
         grainAmount.value += (look.grain - grainAmount.value) * ease
+        printedAmount.value += ((look.printed ?? 0) - printedAmount.value) * ease
       }
 
       // Half the pendant's height, and the farthest it reaches from its axis as
@@ -288,7 +327,10 @@ export function PendantViewer({ src, label, look, className, style, size = 1 }: 
         camera.position.setLength(distance)
         camera.near = distance / 100
         camera.far = distance * 10
-        camera.updateProjectionMatrix()
+        // The lift: the frame taken from lower down on the same picture, so
+        // the pendant sits higher in it. setViewOffset updates the projection.
+        if (lift) camera.setViewOffset(w, h, 0, lift * h, w, h)
+        else camera.updateProjectionMatrix()
       }
 
       let model: Object3D | null = null
@@ -337,6 +379,7 @@ export function PendantViewer({ src, label, look, className, style, size = 1 }: 
         model?.traverse((o) => (o as Mesh).isMesh && (o as Mesh).geometry.dispose())
         material.dispose()
         grain.dispose()
+        printed.dispose()
         environment?.dispose()
         renderer.dispose()
         canvas.remove()
@@ -445,51 +488,96 @@ async function studioTexture(THREE: typeof import("three")): Promise<DataTexture
   return texture
 }
 
-/**
- * The satin finish, made here rather than photographed: a tileable relief of
- * fine grain, a faint mottling and a few hundred hairline scratches running
- * every way, read out as a normal map (red, green, blue) with a roughness
- * factor beside it (alpha, 0–2 as 0–255). Made from a fixed seed, so every
- * visit sees the same metal. Nothing is downloaded for it.
- */
-function satinGrain(THREE: typeof import("three")): DataTexture {
-  const N = 512
-  let seed = 0x1ca7a5
-  const rand = () => {
+/** The side of a generated surface's tile, in texels. */
+const TEXELS = 512
+
+/** A texel's row or column, wrapped round the tile's edges. */
+const wrap = (i: number) => ((i % TEXELS) + TEXELS) % TEXELS
+
+/** Random numbers from a fixed seed (mulberry32), so every visit sees the same metal. */
+function seeded(seed: number) {
+  return () => {
     seed = (seed + 0x6d2b79f5) | 0
     let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
-  const wrap = (i: number) => ((i % N) + N) % N
+}
 
-  // Value noise that tiles: a lattice of `cells` × `cells` random heights,
-  // smoothly interpolated, with the lattice wrapping at the edges.
-  const noise = (cells: number) => {
-    const lattice = Float32Array.from({ length: cells * cells }, () => rand() * 2 - 1)
-    const out = new Float32Array(N * N)
-    for (let y = 0; y < N; y++) {
-      const fy = (y / N) * cells
-      const y0 = Math.floor(fy)
-      const ty = fy - y0
-      const sy = ty * ty * (3 - 2 * ty)
-      for (let x = 0; x < N; x++) {
-        const fx = (x / N) * cells
-        const x0 = Math.floor(fx)
-        const tx = fx - x0
-        const sx = tx * tx * (3 - 2 * tx)
-        const at = (i: number, j: number) => lattice[(j % cells) * cells + (i % cells)]
-        const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sx
-        const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sx
-        out[y * N + x] = top + (bottom - top) * sy
-      }
+/**
+ * Value noise that tiles: a lattice of `cells` × `cells` random heights,
+ * smoothly interpolated, with the lattice wrapping at the edges.
+ */
+function tileNoise(rand: () => number, cells: number) {
+  const N = TEXELS
+  const lattice = Float32Array.from({ length: cells * cells }, () => rand() * 2 - 1)
+  const at = (i: number, j: number) => lattice[(j % cells) * cells + (i % cells)]
+  const out = new Float32Array(N * N)
+  for (let y = 0; y < N; y++) {
+    const fy = (y / N) * cells
+    const y0 = Math.floor(fy)
+    const ty = fy - y0
+    const sy = ty * ty * (3 - 2 * ty)
+    for (let x = 0; x < N; x++) {
+      const fx = (x / N) * cells
+      const x0 = Math.floor(fx)
+      const tx = fx - x0
+      const sx = tx * tx * (3 - 2 * tx)
+      const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sx
+      const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sx
+      out[y * N + x] = top + (bottom - top) * sy
     }
-    return out
   }
+  return out
+}
 
-  const fine = noise(128)
-  const mid = noise(48)
-  const mottle = noise(12)
+/**
+ * A relief read out as the texture the shader lays on the metal: the tilt of
+ * its surface (red, green), how much light it keeps in its hollows (blue, 1 in
+ * the open, less down among the grains) and a roughness factor (alpha, 0–2 as
+ * 0–255, held between 0.5 and 1.9). Nothing is downloaded for it.
+ */
+function surfaceTexture(
+  THREE: typeof import("three"),
+  height: Float32Array,
+  rough: (i: number) => number,
+  kept: (i: number) => number = () => 1,
+): DataTexture {
+  const N = TEXELS
+  const data = new Uint8Array(N * N * 4)
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x
+      const gx = height[y * N + wrap(x + 1)] - height[y * N + wrap(x - 1)]
+      const gy = height[wrap(y + 1) * N + x] - height[wrap(y - 1) * N + x]
+      const len = Math.hypot(gx, gy, 2)
+      data[i * 4] = Math.round((-gx / len) * 127.5 + 127.5)
+      data[i * 4 + 1] = Math.round((-gy / len) * 127.5 + 127.5)
+      data[i * 4 + 2] = Math.round(Math.min(1, Math.max(0, kept(i))) * 255)
+      data[i * 4 + 3] = Math.round((Math.min(1.9, Math.max(0.5, rough(i))) / 2) * 255)
+    }
+  }
+  const texture = new THREE.DataTexture(data, N, N, THREE.RGBAFormat)
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.magFilter = THREE.LinearFilter
+  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.generateMipmaps = true
+  texture.needsUpdate = true
+  return texture
+}
+
+/**
+ * The satin finish, made here rather than photographed: a tileable relief of
+ * fine grain, a faint mottling and a few hundred hairline scratches running
+ * every way. Made from a fixed seed, so every visit sees the same metal.
+ */
+function satinGrain(THREE: typeof import("three")): DataTexture {
+  const N = TEXELS
+  const rand = seeded(0x1ca7a5)
+  const fine = tileNoise(rand, 128)
+  const mid = tileNoise(rand, 48)
+  const mottle = tileNoise(rand, 12)
   const height = new Float32Array(N * N)
   for (let i = 0; i < N * N; i++) height[i] = 0.5 * fine[i] + 0.1 * mid[i]
 
@@ -512,49 +600,124 @@ function satinGrain(THREE: typeof import("three")): DataTexture {
     }
   }
 
-  const data = new Uint8Array(N * N * 4)
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const i = y * N + x
-      const gx = height[y * N + wrap(x + 1)] - height[y * N + wrap(x - 1)]
-      const gy = height[wrap(y + 1) * N + x] - height[wrap(y - 1) * N + x]
-      const len = Math.hypot(gx, gy, 2)
-      data[i * 4] = Math.round((-gx / len) * 127.5 + 127.5)
-      data[i * 4 + 1] = Math.round((-gy / len) * 127.5 + 127.5)
-      data[i * 4 + 2] = Math.round((2 / len) * 127.5 + 127.5)
-      // A little rougher in the scratches and across the mottling's peaks.
-      const rough = Math.min(1.9, Math.max(0.5, 1 + 0.07 * mottle[i] + 0.3 * scratched[i]))
-      data[i * 4 + 3] = Math.round((rough / 2) * 255)
-    }
-  }
-
-  const texture = new THREE.DataTexture(data, N, N, THREE.RGBAFormat)
-  texture.wrapS = THREE.RepeatWrapping
-  texture.wrapT = THREE.RepeatWrapping
-  texture.magFilter = THREE.LinearFilter
-  texture.minFilter = THREE.LinearMipmapLinearFilter
-  texture.generateMipmaps = true
-  texture.needsUpdate = true
-  return texture
+  // A little rougher in the scratches and across the mottling's peaks.
+  return surfaceTexture(THREE, height, (i) => 1 + 0.07 * mottle[i] + 0.3 * scratched[i])
 }
 
 /**
- * Lays the grain on the metal by projecting it from the three axes and
+ * The surface of metal printed by laser and left as it comes out, after the
+ * author's photograph of printed steel: sand, which is powder half melted
+ * into the surface, over a fine unevenness, and crossed by shallow lines
+ * where the laser passed, a third of a millimetre apart. In a tile of
+ * PRINTED_TILE, 8mm: the powder is grains 50 to 125 microns across; the
+ * unevenness is 80 microns to half a millimetre; the lines run on the
+ * diagonal, 18 to the tile's side, and wander a little, as the photograph's do.
+ */
+function printedSurface(THREE: typeof import("three")): DataTexture {
+  const N = TEXELS
+  const rand = seeded(0x51a7ed)
+  const fine = tileNoise(rand, 100)
+  const mid = tileNoise(rand, 48)
+  const coarse = tileNoise(rand, 16)
+  const drift = tileNoise(rand, 6)
+  const height = new Float32Array(N * N)
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x
+      const lines = Math.sin(((x + y) / N) * 2 * Math.PI * 18 + 1.5 * drift[i])
+      height[i] = 0.4 * fine[i] + 0.3 * mid[i] + 0.1 * coarse[i] + 0.04 * lines
+    }
+  }
+
+  // The powder: small domes standing out of the surface, where they meet
+  // each other the higher one standing.
+  const fused = new Float32Array(N * N)
+  for (let s = 0; s < 4200; s++) {
+    const cx = Math.round(rand() * N)
+    const cy = Math.round(rand() * N)
+    const r = 1.6 + rand() * 2.4
+    const top = 0.35 + rand() * 0.6
+    const R = Math.ceil(r)
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
+        const d2 = (dx * dx + dy * dy) / (r * r)
+        if (d2 >= 1) continue
+        const i = wrap(cy + dy) * N + wrap(cx + dx)
+        const dome = top * Math.sqrt(1 - d2)
+        if (dome > fused[i]) {
+          height[i] += dome - fused[i]
+          fused[i] = dome
+        }
+      }
+    }
+  }
+
+  // The hollows between the grains hold less of the light: whatever lies
+  // below the surface around it, over a few grains, is darkened by how far.
+  const around = blurred(blurred(height, 5), 5)
+  return surfaceTexture(
+    THREE,
+    height,
+    (i) => 1 + 0.12 * coarse[i] + 0.1 * mid[i],
+    (i) => 1 - 1.4 * Math.max(0, around[i] - height[i]),
+  )
+}
+
+/** A tile's heights averaged over a square `r` texels either side, wrapping at the edges. */
+function blurred(src: Float32Array, r: number) {
+  const N = TEXELS
+  const across = new Float32Array(N * N)
+  const out = new Float32Array(N * N)
+  const span = 2 * r + 1
+  for (let y = 0; y < N; y++) {
+    let sum = 0
+    for (let x = -r; x <= r; x++) sum += src[y * N + wrap(x)]
+    for (let x = 0; x < N; x++) {
+      across[y * N + x] = sum / span
+      sum += src[y * N + wrap(x + r + 1)] - src[y * N + wrap(x - r)]
+    }
+  }
+  for (let x = 0; x < N; x++) {
+    let sum = 0
+    for (let y = -r; y <= r; y++) sum += across[wrap(y) * N + x]
+    for (let y = 0; y < N; y++) {
+      out[y * N + x] = sum / span
+      sum += across[wrap(y + r + 1) * N + x] - across[wrap(y - r) * N + x]
+    }
+  }
+  return out
+}
+
+/**
+ * Lays the finishes on the metal by projecting them from the three axes and
  * blending by which way the surface faces. The model carries no texture
  * coordinates — the export's own were dropped, since an unwrap made for 3ds
  * Max would seam and stretch a grain this fine — and a projection needs none.
  * It is done in world space, where the pendant stands still while the camera
- * goes round, so the grain stays on the metal. `amount` scales both what the
- * grain tilts and what it roughens, so a polished metal (0) is left smooth,
- * and a change of finish eases in and out of it.
+ * goes round, so the grain stays on the metal.
+ *
+ * There are two finishes, the satin grain and the printed surface, each with
+ * its own amount: it scales both what the finish tilts and what it roughens,
+ * so a polished metal (0 of each) is left smooth, and a change of metal eases
+ * from one finish to another.
  */
-function withSatin(material: MeshStandardMaterial, grain: DataTexture, amount: { value: number }) {
-  material.customProgramCacheKey = () => "pandov-satin"
+function withFinish(
+  material: MeshStandardMaterial,
+  grain: DataTexture,
+  grainAmount: { value: number },
+  printed: DataTexture,
+  printedAmount: { value: number },
+) {
+  material.customProgramCacheKey = () => "pandov-finish"
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uGrain = { value: grain }
     shader.uniforms.uGrainScale = { value: 1 / GRAIN_TILE }
     shader.uniforms.uGrainStrength = { value: GRAIN_STRENGTH }
-    shader.uniforms.uGrainAmount = amount
+    shader.uniforms.uGrainAmount = grainAmount
+    shader.uniforms.uPrinted = { value: printed }
+    shader.uniforms.uPrintedScale = { value: 1 / PRINTED_TILE }
+    shader.uniforms.uPrintedStrength = { value: PRINTED_STRENGTH }
+    shader.uniforms.uPrintedAmount = printedAmount
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vGrainPos;\nvarying vec3 vGrainNormal;")
       .replace(
@@ -571,6 +734,10 @@ function withSatin(material: MeshStandardMaterial, grain: DataTexture, amount: {
         uniform float uGrainScale;
         uniform float uGrainStrength;
         uniform float uGrainAmount;
+        uniform sampler2D uPrinted;
+        uniform float uPrintedScale;
+        uniform float uPrintedStrength;
+        uniform float uPrintedAmount;
         varying vec3 vGrainPos;
         varying vec3 vGrainNormal;`,
       )
@@ -583,15 +750,21 @@ function withSatin(material: MeshStandardMaterial, grain: DataTexture, amount: {
         vec4 grainX = texture2D(uGrain, vGrainPos.zy * uGrainScale);
         vec4 grainY = texture2D(uGrain, vGrainPos.xz * uGrainScale);
         vec4 grainZ = texture2D(uGrain, vGrainPos.xy * uGrainScale);
-        roughnessFactor *= mix(1.0, 2.0 * (grainX.a * grainW.x + grainY.a * grainW.y + grainZ.a * grainW.z), uGrainAmount);`,
+        vec4 printedX = texture2D(uPrinted, vGrainPos.zy * uPrintedScale);
+        vec4 printedY = texture2D(uPrinted, vGrainPos.xz * uPrintedScale);
+        vec4 printedZ = texture2D(uPrinted, vGrainPos.xy * uPrintedScale);
+        roughnessFactor *= mix(1.0, 2.0 * (grainX.a * grainW.x + grainY.a * grainW.y + grainZ.a * grainW.z), uGrainAmount);
+        roughnessFactor *= mix(1.0, 2.0 * (printedX.a * grainW.x + printedY.a * grainW.y + printedZ.a * grainW.z), uPrintedAmount);
+        diffuseColor.rgb *= mix(1.0, printedX.b * grainW.x + printedY.b * grainW.y + printedZ.b * grainW.z, uPrintedAmount);`,
       )
       .replace(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
         float grainTilt = uGrainStrength * uGrainAmount;
-        vec2 tiltX = (grainX.xy * 2.0 - 1.0) * grainTilt;
-        vec2 tiltY = (grainY.xy * 2.0 - 1.0) * grainTilt;
-        vec2 tiltZ = (grainZ.xy * 2.0 - 1.0) * grainTilt;
+        float printedTilt = uPrintedStrength * uPrintedAmount;
+        vec2 tiltX = (grainX.xy * 2.0 - 1.0) * grainTilt + (printedX.xy * 2.0 - 1.0) * printedTilt;
+        vec2 tiltY = (grainY.xy * 2.0 - 1.0) * grainTilt + (printedY.xy * 2.0 - 1.0) * printedTilt;
+        vec2 tiltZ = (grainZ.xy * 2.0 - 1.0) * grainTilt + (printedZ.xy * 2.0 - 1.0) * printedTilt;
         vec3 grained = normalize(grainN
           + vec3(0.0, tiltX.y, tiltX.x) * grainW.x
           + vec3(tiltY.x, 0.0, tiltY.y) * grainW.y

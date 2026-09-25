@@ -38,8 +38,10 @@ export type Material = {
   metal: string
   /** As listed in the panel, where that is shorter than `metal`. */
   label?: string
-  /** The dot beside it: a yellow metal, a white one or a dark one. */
-  tone: "gold" | "white" | "dark"
+  /** The dot beside it: a yellow metal, a white one, steel's grey or a dark one. */
+  tone: "gold" | "white" | "steel" | "dark"
+  /** How it is made, where that is not `MADE`: shown under "Made" while it is chosen. */
+  made?: string[]
 } & ({ price: number } | { finish: Record<string, number> } | { karat: Record<string, number> })
 
 /**
@@ -59,8 +61,14 @@ export type Material = {
  * several thousand. Rounded up, to 5 € under 1000 € and to 50 € over it. The quotes, in dollars: brass 22 / 28, silver
  * 66 / 86, either plating 53, gold 1420 / 2026, platinum 2000. When they
  * change, work the prices out again the same way.
+ *
+ * Stainless steel is the exception: printed in the metal itself, by selective
+ * laser melting at in3dtec, with no wax and no casting, and priced by the
+ * author at 50 € on 2026-09-25. It has a row of its own, first, as the least
+ * of them; the panel still opens on Brass (`OPENS_ON` in pendant-order.tsx).
  */
 const PRICES: Material[][] = [
+  [{ metal: "Stainless steel", tone: "steel", price: 50, made: ["Drawn by hand", "Printed in steel"] }],
   [
     { metal: "Brass", tone: "gold", finish: { Natural: 115, Polished: 135 } },
     // Silver's finishes carry Sculpteo's own names (the author's asking,
@@ -79,7 +87,11 @@ const PRICES: Material[][] = [
   ],
 ]
 
-/** What every pendant of the collection shares, listed under its prices. */
+/**
+ * What every pendant of the collection shares, listed under its prices: the
+ * cord, and how it is made in every metal that is cast. A metal made another
+ * way says so in its own `made`.
+ */
 export const CORD = "Black cord"
 export const MADE = ["Drawn by hand", "Printed in wax", "Cast in sand"]
 
