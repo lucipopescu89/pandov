@@ -54,10 +54,10 @@ export type Look = {
  *   gold. Taken first from brass's measured reflectance, it came out a pale
  *   clean yellow beside their dull olive, and was darkened and greened.
  *   Polished is their Mirror Polished, which reads almost as gold.
- * - Silver, Natural is Sculpteo's Polished, which the author found flat and
- *   grey, and asked to have nearer their Mirror Polished; it keeps a little
- *   grain and a little blur, so that the two still differ. Polished is Mirror
- *   Polished: the room seen in it, sharp.
+ * - Silver's two finishes carry Sculpteo's names. Their Polished looked flat
+ *   and grey to the author, who asked to have it nearer their Mirror Polished;
+ *   it keeps a little grain and a little blur, so that the two still differ.
+ *   Mirror Polished is the room seen in it, sharp.
  * - Gold-plated brass is their Gold Plated (3µm) over mirror-polished brass:
  *   the measured reflectance of pure gold.
  * - The two golds follow it, on the author's asking, as there is no preview of
@@ -78,8 +78,8 @@ const LOOKS: Record<string, Record<string, Look>> = {
     Polished: { color: [0.9, 0.78, 0.38], roughness: 0.07, grain: 0 },
   },
   Silver: {
-    Natural: { color: [0.95, 0.94, 0.91], roughness: 0.1, grain: 0.2 },
-    Polished: { color: [0.97, 0.96, 0.92], roughness: 0.05, grain: 0 },
+    Polished: { color: [0.95, 0.94, 0.91], roughness: 0.1, grain: 0.2 },
+    "Mirror Polished": { color: [0.97, 0.96, 0.92], roughness: 0.05, grain: 0 },
   },
   "Gold-plated brass": { "": { color: [1, 0.77, 0.34], roughness: 0.07, grain: 0 } },
   "Black rhodium-plated brass": { "": { color: [0.3, 0.3, 0.31], roughness: 0.07, grain: 0 } },

@@ -26,6 +26,14 @@ const TEXT = "#8E8982"
 const MUTED = "#7C7770"
 const RULE = "#343230"
 
+/**
+ * The pendant's name, at the size of the homepage's "For Mind", "For Body" and
+ * "For Space" (`categories-section.tsx`), which the author asked for on
+ * 2026-09-25: 20px on a computer, down to 11px on a phone. The design had it
+ * at 44px; for a few hours before this it was the top menu's 12px.
+ */
+const NAME_SIZE = "clamp(11px, 2vw, 20px)"
+
 /** A size that follows the canvas down to a floor, for type that must stay legible. */
 const fit = (n: number, floor: number) => `clamp(${floor}px, ${((n / 1920) * 100).toFixed(4)}vw, ${n}px)`
 
@@ -134,7 +142,7 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
         .pp-statement > span { display: block; }
         .pp-row { margin-top: 32px; }
         .pp-info { max-width: 560px; margin: 40px auto 0; padding: 0 24px; }
-        .pp-name { font-family: var(--font-heading); font-weight: 400; font-size: 12px; line-height: 1; letter-spacing: 0.18em; color: ${INK}; }
+        .pp-name { font-family: var(--font-heading); font-weight: 400; font-size: ${NAME_SIZE}; line-height: 1; letter-spacing: 0.18em; color: ${INK}; }
         .pp-line { margin: 14px 0 32px; font-family: var(--font-body); font-weight: 300; font-size: 15px; line-height: 1.3; letter-spacing: 0.025em; color: ${TEXT}; }
         .pp-details { margin-top: 36px; }
         .pp-details > div { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 0 12px; border-top: 1px solid ${RULE}; }

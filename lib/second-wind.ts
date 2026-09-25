@@ -46,24 +46,36 @@ export type Material = {
  * The prices — the one place they live. Laid out as the panel shows them: in
  * rows of two, each row followed by the span of its prices.
  *
- * PLACEHOLDER for every pendant but Icarus: these are Icarus's, from the
- * author's Figma design, and every pendant shows them until the author gives
- * each its own.
+ * One price per metal for the whole collection, set by the author on
+ * 2026-09-25 once the pendants had been scaled to about the same volume:
+ * a few euros between them would only have made one look worth less. Each is
+ * worked out from what the piece costs to have made — Sculpteo's quote for
+ * brass, silver and the platings, Shapeways' for gold and platinum, in
+ * dollars — taken to euros at 1.145, with Sculpteo's 12 € shipping and 21%
+ * VAT on top. Brass and the platings are three times that cost, since their
+ * metal is cheap and the price has to carry everything else. Silver is the
+ * cost and 150 € more, and gold and platinum the cost and 500 € more, on the
+ * author's asking: three times ran silver to 320 €, and gold and platinum to
+ * several thousand. Rounded up, to 5 € under 1000 € and to 50 € over it. The quotes, in dollars: brass 22 / 28, silver
+ * 66 / 86, either plating 53, gold 1420 / 2026, platinum 2000. When they
+ * change, work the prices out again the same way.
  */
 const PRICES: Material[][] = [
   [
-    { metal: "Brass", tone: "gold", finish: { Natural: 85, Polished: 95 } },
-    { metal: "Silver", tone: "white", finish: { Natural: 120, Polished: 180 } },
+    { metal: "Brass", tone: "gold", finish: { Natural: 115, Polished: 135 } },
+    // Silver's finishes carry Sculpteo's own names (the author's asking,
+    // 2026-09-25): their plainer finish is already polished.
+    { metal: "Silver", tone: "white", finish: { Polished: 235, "Mirror Polished": 260 } },
   ],
   [
-    { metal: "Gold-plated brass", label: "Gold-plated", tone: "gold", price: 120 },
+    { metal: "Gold-plated brass", label: "Gold-plated", tone: "gold", price: 215 },
     // Black rhodium only: Sculpteo plates white rhodium too, but the author
     // kept it out on 2026-09-25, as it would look like silver at silver's price.
-    { metal: "Black rhodium-plated brass", label: "Black rhodium", tone: "dark", price: 120 },
+    { metal: "Black rhodium-plated brass", label: "Black rhodium", tone: "dark", price: 215 },
   ],
   [
-    { metal: "Gold", tone: "gold", karat: { "14K": 1300, "18K": 1800 } },
-    { metal: "Platinum", tone: "white", price: 2000 },
+    { metal: "Gold", tone: "gold", karat: { "14K": 2050, "18K": 2700 } },
+    { metal: "Platinum", tone: "white", price: 2650 },
   ],
 ]
 

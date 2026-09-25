@@ -82,7 +82,8 @@ export function useChoice() {
  * price, and the two ways to act on it: ORDER, and a question.
  *
  * One metal is chosen at a time, Brass at first. Brass and Silver come in a
- * natural or a polished finish, Gold in 14 or 18 karat; the others come one
+ * choice of finish (Brass natural or polished, Silver polished or mirror
+ * polished, as Sculpteo names them), Gold in 14 or 18 karat; the others come one
  * way only. The row for the finish or the karat opens under the metals when
  * the chosen metal has one, and closes when it has none, fading as it goes and
  * easing the price below it up or down rather than letting it jump; changing
