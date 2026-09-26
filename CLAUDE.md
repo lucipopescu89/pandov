@@ -122,6 +122,15 @@ The whole `/body/second-wind` page in one ~650-line server component, and the mo
 
 - Beats are expressed as **durations in vh** (`DOORS_VH`, `TEXT1_OUT_VH`), not as absolute boundaries, so a beat can be lengthened without retuning every number after it.
 - **A position that parts from the page's own motion is played by the browser, not written from a scroll handler.** The page moves the instant the wheel turns and a scroll listener only hears of it afterwards, so anything it moves is drawn one frame at the old place. When the element moves with the page that error is nearly nothing. When it is held back against the page, the error is the whole scroll step. The footer hand's settling jumped up and dropped back 44–91px per wheel notch that way, measured in Chrome. It is now a Web Animations `ScrollTimeline` animation (`components/footer.tsx`), exact to the frame. Never put `!important` on a property such an animation drives: Chrome then quietly stops running it in step with the scroll, and the jump comes back. Fades are fine from a handler; a frame late in strength does not show.
+- **On a phone the homepage footer is its own composition** (2026-09-26, after the author's sketch). Drawn like the computer's, it had shrunk to a 185px hand, 9px words and an 88px bird.
+  - Under 768px the hand is three times the computer's share of the page, with its ring near the centre and at the top.
+  - "Get in touch" is 12px.
+  - The bird's rings are 74% of the page across.
+  - The finale is the computer's: the white rises over the hand and it fades by the end of the page. For an afternoon it stayed on screen, as the sketch shows, until the author asked for the computer's effect.
+  - It rises higher before it comes to rest. The screen is tall, and a hand settling half-way up left the top empty. So it moves with the page until nearly the end and comes to rest with its ring 70px under the top of the screen (`PHONE_REST`), measured exact on 375×667, 390×844 and 430×932. The settling's span is worked out from where the page alone would carry the ring (`settlingSpan`).
+  - The keyframes are sampled from whichever begins first, the settling or the finale. A short span sampled only from its own start left the fade drawn as one straight line from the top of the page.
+  - The two layouts live in the `LAYOUT` stylesheet in `footer.tsx`, not inline, because only a stylesheet can hold the media query.
+  - The computer's footer is unchanged, pixel for pixel.
 - Progress is always passed through a local `clamp01` that maps non-finite to 0. `scrolled / total` is `NaN` when the container and viewport measure equal (background tab, bfcache restore, prerender), `Math.max/min` propagate `NaN`, and every `<` against `NaN` is false — an unguarded `NaN` falls through to the last branch and reveals overlays that should be hidden.
 
 ### Page shape

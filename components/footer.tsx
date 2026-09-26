@@ -149,8 +149,7 @@ function settle(u: number): number {
  * and how much of it is left, with `whole` and `pageEnd` the scroll positions
  * the finale runs between.
  */
-function photoAt(y: number, whole: number, pageEnd: number): { transform: string; opacity: string } {
-  const span = Math.max(0, pageEnd - whole) * (1 - SETTLE_FROM)
+function photoAt(y: number, whole: number, pageEnd: number, span: number): { transform: string; opacity: string } {
   const behind = span * settle(ramp(y, pageEnd - span, pageEnd))
   const left = 1 - smooth(ramp(ramp(y, whole, pageEnd), CLEAN_TO, 1))
   return { transform: `translate3d(0, ${behind.toFixed(2)}px, 0)`, opacity: (HAND_OPACITY * left).toFixed(3) }
@@ -176,15 +175,43 @@ const SETTLE_STEPS = 32
  * at the top and 1 at the end: flat until the span begins, then SETTLE_STEPS
  * samples of `photoAt` across it.
  */
-function settlingKeyframes(whole: number, pageEnd: number): Keyframe[] {
-  const span = Math.max(0, pageEnd - whole) * (1 - SETTLE_FROM)
-  const from = Math.max(0, pageEnd - span)
-  const frames: Keyframe[] = [{ offset: 0, ...photoAt(0, whole, pageEnd) }]
+function settlingKeyframes(whole: number, pageEnd: number, span: number): Keyframe[] {
+  // Sampled from the settling or the finale, whichever begins first. The fade
+  // runs through the whole finale, and a span that starts later than it — a
+  // phone's can be a sixth as long — would leave the fade unsampled, drawn as
+  // one straight line from the top of the page: the hand at a quarter of its
+  // strength before it had even come on screen.
+  const from = Math.max(0, Math.min(pageEnd - span, whole))
+  const frames: Keyframe[] = [{ offset: 0, ...photoAt(0, whole, pageEnd, span) }]
   for (let i = 0; i <= SETTLE_STEPS; i++) {
     const y = from + ((pageEnd - from) * i) / SETTLE_STEPS
-    frames.push({ offset: Math.min(1, y / pageEnd), ...photoAt(y, whole, pageEnd) })
+    frames.push({ offset: Math.min(1, y / pageEnd), ...photoAt(y, whole, pageEnd, span) })
   }
   return frames
+}
+
+/**
+ * On a phone the hand rises further before it settles, the author's asking on
+ * 2026-09-26: the screen is tall, and a hand that came to rest half-way up it
+ * left the top empty. It moves with the page until nearly the end and comes to
+ * rest with its ring `PHONE_REST` px under the top of the screen, fading as it
+ * goes.
+ *
+ * The lag it ends with is how far short of that the page alone would carry
+ * it. `settle` covers half its span, so the span is twice the lag. Where the
+ * page alone would not carry the ring that high, the span is nothing, and the
+ * hand simply moves with the page.
+ */
+const PHONE_REST = 70
+
+/**
+ * The span the photograph settles over, in px of scroll up to the end of the
+ * page. `hand` is its box as it stands at scroll position y.
+ */
+function settlingSpan(hand: DOMRect, y: number, whole: number, pageEnd: number, phone: boolean): number {
+  if (!phone) return Math.max(0, pageEnd - whole) * (1 - SETTLE_FROM)
+  const ringAtEnd = hand.top - (pageEnd - y) + RING_TOP * hand.height
+  return 2 * Math.max(0, PHONE_REST - ringAtEnd)
 }
 
 /**
@@ -231,6 +258,61 @@ const CANVAS_HEIGHT = `calc(${(WORDS_Y / CANVAS_W) * 100}% + min(${((CANVAS_H - 
 const HAND_W = 2792
 const HAND_H = 1230
 
+/**
+ * A phone has its own composition, the author's sketch of 2026-09-26. Drawn
+ * like the computer's, the hand was 185px high, the words 9px and the bird in
+ * its rings 88px across, a button at the foot of the screen. In the sketch the
+ * three fill it:
+ *
+ * - The hand is `PHONE_HAND_W` of the page wide, three times the computer's
+ *   share, with its ring `PHONE_RING_AT` across the page and `PHONE_RING_TOP`
+ *   under the top of the canvas. `RING_X` and `RING_TOP` are where the ring
+ *   sits in the photograph, mirrored as it is drawn, read off its gold pixels.
+ * - The words are 12px, the menus' size, at `PHONE_WORDS_Y`.
+ * - The rings are `PHONE_BIRD_W` of the page across, with the bird centred
+ *   `PHONE_BIRD_Y` down.
+ *
+ * All in hundredths of the page's width, since cqw is what they are drawn in.
+ * The canvas ends at the foot of the rings.
+ *
+ * The finale is the computer's. For an afternoon the hand stayed on a phone,
+ * because the sketch ends on hand, words and bird together. The author asked
+ * for it to settle into the white and fade as it does on a computer. The
+ * sketch is the page just before the hand has gone.
+ */
+const PHONE = "(max-width: 767.98px)"
+const RING_X = 0.4155
+const RING_TOP = 0.222
+const PHONE_HAND_W = 300
+const PHONE_RING_AT = 45
+const PHONE_RING_TOP = 12
+const PHONE_WORDS_Y = 92
+const PHONE_BIRD_W = 74
+const PHONE_BIRD_Y = PHONE_WORDS_Y + 40
+const PHONE_HAND_H = (PHONE_HAND_W * HAND_H) / HAND_W
+
+/**
+ * Where everything stands, on a computer and then on a phone. In a stylesheet
+ * rather than inline, because a media query can only live there. The hand's
+ * photograph is not in it: its transform and opacity are the finale's own.
+ */
+const LAYOUT = `
+.ft-canvas { padding-bottom: ${CANVAS_HEIGHT}; }
+.ft-hand { left: ${wide(22)}; top: ${wide(-2)}; width: ${wide(1720)}; }
+.ft-words { top: ${wide(WORDS_Y)}; font-size: clamp(9px, 0.75vw, 12px); }
+.ft-bird { top: calc(${wide(WORDS_Y)} + ${held(862 - WORDS_Y)}); width: ${held(360)}; }
+@media ${PHONE} {
+  .ft-canvas { padding-bottom: ${PHONE_BIRD_Y + PHONE_BIRD_W / 2}%; }
+  .ft-hand {
+    left: ${+(PHONE_RING_AT - RING_X * PHONE_HAND_W).toFixed(3)}cqw;
+    top: ${+(PHONE_RING_TOP - RING_TOP * PHONE_HAND_H).toFixed(3)}cqw;
+    width: ${PHONE_HAND_W}cqw;
+  }
+  .ft-words { top: ${PHONE_WORDS_Y}cqw; font-size: 12px; }
+  .ft-bird { top: ${PHONE_BIRD_Y}cqw; width: ${PHONE_BIRD_W}cqw; }
+}
+`
+
 export function Footer() {
   const handRef = useRef<HTMLDivElement>(null)
   const photoRef = useRef<HTMLDivElement>(null)
@@ -241,7 +323,7 @@ export function Footer() {
   useEffect(() => {
     const Timeline = (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline
     let settling: Animation | null = null
-    let builtFor = { whole: NaN, pageEnd: NaN }
+    let builtFor = { whole: NaN, pageEnd: NaN, span: NaN }
 
     const onScroll = () => {
       const hand = handRef.current
@@ -251,8 +333,10 @@ export function Footer() {
       // From the whole hand on screen — its box's foot at the bottom of the
       // screen — to the end of the page. The box, not the photograph: the box
       // never moves off the page, so this is not thrown by the settling below.
-      const whole = y + hand.getBoundingClientRect().bottom - vh
+      const box = hand.getBoundingClientRect()
+      const whole = y + box.bottom - vh
       const pageEnd = document.documentElement.scrollHeight - vh
+      const span = settlingSpan(box, y, whole, pageEnd, window.matchMedia(PHONE).matches)
       const p = ramp(y, whole, pageEnd)
       setWhite(ramp(p, CLEAN_TO, WHITE_TO))
       setCtaIn(ramp(p, WHITE_TO, TEXT_TO))
@@ -276,13 +360,18 @@ export function Footer() {
       const photo = photoRef.current
       if (!photo) return
       if (!Timeline) {
-        Object.assign(photo.style, photoAt(y, whole, pageEnd))
+        Object.assign(photo.style, photoAt(y, whole, pageEnd, span))
         return
       }
       if (pageEnd <= 0) return
-      if (Math.abs(whole - builtFor.whole) < 0.5 && Math.abs(pageEnd - builtFor.pageEnd) < 0.5) return
-      builtFor = { whole, pageEnd }
-      const frames = settlingKeyframes(whole, pageEnd)
+      if (
+        Math.abs(whole - builtFor.whole) < 0.5 &&
+        Math.abs(pageEnd - builtFor.pageEnd) < 0.5 &&
+        Math.abs(span - builtFor.span) < 0.5
+      )
+        return
+      builtFor = { whole, pageEnd, span }
+      const frames = settlingKeyframes(whole, pageEnd, span)
       // Rebuilt in place: cancelling one animation and starting another would
       // leave a frame with neither, and the photograph unsettled, between them.
       if (settling?.effect instanceof KeyframeEffect) settling.effect.setKeyframes(frames)
@@ -318,10 +407,8 @@ export function Footer() {
       {/* One centred column: the hand wearing the golden ring, GET IN TOUCH
           below the ring, then the bird in its rings. A container, so what is
           on it can be placed in lengths of its width. */}
-      <div
-        className="relative w-full overflow-hidden"
-        style={{ containerType: "inline-size", paddingBottom: CANVAS_HEIGHT }}
-      >
+      <style>{LAYOUT}</style>
+      <div className="ft-canvas relative w-full overflow-hidden" style={{ containerType: "inline-size" }}>
         {/* The white sculptural hand (Figma "Rectangle 2"), mirrored so the
             fingers point right. The image carries empty white space past the
             fingertips, so it is set wider than the page and right of centre to
@@ -335,13 +422,8 @@ export function Footer() {
         <div
           ref={handRef}
           id={FOOTER_STAGE_ID}
-          style={{
-            position: "absolute",
-            left: wide(22),
-            top: wide(-2),
-            width: wide(1720),
-            aspectRatio: `${HAND_W} / ${HAND_H}`,
-          }}
+          className="ft-hand"
+          style={{ position: "absolute", aspectRatio: `${HAND_W} / ${HAND_H}` }}
         >
           <div
             ref={photoRef}
@@ -351,7 +433,7 @@ export function Footer() {
               src="/images/home/footer-banner.png"
               alt="White sculptural hand wearing the Pandov golden ring"
               fill
-              sizes="108vw"
+              sizes={`${PHONE} ${PHONE_HAND_W}vw, 108vw`}
               style={{ objectFit: "contain", transform: "scaleX(-1)" }}
             />
           </div>
@@ -372,15 +454,13 @@ export function Footer() {
             For Mind came to be reached from the empty ground of the hero. */}
         <Link
           href="/contact"
-          className="transition-opacity hover:opacity-50"
+          className="ft-words transition-opacity hover:opacity-50"
           style={{
             pointerEvents: ctaIn > 0 ? "auto" : "none",
             position: "absolute",
             left: "50%",
-            top: wide(WORDS_Y),
             transform: "translate(-50%, -50%)",
             padding: "12px 16px",
-            fontSize: "clamp(9px, 0.75vw, 12px)",
             letterSpacing: "0.05em",
             textTransform: "uppercase",
             whiteSpace: "nowrap",
@@ -406,14 +486,13 @@ export function Footer() {
         <Link
           href="/contact"
           aria-label="Get in touch"
-          className="transition-opacity hover:opacity-50"
+          className="ft-bird transition-opacity hover:opacity-50"
           style={{
             pointerEvents: birdIn > 0 ? "auto" : "none",
             position: "absolute",
             left: "50%",
-            // Hung from the words by a held length, so the two stay a pair.
-            top: `calc(${wide(WORDS_Y)} + ${held(862 - WORDS_Y)})`,
-            width: held(360),
+            // Hung from the words by a held length, so the two stay a pair
+            // (`LAYOUT`).
             aspectRatio: "1",
             transform: "translate(-50%, -50%)",
             borderRadius: "50%",
