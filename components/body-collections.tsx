@@ -384,7 +384,7 @@ export function BodyCollections() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/images/body-collections/${piece.file}`}
-                alt={piece.name.toLowerCase().includes(piece.kind) ? piece.name : `${piece.name}, ${piece.kind}`}
+                alt={`${piece.name}, ${piece.kind}`}
                 width={piece.w}
                 height={piece.h}
                 loading="lazy"
