@@ -27,22 +27,6 @@ const julius = {
   textTransform: "uppercase" as const,
 }
 
-/**
- * On a computer the film is drawn at `FILM_SCALE` of the page, centred, the
- * author's asking on 2026-09-26. It stays the same crop, only smaller. Full
- * width, a portrait film on a landscape screen came up very close. The page
- * is left around it, and the film's edges melt into the ground over
- * `FILM_EDGE` of its width and height, so no rectangle shows. A phone keeps
- * the film to the edges, where it was always the right size.
- */
-const FILM_SCALE = 0.7
-const FILM_EDGE = "20%"
-const FILM_INSET = `${+(((1 - FILM_SCALE) / 2) * 100).toFixed(2)}%`
-const FILM_MASK = `linear-gradient(to right, transparent, #000 ${FILM_EDGE}, #000 calc(100% - ${FILM_EDGE}), transparent), linear-gradient(to bottom, transparent, #000 ${FILM_EDGE}, #000 calc(100% - ${FILM_EDGE}), transparent)`
-const FILM_CSS = `@media (min-width: 768px) {
-  .making-film { inset: ${FILM_INSET}; -webkit-mask-image: ${FILM_MASK}; -webkit-mask-composite: source-in; mask-image: ${FILM_MASK}; mask-composite: intersect; }
-}`
-
 export function MakingCollections() {
   return (
     <main
@@ -67,23 +51,21 @@ export function MakingCollections() {
           within 2% on any screen under 768px wide, and it weighs 449KB against
           the full footage's 829KB.
 
-          On a computer it is drawn smaller, inside the page. See FILM_SCALE. */}
-      <style>{FILM_CSS}</style>
-      <div className="making-film absolute inset-0">
-        <FadeInVideo
-          className="absolute inset-0 w-full h-full"
-          src="/videos/making.mp4?v=1"
-          phone={{
-            src: "/videos/making-phone.mp4?v=1",
-            poster: "/videos/making-phone-poster.jpg?v=1",
-            media: "(max-width: 767px)",
-          }}
-          poster="/videos/making-poster.jpg?v=1"
-          opacity={0.2}
-          rate={MAKING_RATE}
-          loopFade
-        />
-      </div>
+          On 2026-09-26 a computer had it at 70%, centred, its edges faded into
+          the ground; the author tried it and asked for the full width back. */}
+      <FadeInVideo
+        className="absolute inset-0 w-full h-full"
+        src="/videos/making.mp4?v=1"
+        phone={{
+          src: "/videos/making-phone.mp4?v=1",
+          poster: "/videos/making-phone-poster.jpg?v=1",
+          media: "(max-width: 767px)",
+        }}
+        poster="/videos/making-poster.jpg?v=1"
+        opacity={0.2}
+        rate={MAKING_RATE}
+        loopFade
+      />
 
       {/* Top menu — fixed and transparent so the video scrolls behind it */}
       <div className="ambient-fade fixed inset-x-0 top-0 z-20">
