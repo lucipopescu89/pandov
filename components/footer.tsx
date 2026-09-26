@@ -268,7 +268,9 @@ const HAND_H = 1230
  *   share, with its ring `PHONE_RING_AT` across the page and `PHONE_RING_TOP`
  *   under the top of the canvas. `RING_X` and `RING_TOP` are where the ring
  *   sits in the photograph, mirrored as it is drawn, read off its gold pixels.
- * - The words are 12px, the menus' size, at `PHONE_WORDS_Y`.
+ * - The words are 12px, the menus' size, at `PHONE_WORDS_Y`. The author had
+ *   them 18 higher than the sketch the same day, about 70px on a phone, with the
+ *   bird left where it was.
  * - The rings are `PHONE_BIRD_W` of the page across, with the bird centred
  *   `PHONE_BIRD_Y` down.
  *
@@ -286,9 +288,9 @@ const RING_TOP = 0.222
 const PHONE_HAND_W = 300
 const PHONE_RING_AT = 45
 const PHONE_RING_TOP = 12
-const PHONE_WORDS_Y = 92
+const PHONE_WORDS_Y = 74
 const PHONE_BIRD_W = 74
-const PHONE_BIRD_Y = PHONE_WORDS_Y + 40
+const PHONE_BIRD_Y = 132
 const PHONE_HAND_H = (PHONE_HAND_W * HAND_H) / HAND_W
 
 /**

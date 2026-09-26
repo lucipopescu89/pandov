@@ -99,6 +99,32 @@ const SPACE_PHONE_H_VH = 80
 const SPACE_PHONE_W_VH = SPACE_PHONE_H_VH * SPACE_ASPECT
 
 /**
+ * On a phone the three rows stand the same distance apart, the author's asking
+ * on 2026-09-26. The distance is measured from the foot of one row's object to
+ * the top of the next row's words, once each row has finished rising into place.
+ *
+ * The distance is the one from the pendant to "For Space": the white under the
+ * pendant (`BODY_FOOT` down its photograph) and the 100px Space's row opens
+ * with. That came to 131–144px on phones.
+ *
+ * From For Mind to "For Body" it was 195–297px, and not one number. For Mind
+ * is held on screen while it arrives, centred in a frame the height of the
+ * screen, so the white under it grows with the phone's height. Its photograph
+ * is `MIND_PHONE_ASPECT` as tall as the page is wide, its chess set ends
+ * `MIND_FOOT` down it, and its words take `MIND_LABEL_H` above it.
+ *
+ * `BODY_PHONE_PULL` draws For Body's row up by the difference, worked out for
+ * whatever the screen is. On a tall phone it is pulled up into the bottom of
+ * For Mind's frame while For Mind is still held, into white: 35px of it on a
+ * 390 × 844 screen, where the chess set ends 150px above.
+ */
+const MIND_PHONE_ASPECT = 1195 / 1000
+const MIND_FOOT = 0.953
+const MIND_LABEL_H = 72
+const BODY_FOOT = 0.915
+const BODY_PHONE_PULL = `calc(${+((1 - BODY_FOOT) * BODY_PHONE_H_VH - 50).toFixed(4)}vh + ${MIND_LABEL_H / 2}px + ${+((0.5 - (1 - MIND_FOOT)) * MIND_PHONE_ASPECT * 100).toFixed(4)}vw)`
+
+/**
  * Puts a CategoryLabel on a column by its letters rather than by its box. The
  * title carries 0.2em of letter-spacing after its last letter as well as
  * between them, so the letters stand 0.1em left of the centre of their own
@@ -555,6 +581,7 @@ function BodyRow() {
       style={{
         paddingTop: "100px",
         paddingBottom: "0",
+        marginTop: isMobile ? BODY_PHONE_PULL : 0,
         opacity: fade,
         transform: `translateY(${(1 - fade) * 30}px)`,
         transition: "opacity 0.1s, transform 0.1s",
