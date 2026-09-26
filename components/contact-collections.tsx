@@ -3,6 +3,11 @@
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { FadeInVideo } from "@/components/fade-in-video"
+import { AmbientMode } from "@/components/ambient-mode"
+import { STUDIO_EMAIL } from "@/lib/second-wind"
+
+/** The studio on Instagram, the author's own address (2026-09-26). */
+const INSTAGRAM_URL = "https://www.instagram.com/pandov.studio/"
 
 /**
  * Contact landing page — an exact copy of the Making page shell (full-page
@@ -65,7 +70,7 @@ export function ContactCollections() {
       />
 
       {/* Content layer on top of the video: menus + message + subscribe form */}
-      <div className="relative z-10 flex h-full flex-col">
+      <div className="ambient-fade relative z-10 flex h-full flex-col">
         {/* Top menu — transparent so the video shows through behind it */}
         <Navigation bgColor="transparent" />
 
@@ -123,11 +128,61 @@ export function ContactCollections() {
               Subscribe
             </button>
           </form>
+
+          {/* The studio's address and its Instagram, under the form, one over
+              the other as the author drew them on 2026-09-26. The address opens
+              the visitor's own mail app, as ORDER does on the pendant pages.
+
+              The page is one screen tall and hides what does not fit, so on a
+              short screen the two stand side by side, closer under the form.
+              An iPhone 8's Safari opens at about 375 × 553. Stacked, they
+              would push the bottom menu 70px off such a screen. Below 680px
+              high they share a line, and the menu keeps its place. */}
+          <div className="mt-[clamp(40px,11vh,104px)] flex flex-col items-center [@media(max-height:680px)]:mt-4 [@media(max-height:680px)]:flex-row [@media(max-height:680px)]:gap-3">
+          <a
+            href={`mailto:${STUDIO_EMAIL}`}
+            className="pointer-events-auto transition-opacity hover:opacity-50"
+            style={{
+              ...julius,
+              padding: "8px 12px",
+              fontSize: "clamp(10px, 0.62vw, 12px)",
+              letterSpacing: "0.1em",
+              color: "#fff",
+              opacity: 0.75,
+              textDecoration: "none",
+            }}
+          >
+            {STUDIO_EMAIL}
+          </a>
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Pandov on Instagram"
+            className="pointer-events-auto mt-[clamp(20px,6vh,56px)] transition-opacity hover:opacity-50 [@media(max-height:680px)]:mt-0"
+            style={{ padding: 8, color: "#fff", opacity: 0.75, lineHeight: 0 }}
+          >
+            {/* Instagram's glyph, solid, with the lens and the flash cut out
+                of it so the video shows through them. */}
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                fillRule="evenodd"
+                d="M7 1h10a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6H7a6 6 0 0 1-6-6V7a6 6 0 0 1 6-6Zm5 5.3a5.7 5.7 0 1 0 0 11.4 5.7 5.7 0 0 0 0-11.4Zm0 1.9a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Zm5.9-3.1a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z"
+              />
+            </svg>
+          </a>
+          </div>
         </div>
 
         {/* Bottom menu — transparent so the video shows through behind it */}
         <BodyFooter activeLabel="contact" mark={false} />
       </div>
+
+      {/* After a few quiet seconds everything over the film fades and the film
+          is left alone; any movement brings it back. Never while someone is in
+          the form. See AmbientMode. */}
+      <AmbientMode />
     </main>
   )
 }

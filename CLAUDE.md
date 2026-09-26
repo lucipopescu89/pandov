@@ -149,6 +149,12 @@ One exception the author has set, deliberately: `/mind/chess-set` ends on the si
 
 A second, set on 2026-09-23: `/making` and `/contact` show the bottom menu without its small mark above it (`<BodyFooter mark={false} />`). On those two pages the menu is pinned to the screen and there is nothing to scroll back to. The padding under the row is unchanged, so the words sit where they sit everywhere else. `mark` is the one prop `BodyFooter` takes besides `activeLabel`; don't grow it into a per-page styling switch.
 
+A third, set on 2026-09-26: on `/making` and `/contact` the menus and the words fade away after 6 quiet seconds, and the footage is left alone on screen. Any movement brings them back: a mouse, a touch, a scroll or a key. This is `components/ambient-mode.tsx`, and it acts on whatever the page marks `ambient-fade`. The menus fade but never move, so the rule that they hold still between pages stands.
+- It waits for the footage to be playing, not its still, so an iPhone in Low Power Mode never shows an empty page.
+- It never fades while a form field has the focus.
+- A touch that wakes the page does not also press the link that was under the finger.
+- Don't spread it to other pages unasked, and don't give the menus their own way of fading.
+
 **The metals of the pendants in three dimensions are one set, set by the author on 2026-09-25, and every pendant wears it.** There is one look for each metal and finish or karat the order panel offers. The references were the author's screenshots of Sculpteo's previews; where there was none, the author said what to follow. Colours are the metal's reflectance, in linear RGB:
 
 - **Brass.** Natural is Sculpteo's Raw: satin olive (0.66, 0.57, 0.26), roughness 0.42, full grain. Polished is their Mirror Polished (0.90, 0.78, 0.38), roughness 0.07.
