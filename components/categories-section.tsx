@@ -10,17 +10,20 @@ const CATEGORY_IMAGE_OPACITY = 0.85
  * Where each object's own axis falls across its photograph, read off the
  * pixels: the midpoint of the dark shape, row by row, through the figure. The
  * pendant's is a hair left of the frame's centre and steady from the ring to
- * the tip; the sculpture's runs from 0.454 through the body to 0.458 at the
- * head. It is these lines, not the middle of each image, that stand on the
- * columns. BODY_RING is the left edge of the pendant's ring, the part of it
- * that reaches furthest towards the words. Re-measure if either photograph is
- * replaced.
+ * the tip. The sculpture's is 0.448. It runs from 0.446 through the body to
+ * 0.454 at the head, in the author's photograph of 2026-09-26, which replaced
+ * one where it stood at 0.456. It is these lines, not the middle of each image,
+ * that stand on the columns. BODY_RING is the left edge of the pendant's ring,
+ * the part of it that reaches furthest towards the words. Re-measure if either
+ * photograph is replaced.
  */
 const BODY_ASPECT = 1026 / 1868
 const BODY_AXIS = 0.495
 const BODY_RING = 0.203
-const SPACE_ASPECT = 1536 / 1024
-const SPACE_AXIS = 0.456
+const SPACE_W = 2294
+const SPACE_H = 1600
+const SPACE_ASPECT = SPACE_W / SPACE_H
+const SPACE_AXIS = 0.448
 
 /** The pendant is drawn 60vh high; this is its width at that height. */
 const BODY_H_VH = 60
@@ -71,6 +74,29 @@ const COLUMN_RIGHT = `calc(50% + ${COLUMN_OFFSET})`
  */
 const SPACE_W_VH = 100 * SPACE_ASPECT
 const SPACE_FROM = 0.125
+
+/**
+ * On a phone, For Body and For Space stand over their objects, as For Mind
+ * always has. The author asked for it on 2026-09-26, after For Body had sat
+ * beside its pendant and For Space over the right of its room. The words are
+ * centred, and the object is centred under them.
+ *
+ * `PHONE_GAP` runs from the foot of "→ Explore" to the top of the object
+ * itself, not of its photograph. The photographs leave different white above
+ * their objects, so each margin takes off its own: the pendant starts
+ * `BODY_TOP` down its photograph, the sculpture `SPACE_TOP`.
+ *
+ * The pendant keeps the 55vh it had beside its words. The room is shown
+ * `SPACE_PHONE_H_VH` high, through a window as wide as the phone, with the
+ * sculpture's axis on the centre line. There it stands about 69vh tall, near
+ * the 86vh it had when the room filled the screen and the words sat on it.
+ */
+const PHONE_GAP = 60
+const BODY_TOP = 0.048
+const BODY_PHONE_H_VH = 55
+const SPACE_TOP = 0.024
+const SPACE_PHONE_H_VH = 80
+const SPACE_PHONE_W_VH = SPACE_PHONE_H_VH * SPACE_ASPECT
 
 /**
  * Puts a CategoryLabel on a column by its letters rather than by its box. The
@@ -258,40 +284,40 @@ function SpaceRow() {
         ref={rowRef}
         style={{
           width: "100%",
-          height: "100vh",
+          paddingTop: "100px",
           background: "#fff",
-          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
           opacity: fadeProgress,
           transform: `translateY(${(1 - fadeProgress) * 30}px)`,
           transition: "opacity 0.1s, transform 0.1s",
-          overflow: "hidden",
         }}
       >
-        {/* Mobile: full-height image with text overlay on bottom-right */}
-        <Image
-          src="/images/cat-space.png"
-          alt="For Space sculpture"
-          fill
-          sizes="100vw"
-          style={{ objectFit: "cover", objectPosition: "center center", opacity: CATEGORY_IMAGE_OPACITY }}
-        />
-        {/* Right gradient for text readability */}
-        <div style={{ position: "absolute", inset: 0, left: "auto", right: 0, width: "60%", background: "linear-gradient(to left, rgba(255,255,255,0.95), transparent)", pointerEvents: "none" }} />
-        {/* Text overlay — right side, vertically centered, moved up 40px */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            width: "55%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transform: "translateY(-70px)",
-          }}
-        >
-          <CategoryLabel title="For Space" align="center" dark href="/space" />
+        {/* The words on white now, over the room rather than on it, so they
+            take For Body's grey rather than the darker ink they needed on the
+            photograph. See PHONE_GAP. */}
+        <div style={{ marginBottom: `calc(${PHONE_GAP}px - ${+(SPACE_TOP * SPACE_PHONE_H_VH).toFixed(3)}vh)` }}>
+          <CategoryLabel title="For Space" align="center" href="/space" />
+        </div>
+        {/* The window onto the room, the sculpture's axis on the centre line. */}
+        <div style={{ position: "relative", width: "100%", height: `${SPACE_PHONE_H_VH}vh`, overflow: "hidden" }}>
+          <Image
+            src="/images/cat-space.avif"
+            alt="For Space sculpture"
+            width={SPACE_W}
+            height={SPACE_H}
+            sizes={`${+SPACE_PHONE_W_VH.toFixed(3)}vh`}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: `calc(50% - ${+(SPACE_AXIS * SPACE_PHONE_W_VH).toFixed(3)}vh)`,
+              height: "100%",
+              width: `${+SPACE_PHONE_W_VH.toFixed(3)}vh`,
+              maxWidth: "none",
+              opacity: CATEGORY_IMAGE_OPACITY,
+            }}
+          />
         </div>
       </div>
     )
@@ -324,10 +350,10 @@ function SpaceRow() {
         }}
       >
         <Image
-          src="/images/cat-space.png"
+          src="/images/cat-space.avif"
           alt="For Space sculpture"
-          width={1536}
-          height={1024}
+          width={SPACE_W}
+          height={SPACE_H}
           sizes={`${SPACE_W_VH}vh`}
           style={{
             position: "absolute",
@@ -535,20 +561,18 @@ function BodyRow() {
       }}
     >
       {isMobile ? (
-        /* Mobile: image slightly larger, shifted left; text shifted right — fits on one screen */
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginRight: "16px", minWidth: "100px", transform: "translateX(30px)" }}>
+        /* Phone: the words over the pendant, both centred. See PHONE_GAP. */
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ marginBottom: `calc(${PHONE_GAP}px - ${+(BODY_TOP * BODY_PHONE_H_VH).toFixed(3)}vh)` }}>
             <CategoryLabel title="For Body" align="center" href="/body" />
           </div>
-          <div style={{ transform: "translateX(-40px)", flexShrink: 0 }}>
-            <Image
-              src="/images/cat-body.jpg"
-              alt="Body sculpture — For Body"
-              width={600}
-              height={800}
-              style={{ width: "auto", height: "55vh", objectFit: "contain", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
-            />
-          </div>
+          <Image
+            src="/images/cat-body.jpg"
+            alt="Body sculpture — For Body"
+            width={1026}
+            height={1868}
+            style={{ width: "auto", height: `${BODY_PHONE_H_VH}vh`, display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
+          />
         </div>
       ) : (
         /* Desktop: the pendant's axis on the right column, the words on the
