@@ -8,8 +8,10 @@ import { ChessSetGallery } from "@/components/chess-set-gallery"
 import { ChessSetOrnament } from "@/components/chess-set-ornament"
 import { ChessSetStatement } from "@/components/chess-set-statement"
 import { ChessPieces } from "@/components/chess-pieces"
+import { MoonMandala } from "@/components/moon-mandala"
 import { ScrollFade } from "@/components/scroll-fade"
 import { SeamDrops } from "@/components/seam-drops"
+import type { MoonRing } from "@/lib/moon-mandala"
 
 export const metadata = {
   title: "Chess Set — PANDOV",
@@ -77,6 +79,67 @@ const CLOUD_BANK = (() => {
     }
   return bank
 })()
+
+/**
+ * The mandala's rings and how each moves at rest, from the author's marked
+ * copy of it (D:\PANDOV\1_MIND\0_PANDOV CHESS\Explicativ Moon Mandala.jpg,
+ * 2026-09-27). The colour each was marked in is in the comment. A band is a
+ * distance from the centre in the mandala's units, taken to the middle of each
+ * outline; the moon's rim is at 63.5, the outermost chevron at 181. Rings the
+ * author did not mark hold still, and all of them take part in what the drop
+ * sets off (`components/moon-mandala.tsx`).
+ *
+ * Spin is degrees a second, positive clockwise. They began at Mother Nature's
+ * paces, a turn in four to six minutes, and were made half as fast again when
+ * the author found them slow (the same evening); the dark blue ticks were then
+ * quickened once more on their own. The yellow dashes turn as the red chevrons
+ * do, a little slower, as asked.
+ *
+ * Everything else that moves breathes: copies of the ring come up where it
+ * sits and leave it, fading, every `breath` seconds, each ring at its own
+ * pace so that they come apart and meet again. The white rings on the moon
+ * breathe too, the author's second asking: the rays and the outer rhombi
+ * grow out of themselves, the inner rhombi shrink into themselves, and the
+ * pink teardrops drift in, all toward and away from the moon's centre in
+ * turn. The orange and light blue lines lengthen at both ends as they breathe;
+ * they did so with the scroll at first, and the author asked for a breath.
+ * Asked the next time for more of both, the white rings now go twice as far
+ * and a third faster, and the lines three times as far, faster, so that the
+ * breathing reads from across a room and not only up close.
+ */
+const MOON_RINGS: MoonRing[] = [
+  // The sun of rays at the centre, breathing out.
+  { key: "rays", bands: [[0, 20]], motion: { scale: 0.4, breath: 3.4 } },
+  // The two rings of rhombi round it: the inner breathing in, the outer out.
+  { key: "rhombi-in", bands: [[20, 31]], motion: { scale: -0.26, breath: 3.8 } },
+  { key: "rhombi-out", bands: [[31, 45]], motion: { scale: 0.26, breath: 4.2 } },
+  // Pink: the inner row of teardrops, on the moon, breathing in toward its centre.
+  { key: "tears-in", bands: [[45, 63.5]], motion: { drift: -6, breath: 5 } },
+  // Purple: the outer row, just off the moon, breathing out away from it.
+  { key: "tears-out", bands: [[63.5, 75]], motion: { drift: 6, breath: 5.6 } },
+  // Dark blue: the fine ticks, anticlockwise, the quickest of the turning rings.
+  // A full 180 since the cross came out and the four it displaced were put back.
+  { key: "ticks", bands: [[80, 95]], motion: { spin: -4.5 } },
+  { key: "spokes", bands: [[95, 110]], motion: {} },
+  { key: "squares", bands: [[110, 119]], motion: {} },
+  // Light blue: the long lines, lengthening at both ends, less than the orange.
+  // Thirty-six of them, one every 10°: the four at the cardinal points stand
+  // where the cross's bars stood until the author took the cross out
+  // (scripts/chess-mandala.mjs), and breathe with the rest.
+  { key: "long-lines", bands: [[119, 127]], motion: { stretch: 1.1, breath: 3.6 } },
+  // Orange: the dense ring of lines, lengthening at both ends. The one short
+  // line out at 143, where a line of this ring and a dash are both missing,
+  // holds its place with them.
+  { key: "lines", bands: [[127, 146]], motion: { stretch: 2.2, breath: 3.2 } },
+  // Yellow: the short dashes, anticlockwise, a little slower than the red.
+  { key: "dashes", bands: [[146, 152]], motion: { spin: -1.35 } },
+  { key: "studs", bands: [[152, 160]], motion: {} },
+  // Red: both rows of chevrons, anticlockwise, with the small dots that sit in
+  // their crooks, which go where their chevrons go.
+  { key: "chevrons", bands: [[160, 168], [175, 999]], motion: { spin: -1.8 } },
+  // Green: the ring of dots between them, clockwise.
+  { key: "dots", bands: [[168, 175]], motion: { spin: 2.25 } },
+]
 
 export default async function ChessSetPage() {
   // The closing ornament is read and ranked here, on the server, so the wave of
@@ -232,15 +295,45 @@ export default async function ChessSetPage() {
            Its grey lines are as fine as Second Wind's, at every width: the
            author asked for them to match. The white ones on the moon are a
            little over twice that, which the author asked for too, so they
-           hold against the pale disc. The figures are in the script. */
+           hold against the pale disc. The figures are in the script.
+
+           It moves (2026-09-27): components/moon-mandala.tsx draws it on a
+           canvas laid over the same square and sets its rings going, and the
+           file is shown as a plain picture only until the canvas has read it,
+           or for good where the reader has asked for less motion. The canvas
+           covers the square down to the cut, and no further. */
         .chess-mandala {
           position: absolute;
           left: -0.29%;
           top: -67.92%;
           width: 100.59%;
-          max-width: none;
-          height: auto;
+          aspect-ratio: 1 / 1;
           clip-path: inset(0 0 33.8% 0);
+          pointer-events: none;
+        }
+        .chess-mandala-image {
+          display: block;
+          width: 100%;
+          height: 100%;
+          max-width: none;
+        }
+        .chess-mandala-canvas {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 66.2%;
+        }
+        /* The strip the dark drop falls down, from the seam to the moon's
+           centre; the component sets its top and height, which are measured.
+           It hangs in the frame after the mandala, so the drop passes over the
+           mandala and under the words. */
+        .chess-moon-drop {
+          position: absolute;
+          left: calc(50% - 20px);
+          top: 0;
+          width: 40px;
+          height: 0;
           pointer-events: none;
         }
 
@@ -323,45 +416,49 @@ export default async function ChessSetPage() {
             animation: none;
           }
         }
-        /* The rest of the poem, after the seam's pair, read down the moon:
-           LIFT AND GRAVITY; THE VIOLENCE OF THE IMPULSE / THE QUIET OF THE
-           COMPOSURE; BETWEEN; A QUIET WAITING / FOR THE RIGHT STRIKE. The
-           author's text of 2026-09-27, which replaced "Between / A quiet
-           equilibrium" here and the claim and answer under the ornament.
+        /* The rest of the poem, after the seam's pair: LIFT AND GRAVITY; THE
+           VIOLENCE OF THE IMPULSE / THE QUIET OF THE COMPOSURE; BETWEEN; A
+           QUIET WAITING / FOR THE RIGHT STRIKE. The author's text of
+           2026-09-27, which replaced "Between / A quiet equilibrium" here and
+           the claim and answer under the ornament.
 
-           The four stanzas stand an equal breath apart down the part of the
-           moon the clouds leave showing: LIFT AND GRAVITY 14% down, just
-           inside the disc's top, and the last line ending at 54%, clear of
-           the highest cloud at 57.5%. BETWEEN falls between the two couplets,
-           where it is said. It stood on the disc's own centre (45.3%) until
-           the cloud bank rose over the lowest third of the moon, and the
-           poem was drawn up with it. The last stanza stood under the row of
-           pieces, in their reflection, until the pieces came out of the
-           photograph.
+           It stood on the moon, the four stanzas an equal breath apart down
+           the part the clouds leave showing, until the mandala began to move
+           there and be inked black over it. The same evening the author asked
+           for it to come off the moon and go down into the white of the
+           clouds, drawn closer together to fit. So the poem follows the moon
+           in the flow of the page, pulled up by its margin until its first
+           line stands 77% of the way down the moon's canvas: under the disc,
+           which the clouds hide from 57.5%, and in the white of their bodies
+           and the veil (the canvas is 44.42% of the width tall, and the 23%
+           of it left below 77% is 10.2% of the width). Being in the flow, it
+           takes the room it needs under the canvas on a narrow screen, where
+           a line is a larger share of the moon. It is positioned only so that
+           it paints over the clouds and the veil.
 
-           A couplet's lines are 2.5em apart, baseline to baseline, and its
-           stanza's neighbours a good deal further, so a pair is read as one
-           thought. Every pair on the page but the seam's, which the edge of
-           the photograph splits on purpose, keeps that figure. */
+           Drawn together: a couplet's lines are 2.1em apart, baseline to
+           baseline, where every other pair on the page keeps 2.5, and the
+           stanzas 3.4em. Its padding keeps the board's pair 120px away, as
+           far as the phone keeps it. A phone still sets the poem round its
+           blown-up moon, below. */
         .chess-moon-media .chess-line {
-          position: absolute;
-          left: 0;
-          right: 0;
           color: #8a8a8a;
           line-height: 1;
         }
         .chess-moon-media .chess-line span {
           display: block;
         }
-        .chess-moon-media .chess-line span + span {
-          margin-top: 1.5em;
+        .moon-poem {
+          position: relative;
+          margin-top: -10.2%;
+          padding-bottom: 80px;
         }
-        .chess-moon-media .moon-lift { top: 14%; }
-        /* 14% to 54% holds four stanzas (9em of type) and three breaths of
-           13.33% − 3em each. */
-        .chess-moon-media .moon-impulse { top: calc(27.33% - 2em); }
-        .chess-moon-media .moon-between { top: calc(40.67% - 1.5em); }
-        .chess-moon-media .moon-waiting { top: calc(54% - 3.5em); }
+        .moon-poem .chess-line + .chess-line {
+          margin-top: 2.4em;
+        }
+        .moon-poem .chess-line span + span {
+          margin-top: 1.1em;
+        }
 
         /* --- Board ------------------------------------------------------ */
         .chess-board-section {
@@ -465,6 +562,25 @@ export default async function ChessSetPage() {
             --air: max(32px, calc((78svh - 69.9vw - 116px) / 5));
             --moon-lift: calc(var(--air) + 35px - 17.59vw);
           }
+          /* Here the stanzas are placed one by one in the moon's block, not
+             stacked under the moon as a computer has them, and keep the 2.5em
+             couplets the breaths above were worked out with. */
+          .moon-poem {
+            position: static;
+            margin-top: 0;
+            padding-bottom: 0;
+          }
+          .chess-moon-media .chess-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+          }
+          .moon-poem .chess-line + .chess-line {
+            margin-top: 0;
+          }
+          .moon-poem .chess-line span + span {
+            margin-top: 1.5em;
+          }
           .chess-moon-media .moon-lift { top: calc(26px + var(--air)); }
           .chess-moon-media .moon-impulse { top: calc(26px + 2 * var(--air) + 10px); }
           .chess-moon-media .moon-between { top: calc(26px + 3 * var(--air) + 45px); }
@@ -529,14 +645,7 @@ export default async function ChessSetPage() {
               height={1719}
               className="chess-moon-image"
             />
-            <Image
-              src="/images/chess-set/mandala.svg"
-              alt=""
-              aria-hidden="true"
-              width={800}
-              height={800}
-              className="chess-mandala"
-            />
+            <MoonMandala rings={MOON_RINGS} />
             <div className="chess-cloud-bank" aria-hidden="true">
               <div className="chess-cloud-track">
                 {CLOUD_BANK.map(({ n, w, h, size, top, flip, left }) => (
@@ -558,16 +667,18 @@ export default async function ChessSetPage() {
             </div>
             <div className="chess-cloud-veil" aria-hidden="true" />
           </div>
-          <p className="chess-line moon-lift">Lift and gravity</p>
-          <p className="chess-line moon-impulse">
-            <span>The violence of the impulse</span>
-            <span>The quiet of the composure</span>
-          </p>
-          <p className="chess-line moon-between">Between</p>
-          <p className="chess-line moon-waiting">
-            <span>A quiet waiting</span>
-            <span>For the right strike</span>
-          </p>
+          <div className="moon-poem">
+            <p className="chess-line moon-lift">Lift and gravity</p>
+            <p className="chess-line moon-impulse">
+              <span>The violence of the impulse</span>
+              <span>The quiet of the composure</span>
+            </p>
+            <p className="chess-line moon-between">Between</p>
+            <p className="chess-line moon-waiting">
+              <span>A quiet waiting</span>
+              <span>For the right strike</span>
+            </p>
+          </div>
         </div>
       </section>
 

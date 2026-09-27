@@ -18,6 +18,31 @@
 // It is kept as a file, not inlined into the page: inlined, it would be sent
 // twice on every visit (in the HTML and again in the React payload, see
 // CLAUDE.md), and as a file it is cached like any image.
+//
+// One change to the drawing itself, the author's asking of 2026-09-27: the
+// cross is gone. Its four long bars, at the cardinal points, from 74 to 155
+// units out, are left out, and in each one's place stands a long line of the
+// ring of long lines around it (the ring marked light blue on the author's
+// copy, 112–132 units out). That ring is one line every 10° with exactly the
+// four cardinal ones missing, where the bars crossed it, and the ring of
+// dense lines outside it leaves gaps there for it as it does at every tenth
+// degree; so the four new lines complete it, 36 evenly round. Each is its
+// nearest neighbour in the ring turned onto the bar's angle. On the page they
+// are that ring's, and breathe with it.
+//
+// The bars had also crossed the ring of fine ticks (dark blue on the copy),
+// one every 2°, which left out the four at the cardinal points for them.
+// Those four are put back the same way, each its neighbour turned into the
+// empty place. The dashes (yellow) lack one every 10° as well, but at every
+// tenth degree, as the dense lines do: that is their own rhythm, not the
+// cross's, and it is left.
+//
+// The same evening the author's own file was edited the same way, with the
+// author's leave, and the file as exported was kept beside it as
+// "MANDALA MOON (original cu cruce).svg". Run on the edited file, both steps
+// find nothing to do, and the result matches what they made of the original
+// to a hundredth of a unit. They stay, so that a fresh export from the
+// author's 3D file, which will have the cross again, comes out the same.
 
 import fs from "node:fs"
 
@@ -52,9 +77,84 @@ const STROKE = ((0.5 / 1920) / (0.15502 / RIM)).toFixed(3)
  */
 const STROKE_ON = 0.25
 
+/** A bar of the cross is 80 units long, and nothing else in the drawing comes near half that. */
+const BAR_LENGTH = 60
+/** The ring of long lines: each 20.4 units long, its middle 122 units out. */
+const LONG_LINE = { length: [15, 30], r: [110, 135] }
+/** The ring of fine ticks: each 1.6 units long, its middle 87 units out, one every 2°. */
+const TICK = { length: [1.2, 2], r: [85, 89], every: 2 }
+
 const svg = fs.readFileSync(src, "utf8")
 const viewBox = svg.match(/viewBox="([^"]+)"/)[1]
-const segments = [...svg.matchAll(/M(-?[\d.]+) (-?[\d.]+) L(-?[\d.]+) (-?[\d.]+)/g)].map((m) => m.slice(1, 5).map(Number))
+const exported = [...svg.matchAll(/M(-?[\d.]+) (-?[\d.]+) L(-?[\d.]+) (-?[\d.]+)/g)].map((m) => m.slice(1, 5).map(Number))
+
+/**
+ * The export's segments gathered back into the outlines they draw: each
+ * outline's segments come one after another, each starting where the last
+ * ended, until one comes back to the first.
+ */
+function outlinesOf(list) {
+  const key = (x, y) => `${x.toFixed(3)} ${y.toFixed(3)}`
+  const outlines = []
+  let current = null
+  for (const s of list) {
+    const from = key(s[0], s[1]), to = key(s[2], s[3])
+    if (current && !current.closed && from === current.end) {
+      current.segments.push(s)
+      current.end = to
+      current.closed = to === current.start
+    } else {
+      current = { segments: [s], start: from, end: to, closed: false }
+      outlines.push(current)
+    }
+  }
+  for (const o of outlines) {
+    const n = o.segments.length
+    const cx = o.segments.reduce((sum, s) => sum + s[0], 0) / n
+    const cy = o.segments.reduce((sum, s) => sum + s[1], 0) / n
+    o.r = Math.hypot(cx, cy)
+    o.angle = Math.atan2(cy, cx)
+    const ux = Math.cos(o.angle), uy = Math.sin(o.angle)
+    const along = o.segments.map((s) => s[0] * ux + s[1] * uy)
+    o.length = Math.max(...along) - Math.min(...along)
+  }
+  return outlines
+}
+
+/** An outline turned about the centre by `turn` radians, as a new list of segments. */
+function turned(outline, turn) {
+  const c = Math.cos(turn), s = Math.sin(turn)
+  const at = (x, y) => [x * c - y * s, x * s + y * c]
+  return outline.segments.map(([x1, y1, x2, y2]) => [...at(x1, y1), ...at(x2, y2)])
+}
+
+/** The shortest way round from one angle to another, in radians. */
+const apart = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b))
+
+const within = (o, { length, r }) => o.length > length[0] && o.length < length[1] && o.r > r[0] && o.r < r[1]
+/** The member of `ring` nearest to `angle`, turned onto it. */
+const standIn = (ring, angle) => {
+  const nearest = ring.reduce((a, b) => (Math.abs(apart(b.angle, angle)) < Math.abs(apart(a.angle, angle)) ? b : a))
+  return turned(nearest, apart(angle, nearest.angle))
+}
+
+const outlines = outlinesOf(exported)
+const bars = outlines.filter((o) => o.length > BAR_LENGTH)
+const longLines = outlines.filter((o) => within(o, LONG_LINE))
+const ticks = outlines.filter((o) => within(o, TICK))
+if (bars.length > 0 && longLines.length === 0) {
+  console.error(`found the cross's ${bars.length} bars but no ring of long lines to stand in for them`)
+  process.exit(1)
+}
+// In each bar's place, its nearest long line turned onto the bar's angle.
+const standIns = bars.map((bar) => standIn(longLines, bar.angle))
+// And a tick in every place the ring of ticks has none.
+const step = (TICK.every * Math.PI) / 180
+const taken = new Set(ticks.map((t) => Math.round(t.angle / step)).map((k) => ((k % 180) + 180) % 180))
+const tickIns = []
+for (let k = 0; k < Math.round((2 * Math.PI) / step); k++) if (!taken.has(k)) tickIns.push(standIn(ticks, k * step))
+
+const segments = [...outlines.filter((o) => !bars.includes(o)).flatMap((o) => o.segments), ...standIns.flat(), ...tickIns.flat()]
 
 const n = (v) => {
   const s = v.toFixed(2).replace(/\.?0+$/, "")
@@ -97,4 +197,8 @@ const body =
   `<path stroke="${ON}" stroke-width="${STROKE_ON}" d="${draw(on)}"/>` +
   `</svg>\n`
 fs.writeFileSync(out, body)
-console.log(`${out}: ${segments.length} segments, ${on.length} on the moon, ${off.length} off it, ${(body.length / 1024).toFixed(0)}KB (from ${(svg.length / 1024).toFixed(0)}KB)`)
+console.log(
+  `${out}: ${segments.length} segments, ${on.length} on the moon, ${off.length} off it, ` +
+    `the cross's ${bars.length} bars replaced by ${standIns.length} long lines, ${tickIns.length} ticks put back, ` +
+    `${(body.length / 1024).toFixed(0)}KB (from ${(svg.length / 1024).toFixed(0)}KB)`,
+)
