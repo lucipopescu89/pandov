@@ -16,6 +16,68 @@ export const metadata = {
   description: "Chess Set — For Mind collection",
 }
 
+/** The author's four clouds, at the pixel sizes `scripts/chess-clouds.mjs` cuts them to. */
+const CLOUD_PX: Record<number, { w: number; h: number }> = {
+  1: { w: 855, h: 419 },
+  2: { w: 773, h: 411 },
+  3: { w: 874, h: 378 },
+  4: { w: 840, h: 372 },
+}
+/**
+ * One turn of the bank, left to right: which cloud, how wide it is drawn and
+ * where its top stands (shares of the moon's canvas), whether it is turned
+ * over, and how far on the next one starts. Six clouds out of four, two of
+ * them mirrored, none the same size, at uneven heights and spacings, so the
+ * eye finds no row of equals and no beat in it. The author found the first
+ * bank (four clouds, 16–19% across, evenly spaced) small and unnatural.
+ *
+ * Three were then made larger on the author's asking, each by its own
+ * figure, read as the size it ends at: the second ×1.3 (29 → 37.7), the
+ * third ×1.7 (21 → 35.7, the smallest made the tallest) and the fifth ×1.5
+ * (22 → 33). Those three stand a little higher than the rest.
+ *
+ * Then the whole bank was raised 7% of the canvas, again on the author's
+ * asking: the tops now stand at 57.5–60%, over the lowest third of the disc,
+ * and the poem above was drawn up to keep clear of them.
+ *
+ * Then every cloud was made 2.5 times the size (CLOUD_SCALE): 60–94% of the
+ * canvas across, each nearly as tall as it. The tops stay where they were; the
+ * bodies run far on under the moon. The spacings did not grow with them but
+ * shrank, to 0.8 of the first bank's (CLOUD_SPREAD). A cloud this size drops
+ * steeply either side of its tower, and with towers far apart the moon's
+ * lower rim showed in the valleys between them. Walking the rim through a
+ * whole turn, it showed 16% of the time with the spacings at 1.5, 3% at 1,
+ * and at 0.8 almost never (0.2%). The veil, raised to meet the clouds'
+ * shoulders, fills what valleys are left with white.
+ */
+const CLOUD_TURN = [
+  { n: 1, size: 24, top: 59.5, flip: false, next: 14 },
+  { n: 3, size: 37.7, top: 57.5, flip: false, next: 19 },
+  { n: 2, size: 35.7, top: 57.5, flip: false, next: 17 },
+  { n: 4, size: 26, top: 60, flip: false, next: 15 },
+  { n: 1, size: 33, top: 58, flip: true, next: 16 },
+  { n: 3, size: 27, top: 58.5, flip: true, next: 16 },
+]
+const CLOUD_SCALE = 2.5
+const CLOUD_SPREAD = 0.8
+/**
+ * The bank is the turn twice over. One turn is 97% × 0.8 = 77.6% of the
+ * canvas, the distance the drift's keyframes carry it, so when it starts again
+ * every cloud stands where its twin a turn ahead stood. It begins 85% left of
+ * the frame, so at either end of the drift it still covers the canvas's whole
+ * width.
+ */
+const CLOUD_BANK = (() => {
+  const bank = []
+  let left = -85
+  for (let pass = 0; pass < 2; pass++)
+    for (const cloud of CLOUD_TURN) {
+      bank.push({ ...cloud, ...CLOUD_PX[cloud.n], size: cloud.size * CLOUD_SCALE, left })
+      left += cloud.next * CLOUD_SPREAD
+    }
+  return bank
+})()
+
 export default async function ChessSetPage() {
   // The closing ornament is read and ranked here, on the server, so the wave of
   // light has its order before the page is ever painted. See `lib/radiant.ts`.
@@ -114,7 +176,34 @@ export default async function ChessSetPage() {
         }
         .chess-moon-media {
           position: relative;
-          margin-top: 40px;
+          /* 40px once. The author asked for 250px more between the moon and
+             the dark photograph above it (2026-09-27). FALL IN HEAVEN keeps
+             its place 170px under the edge, so the room opens between that
+             line and the moon, where the mandala's upper half now shows. The
+             phone keeps its own 24px: there the stanzas stand in this room.
+
+             Then the author asked that the mandala not touch the photograph.
+             It is drawn to the moon's scale, so the higher it reaches grows
+             with the page's width: its topmost dots stand 24.1% of the width
+             above the moon's canvas, which starts 132px plus this margin
+             under the edge. 290px keeps them clear up to about 1600px wide;
+             past that the margin grows with the page, so the dots always
+             stop 60px short of the edge. */
+          margin-top: max(290px, calc(24.2vw - 72px));
+        }
+        /* NASA's full moon, alone, pale and grey as the moon it replaced
+           (the author's, with the row of pieces and a dial drawn over it,
+           which the author took out on 2026-09-27). It is made by
+           scripts/chess-moon.mjs, which records the source and why it is
+           toned and sized as it is. It stands where the old moon stood, in a
+           canvas of the old one's shape, so the positions below are the old
+           disc's: top 10.5% down, centre 45.3%, bottom 80.2%.
+
+           The frame holds the moon and the clouds that cross it, so the
+           clouds are placed on the moon itself, in shares of its canvas,
+           however the phone blows it up. */
+        .chess-moon-frame {
+          position: relative;
         }
         .chess-moon-image {
           width: 100%;
@@ -122,19 +211,133 @@ export default async function ChessSetPage() {
           display: block;
           opacity: 0.8;
         }
+
+        /* The author's mandala, over the moon and under the clouds
+           (2026-09-27): white where it lies on the moon, a grey as light as
+           the moon off it. scripts/chess-mandala.mjs makes it, and splits
+           the colours at the rim.
+
+           Its size is the author's picture of the two together: the moon's
+           edge falls between its two rings of teardrops, at 63.5 of its
+           units, so a unit is the moon's radius (15.5% of the canvas's
+           width) over 63.5, and its 412-unit box is 100.59% of the canvas
+           wide, centred on the moon's centre (50%, 45.3%).
+
+           Upward it runs until the page cuts it: the section's top edge,
+           where the dark photograph ends. Downward the clouds are its limit:
+           it is cut off at 82% of the canvas, where the veil under the
+           clouds turns solid white, so on a phone it never shows under the
+           bank. 82% is 33.8% of the way up its own box.
+
+           Its grey lines are as fine as Second Wind's, at every width: the
+           author asked for them to match. The white ones on the moon are a
+           little over twice that, which the author asked for too, so they
+           hold against the pale disc. The figures are in the script. */
+        .chess-mandala {
+          position: absolute;
+          left: -0.29%;
+          top: -67.92%;
+          width: 100.59%;
+          max-width: none;
+          height: auto;
+          clip-path: inset(0 0 33.8% 0);
+          pointer-events: none;
+        }
+
+        /* A bank of cloud at the moon's foot, drifting left to right, so the
+           moon seems to rise from behind it (the author's asking, and the
+           author's four clouds, 2026-09-27; scripts/chess-clouds.mjs cuts
+           them out). The bank hides the lowest third of the disc: its tops
+           stand at 57.5–60% of the canvas and the disc ends at 80.2%, and
+           its bodies and the veil under them hide the rest, so the moon's
+           lower rim is never seen.
+
+           One turn of the bank (CLOUD_TURN, above the page) is laid out
+           twice in a row; the row moves right by one turn, 77.6%, and
+           starts again, where it looks exactly as it did. The keyframes'
+           77.6% and the turn's spacings are one figure and change together.
+           The duration keeps the pace the author approved, about 7px a
+           second on a 1440 screen, so a turn takes two and a half minutes. Only
+           the track's transform moves, which the browser does on its own
+           layer without repainting anything.
+
+           The bank runs the canvas's whole width and is solid white: the
+           author asked for clouds that are not see-through. It had been faded
+           out by a mask a little beyond the disc on either side, and at its
+           ends it read as mist. It is clipped to the canvas, which on a phone
+           keeps the clouds' bodies from showing under it.
+
+           Under the bank, a veil of white (the author's asking, the same
+           day) takes the clouds into the white of the page below, so the
+           bank has no underside and the moon's section runs on into the
+           board's without a seam. It begins at 66%, at the shoulders of the
+           clouds, and is solid white by 82%, just under the disc, so that
+           where two towers part, the moon's foot goes down into white mist
+           rather than showing its edge; eased, not straight: a straight ramp
+           read as a band. It stands still over the moving clouds, and
+           nothing under it is repainted as they pass.
+
+           The words stay on top of it all. */
+        .chess-cloud-bank {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          pointer-events: none;
+        }
+        .chess-cloud-track {
+          position: absolute;
+          inset: 0;
+          animation: chess-cloud-drift 152s linear infinite;
+          will-change: transform;
+        }
+        .chess-cloud-veil {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 66%;
+          bottom: 0;
+          pointer-events: none;
+          /* Solid at 47% of its height: 82% of the canvas. */
+          background: linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.15) 10%,
+            rgba(255, 255, 255, 0.38) 20%,
+            rgba(255, 255, 255, 0.65) 30%,
+            rgba(255, 255, 255, 0.88) 40%,
+            #fff 47%
+          );
+        }
+        .chess-cloud-track img {
+          position: absolute;
+          max-width: none;
+          height: auto;
+        }
+        @keyframes chess-cloud-drift {
+          from { transform: translateX(0); }
+          to { transform: translateX(77.6%); }
+        }
+        /* Held still, where the reader has asked for less motion. */
+        @media (prefers-reduced-motion: reduce) {
+          .chess-cloud-track {
+            animation: none;
+          }
+        }
         /* The rest of the poem, after the seam's pair, read down the moon:
            LIFT AND GRAVITY; THE VIOLENCE OF THE IMPULSE / THE QUIET OF THE
            COMPOSURE; BETWEEN; A QUIET WAITING / FOR THE RIGHT STRIKE. The
            author's text of 2026-09-27, which replaced "Between / A quiet
            equilibrium" here and the claim and answer under the ornament.
 
-           BETWEEN stands on the moon's own centre. The disc was measured off
-           the photograph (top 10.5% down, centre 45.3%), and the couplet is
-           set midway between BETWEEN and LIFT AND GRAVITY, so the three
-           stanzas keep an equal breath between them at any width. The last
-           stanza is under the pieces, in their reflection, where the marble
-           is nearly white (84–94% down): the row of pieces stands between
-           BETWEEN and the waiting, and is the waiting.
+           The four stanzas stand an equal breath apart down the part of the
+           moon the clouds leave showing: LIFT AND GRAVITY 14% down, just
+           inside the disc's top, and the last line ending at 54%, clear of
+           the highest cloud at 57.5%. BETWEEN falls between the two couplets,
+           where it is said. It stood on the disc's own centre (45.3%) until
+           the cloud bank rose over the lowest third of the moon, and the
+           poem was drawn up with it. The last stanza stood under the row of
+           pieces, in their reflection, until the pieces came out of the
+           photograph.
 
            A couplet's lines are 2.5em apart, baseline to baseline, and its
            stanza's neighbours a good deal further, so a pair is read as one
@@ -154,18 +357,17 @@ export default async function ChessSetPage() {
           margin-top: 1.5em;
         }
         .chess-moon-media .moon-lift { top: 14%; }
-        .chess-moon-media .moon-impulse { top: calc(29.65% - 1.5em); }
-        .chess-moon-media .moon-between { top: calc(45.3% - 0.5em); }
-        .chess-moon-media .moon-waiting { bottom: calc(11.5% - 1.75em); }
+        /* 14% to 54% holds four stanzas (9em of type) and three breaths of
+           13.33% − 3em each. */
+        .chess-moon-media .moon-impulse { top: calc(27.33% - 2em); }
+        .chess-moon-media .moon-between { top: calc(40.67% - 1.5em); }
+        .chess-moon-media .moon-waiting { top: calc(54% - 3.5em); }
 
         /* --- Board ------------------------------------------------------ */
         .chess-board-section {
           width: 100%;
           background-color: #fff;
-          /* 40px once. The moon's last stanza now stands in the photograph's
-             lower edge, and at 40 WHITE REACHES UPWARD followed it like its
-             third and fourth lines. */
-          padding-top: 120px;
+          padding-top: 40px;
         }
         .chess-board-captions {
           margin-bottom: 40px;
@@ -220,40 +422,58 @@ export default async function ChessSetPage() {
             height: 78svh;
             margin-top: 24px;
           }
-          /* Blow the moon up and pin it to the bottom so the pieces stay in
-             frame. Held by its own middle rather than by a left offset: -60%
-             centres a 220% image and nothing else, so every change of scale used
-             to have to be paid for twice, and forgetting the second number left
-             the moon sitting well off to the left. */
-          .chess-moon-image {
+          /* Blow the moon up and set it at the foot of the block. Held by its
+             own middle rather than by a left offset: -60% centres a 220% image
+             and nothing else, so every change of scale used to have to be paid
+             for twice, and forgetting the second number left the moon sitting
+             well off to the left. */
+          .chess-moon-frame {
             position: absolute;
-            /* Tailwind's preflight caps every image at max-width 100%, which
-               was quietly clamping these 220% back to the width of the page —
-               the moon had never actually been enlarged here. */
-            max-width: none;
+            /* It is the frame that is blown up, not the image: Tailwind's
+               preflight caps every image at max-width 100%, which once
+               quietly clamped a 220% moon back to the width of the page. The
+               image fills the frame, and the frame has no such cap. */
             width: 220%;
-            height: auto;
             left: 50%;
             transform: translateX(-50%);
-            bottom: 0;
+            bottom: var(--moon-lift);
           }
-          /* The moon is blown up here and there is room over it, so the three
-             stanzas stand in the white above it rather than on it, and share
-             that white evenly: four equal breaths from the foot of FALL IN
-             HEAVEN (26px into this block) to the moon's top edge. That edge
-             is worked out rather than guessed, because it moves with both the
-             width and the height of the phone: the 220% photograph is 0.977
-             of the page's width tall, pinned to the foot of this 78svh block,
-             and its disc begins 10.5% of the way down it. The last stanza
-             keeps its place in the pieces' reflection. */
+          /* The moon is blown up here, too large to write on, so the poem is
+             set round it instead: three stanzas in the white above it, the
+             last under its cloud bank, and five equal breaths (--air) from
+             the foot of FALL IN HEAVEN (26px into this block) to the foot of
+             the block: LIFT, couplet, BETWEEN, the moon and its clouds, the
+             waiting.
+
+             The breath is worked out rather than guessed, because the moon
+             moves with both the width and the height of the phone. The 220%
+             frame is 0.977 of the page's width tall, the disc begins 10.5% of
+             the way down it and the clouds have gone into the veil's white by
+             82%, and the frame is lifted off the foot of this 78svh block by
+             just enough (--moon-lift) to leave the last stanza one breath
+             under the clouds. Solved together, the five breaths come to
+             (78svh − 69.9vw − 116px) / 5: 54px on a 390 × 844 phone, 62 on a
+             430 × 932. On a short phone that runs out (28px on a 375 × 667),
+             so a breath is never less than 32px and the block grows past
+             78svh to hold it: five of them, the 116px of type and the 69.9vw
+             from the moon's top to the clouds' feet. The type is in px here
+             because it is 10px on every phone (the clamp never leaves its
+             floor under 768) and the lift is read by the frame, whose own em
+             is not the type's. */
           .chess-moon-media {
-            --moon-top: calc(78svh - 87.4vw);
-            --air: calc((var(--moon-top) - 26px - 5.5em) / 4);
+            height: max(78svh, calc(276px + 69.9vw));
+            --air: max(32px, calc((78svh - 69.9vw - 116px) / 5));
+            --moon-lift: calc(var(--air) + 35px - 17.59vw);
           }
           .chess-moon-media .moon-lift { top: calc(26px + var(--air)); }
-          .chess-moon-media .moon-impulse { top: calc(26px + 2 * var(--air) + 1em); }
-          .chess-moon-media .moon-between { top: calc(26px + 3 * var(--air) + 4.5em); }
-          .chess-moon-media .moon-waiting { bottom: calc(11.2vw - 1.75em); }
+          .chess-moon-media .moon-impulse { top: calc(26px + 2 * var(--air) + 10px); }
+          .chess-moon-media .moon-between { top: calc(26px + 3 * var(--air) + 45px); }
+          .chess-moon-media .moon-waiting { top: auto; bottom: 0; }
+          /* The last stanza ends the moon's block here, so the board's pair
+             is given room of its own after it: about two breaths. */
+          .chess-board-section {
+            padding-top: 120px;
+          }
           .chess-board-captions {
             margin-bottom: 24px;
           }
@@ -301,13 +521,43 @@ export default async function ChessSetPage() {
         </ScrollFade>
 
         <div className="chess-moon-media">
-          <Image
-            src="/images/chess-set/moon.jpg"
-            alt="Chess pieces with moon — PANDOV"
-            width={4957}
-            height={2202}
-            className="chess-moon-image"
-          />
+          <div className="chess-moon-frame">
+            <Image
+              src="/images/chess-set/moon.avif"
+              alt="The full Moon"
+              width={3870}
+              height={1719}
+              className="chess-moon-image"
+            />
+            <Image
+              src="/images/chess-set/mandala.svg"
+              alt=""
+              aria-hidden="true"
+              width={800}
+              height={800}
+              className="chess-mandala"
+            />
+            <div className="chess-cloud-bank" aria-hidden="true">
+              <div className="chess-cloud-track">
+                {CLOUD_BANK.map(({ n, w, h, size, top, flip, left }) => (
+                  <Image
+                    key={left}
+                    src={`/images/chess-set/cloud-${n}.avif`}
+                    alt=""
+                    width={w}
+                    height={h}
+                    style={{
+                      left: `${left}%`,
+                      top: `${top}%`,
+                      width: `${size}%`,
+                      transform: flip ? "scaleX(-1)" : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="chess-cloud-veil" aria-hidden="true" />
+          </div>
           <p className="chess-line moon-lift">Lift and gravity</p>
           <p className="chess-line moon-impulse">
             <span>The violence of the impulse</span>
