@@ -8,7 +8,6 @@ import { ChessSetGallery } from "@/components/chess-set-gallery"
 import { ChessSetOrnament } from "@/components/chess-set-ornament"
 import { ChessSetStatement } from "@/components/chess-set-statement"
 import { ChessPieces } from "@/components/chess-pieces"
-import { ChessHeroLines } from "@/components/chess-hero-lines"
 import { ScrollFade } from "@/components/scroll-fade"
 import { SeamDrops } from "@/components/seam-drops"
 
@@ -55,36 +54,22 @@ export default async function ChessSetPage() {
           color: #5f5f5f;
           margin-bottom: 26px;
         }
-        .chess-hero-claim {
-          color: #7d7d7d;
-          /* 262px once, when this line stood alone in the middle of the dark
-             and the answer to it was set over the photograph below. The two
-             are now read one after the other under the ornament — see the
-             ChessHeroLines component — so the claim stands on its own under
-             the drawing rather than adrift in the middle of the dark. Chosen
-             against 110 and 210 seen side by side: at 110 the line still hangs
-             off the ornament, at 210 the block comes apart. */
-          margin-top: 160px;
-        }
         .chess-hero-media {
           position: relative;
-          margin-top: 48px;
+          /* The ornament now stands alone over the photograph: the claim and
+             its answer that were set between them came out on 2026-09-27, at
+             the author's asking. The photograph's top 18% is the ground itself,
+             #202020 to the pixel, so the first heads come some 250px under the
+             ornament and just below the fold, on the author's 1026 × 800 and
+             on 1440 × 900 alike. The first screen is the title and the
+             ornament, and the army rises into it as the page moves. */
+          margin-top: 120px;
           line-height: 0;
         }
         .chess-hero-image {
           width: 100%;
           height: auto;
           display: block;
-        }
-        .chess-hero-answer {
-          /* It was set over the bottom of the photograph, 156px up from its
-             edge. It now follows the claim it answers, and it no longer needs
-             a place of its own above the water at the seam. The gap is wider
-             than the claim's own 160, and deliberately so: the two lines are
-             a claim and its answer, and the pause between them is the joke. */
-          color: #6e6e6e;
-          line-height: 1;
-          margin-top: 250px;
         }
 
         /* --- The seam ---------------------------------------------------
@@ -137,30 +122,63 @@ export default async function ChessSetPage() {
           display: block;
           opacity: 0.8;
         }
+        /* The rest of the poem, after the seam's pair, read down the moon:
+           LIFT AND GRAVITY; THE VIOLENCE OF THE IMPULSE / THE QUIET OF THE
+           COMPOSURE; BETWEEN; A QUIET WAITING / FOR THE RIGHT STRIKE. The
+           author's text of 2026-09-27, which replaced "Between / A quiet
+           equilibrium" here and the claim and answer under the ornament.
+
+           BETWEEN stands on the moon's own centre. The disc was measured off
+           the photograph (top 10.5% down, centre 45.3%), and the couplet is
+           set midway between BETWEEN and LIFT AND GRAVITY, so the three
+           stanzas keep an equal breath between them at any width. The last
+           stanza is under the pieces, in their reflection, where the marble
+           is nearly white (84–94% down): the row of pieces stands between
+           BETWEEN and the waiting, and is the waiting.
+
+           A couplet's lines are 2.5em apart, baseline to baseline, and its
+           stanza's neighbours a good deal further, so a pair is read as one
+           thought. Every pair on the page but the seam's, which the edge of
+           the photograph splits on purpose, keeps that figure. */
         .chess-moon-media .chess-line {
           position: absolute;
           left: 0;
           right: 0;
           color: #8a8a8a;
+          line-height: 1;
+        }
+        .chess-moon-media .chess-line span {
+          display: block;
+        }
+        .chess-moon-media .chess-line span + span {
+          margin-top: 1.5em;
         }
         .chess-moon-media .moon-lift { top: 14%; }
-        .chess-moon-media .moon-between { top: calc(40% - 50px); }
-        .chess-moon-media .moon-equilibrium { top: calc(58% - 100px); }
+        .chess-moon-media .moon-impulse { top: calc(29.65% - 1.5em); }
+        .chess-moon-media .moon-between { top: calc(45.3% - 0.5em); }
+        .chess-moon-media .moon-waiting { bottom: calc(11.5% - 1.75em); }
 
         /* --- Board ------------------------------------------------------ */
         .chess-board-section {
           width: 100%;
           background-color: #fff;
-          padding-top: 40px;
+          /* 40px once. The moon's last stanza now stands in the photograph's
+             lower edge, and at 40 WHITE REACHES UPWARD followed it like its
+             third and fourth lines. */
+          padding-top: 120px;
         }
         .chess-board-captions {
           margin-bottom: 40px;
         }
         .chess-board-captions .chess-line {
           color: #a5a5a5;
+          line-height: 1;
         }
+        /* A couplet, spaced as the moon's are. It was 34px between line boxes,
+           twice the moon's pairs, and seen on one screen with them it read as
+           two captions rather than one. */
         .chess-board-captions .chess-line + .chess-line {
-          margin-top: 34px;
+          margin-top: 1.5em;
         }
 
         /* --- Pieces ----------------------------------------------------- */
@@ -181,12 +199,11 @@ export default async function ChessSetPage() {
           .chess-hero-intro {
             padding-top: 30px;
           }
-          /* The claim's 48px here was the phone's share of a 262px gap. The
-             phone now keeps the desktop's own 160 and 250: the pair reads as
-             one block at either size, and the ornament above it is already
-             smaller on a phone. */
+          /* The desktop's 120 in proportion to the ornament, which is 113px
+             tall here against 189. The phone sees the army under it on its
+             first screen, which the tall window has room for. */
           .chess-hero-media {
-            margin-top: 32px;
+            margin-top: 72px;
             height: 64svh;
             overflow: hidden;
           }
@@ -220,14 +237,25 @@ export default async function ChessSetPage() {
             transform: translateX(-50%);
             bottom: 0;
           }
-          .chess-moon-media .moon-lift { top: 8%; }
-          .chess-moon-media .moon-between { top: 24%; }
-          .chess-moon-media .moon-equilibrium { top: 38%; }
+          /* The moon is blown up here and there is room over it, so the three
+             stanzas stand in the white above it rather than on it, and share
+             that white evenly: four equal breaths from the foot of FALL IN
+             HEAVEN (26px into this block) to the moon's top edge. That edge
+             is worked out rather than guessed, because it moves with both the
+             width and the height of the phone: the 220% photograph is 0.977
+             of the page's width tall, pinned to the foot of this 78svh block,
+             and its disc begins 10.5% of the way down it. The last stanza
+             keeps its place in the pieces' reflection. */
+          .chess-moon-media {
+            --moon-top: calc(78svh - 87.4vw);
+            --air: calc((var(--moon-top) - 26px - 5.5em) / 4);
+          }
+          .chess-moon-media .moon-lift { top: calc(26px + var(--air)); }
+          .chess-moon-media .moon-impulse { top: calc(26px + 2 * var(--air) + 1em); }
+          .chess-moon-media .moon-between { top: calc(26px + 3 * var(--air) + 4.5em); }
+          .chess-moon-media .moon-waiting { bottom: calc(11.2vw - 1.75em); }
           .chess-board-captions {
             margin-bottom: 24px;
-          }
-          .chess-board-captions .chess-line + .chess-line {
-            margin-top: 24px;
           }
         }
       `}</style>
@@ -240,9 +268,6 @@ export default async function ChessSetPage() {
           <p className="chess-line chess-hero-eyebrow">Chess Set</p>
           {/* Square ornament — the golden band travels across it on scroll */}
           <ChessSetOrnament />
-          {/* The claim and its answer, read one after the other: the second
-              comes up out of the space the first leaves. */}
-          <ChessHeroLines />
         </div>
 
         <div className="chess-hero-media">
@@ -272,7 +297,7 @@ export default async function ChessSetPage() {
         {/* And its lower half, 170px under the edge, where the dark ones are
             falling — and dropping into place as they do. */}
         <ScrollFade className="chess-line chess-seam-below" from="above">
-          Fall into Heaven
+          Fall in Heaven
         </ScrollFade>
 
         <div className="chess-moon-media">
@@ -284,8 +309,15 @@ export default async function ChessSetPage() {
             className="chess-moon-image"
           />
           <p className="chess-line moon-lift">Lift and gravity</p>
+          <p className="chess-line moon-impulse">
+            <span>The violence of the impulse</span>
+            <span>The quiet of the composure</span>
+          </p>
           <p className="chess-line moon-between">Between</p>
-          <p className="chess-line moon-equilibrium">A quiet equilibrium</p>
+          <p className="chess-line moon-waiting">
+            <span>A quiet waiting</span>
+            <span>For the right strike</span>
+          </p>
         </div>
       </section>
 

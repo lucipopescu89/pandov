@@ -21,12 +21,6 @@ import { useEffect, useRef } from "react"
    either side of them, so they are given nearly the whole window to be read
    in — which is also long enough that both are lit together across the middle
    of it, and they are meant to be seen together.
-
-   It is not `chess-hero-lines.tsx` either, and the difference is worth having
-   clear. There, two lines 250px apart are a claim and its reply, so they run
-   off one clock and hand over to each other. Here each line answers only to
-   its own place in the window — the pair above and below the seam are two
-   halves of one image, not a sequence, and they are meant to be seen together.
    -------------------------------------------------------------------------- */
 
 /**
@@ -76,7 +70,7 @@ export function ScrollFade({
    * Where the line comes in from as it is lit: "below" rises into place,
    * "above" drops into it. Left out, it fades where it stands. Set by the
    * author on 2026-09-23 for the seam's pair: RISE IN HELL comes up out of
-   * the dark, FALL INTO HEAVEN comes down into the white.
+   * the dark, FALL IN HEAVEN comes down into the white.
    */
   from?: "below" | "above"
   children: React.ReactNode
