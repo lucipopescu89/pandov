@@ -32,16 +32,64 @@ function ease(t: number): number {
 }
 
 /**
+ * The doors are played, not scrolled (2026-09-29, the author's asking).
+ *
+ * They start once the section stands in place, when the top of the frames
+ * reaches the top of the screen, and open at their own pace, DOORS_S from the
+ * first frame to the last, whatever the hand does next. Scrolled back until
+ * the top of the frames leaves the top of the screen, they close the same way.
+ * For an afternoon the first turn of the wheel set them going, while the
+ * section was still rising into place; the author asked for them to wait for
+ * it.
+ *
+ * Until then the frames were tied to the scroll, and it read as stuttering:
+ *   - the curve the section scrolls along starts flat, so the first frame came
+ *     only after some 46 vh of scrolling, and the section only begins to be
+ *     scrolled once the menu and the band under it have gone by. It took five
+ *     or six turns of the wheel before anything moved;
+ *   - after that a turn of the wheel is about 100px and the frames were 3 to
+ *     4 vh apart, so every turn jumped three or four frames at once and then
+ *     stood still until the next one.
+ *
+ * A scroll that outruns them drags them along instead of leaving them behind
+ * (DOORS_CATCH_S), so they are always open by the end of DOORS_ROOM_VH, where
+ * text 1 starts to fade. Between two frames the next is faded in over the last
+ * (see `paint`), so twenty frames played in a second and a bit read as a
+ * movement rather than as twenty pictures.
+ */
+const DOORS_S = 1.2
+/** How quickly the doors catch up with a scroll that has got ahead of them, s. */
+const DOORS_CATCH_S = 0.08
+/**
+ * Real scrolling, after the section pins, before text 1 starts to fade: about
+ * three turns of the wheel on a 900px screen. The doors open inside it, and
+ * text 1 comes up with them and holds.
+ *
+ * Only its second half can hurry the doors. A hand turning the wheel every
+ * half second reaches it with them half open or more, and at most their last
+ * frames, where they leave the picture, are hurried; a slower hand never
+ * pulls them at all. With the pull spread over the whole room, the first turn
+ * after the pin could throw them half-way at once, and then they slowed to
+ * their own pace: a lurch. It was 12 while the doors opened during the
+ * approach to the pin, which gave them the three turns of the menu and the
+ * band under it.
+ */
+const DOORS_ROOM_VH = 30
+
+/**
  * Choreography, expressed as distances in vh of scroll. Naming the durations
  * rather than the boundaries means a beat can be lengthened without hand-
  * retuning every number after it.
  *
  *   doors open ──┤ text 1: in ── hold ── out ┤ field ── presence ── line ┤ white
  *
- * Text 1 starts rising exactly as the sequence reaches frame 15, so its fade-in
- * overlaps the last of the door movement and completes just after it settles.
+ * The doors and text 1's first half are no longer on this line; they are
+ * played (see DOORS_S). The line still starts with the doors' 120 vh, but the
+ * section enters it where text 1 begins to fade, as it ends before its run-on
+ * (TAIL_VH): only for the shape of the curve, so every beat from text 1's fade
+ * on lands exactly where the author approved it.
  */
-const DOORS_VH = 120           // frames 0 → 19
+const DOORS_VH = 120           // frames 0 → 19, when they were scrolled
 const TEXT1_OUT_VH = 55        // fade back to black, after the hold
 const TEXT1_RISE_PX = 60       // slow drift upward across its whole life
 
@@ -75,12 +123,12 @@ const GAP: [number, number][] = [
 /** Source frame aspect, used to map gap percentages onto the drawn image. */
 const FRAME_ASPECT = 2667 / 1500
 
-// Text 1 is timed against frames rather than scroll, so it stays locked to the
-// doors if the pacing above ever changes.
+// Text 1 comes up against the frames, so it stays locked to the doors however
+// they are played. It fades against the scroll.
 const T1_FIRST_FRAME = 5       // first glimmer through the crack
 const T1_FIRST_OPACITY = 0.05
 const T1_FULL_FRAME = 13       // fully lit
-const T1_HOLD_UNTIL_FRAME = 17 // then begins to fade
+const T1_HOLD_UNTIL_FRAME = 17 // where on the curve it begins to fade
 /**
  * The last beat arrives in three, not at once: the field out of the dark
  * first, then the sculpture standing in it, then the line under it. Each one
@@ -111,25 +159,28 @@ const TEXT2_DELAY_VH = 40      // and the line by another
 const TEXT2_IN_VH = 34
 
 /**
- * The two tail beats. Both are counted in *eased* vh, and easeInOutCubic is
- * nearly flat as it approaches 1, so a beat at the very end of the section
- * buys several times its own number in real scrolling. At 20 + 45 the wheel
- * had to travel a full viewport height after "we give form to presence" was
- * lit before the section let go — which reads as the page having stalled
- * rather than as a frame being held. Shortening them costs nothing visible:
- * the 28px exit lift below still spreads across some 70vh of actual scroll.
- * Don't answer a stall here by trimming the beats above instead — those are
- * the ones you can see.
+ * How far the eased timeline runs on past the line. None of it is played: the
+ * section lets go before it gets there (see SCROLL_VH). It is here for the
+ * shape of the curve, because easeInOutCubic is nearly flat as it approaches
+ * 1. With no run-on, the line would land right on that flat end and take
+ * several turns of the wheel to finish lighting.
+ *
+ * It was two beats until 2026-09-28, 4 held still and 8 for the exit lift, and
+ * the section played them out to the end. Being eased, those 12 vh cost some
+ * 57 vh of real scrolling after the line was lit, about five turns of the wheel
+ * before the screen was white. The author asked for the exit to be quicker.
+ * Shortening the run-on was not the way: it slides the line onto the flatter
+ * part of the curve, and its fade grows by nearly what the tail loses. So the
+ * run-on is kept, every beat up to the line is exactly where it was, and only
+ * the end moved. Don't answer a stall here by trimming the beats above
+ * instead: those are the ones you can see.
  */
-const STILL_VH = 4             // everything holds, nothing moves
-const EXIT_LEAD_VH = 8         // content starts lifting before the section unpins
+const TAIL_VH = 12
 
-/** Scroll position, in vh, at which the sequence reaches a given frame. */
+/** Where on the curve a frame fell, in vh, when the doors were scrolled. */
 const frameVh = (f: number) => (f / (FRAME_COUNT - 1)) * DOORS_VH
 
 // Beat boundaries in vh, each one following from the last.
-const T1_IN_START_VH = frameVh(T1_FIRST_FRAME)
-const T1_IN_END_VH = frameVh(T1_FULL_FRAME)
 const T1_OUT_START_VH = frameVh(T1_HOLD_UNTIL_FRAME)
 const T1_OUT_END_VH = T1_OUT_START_VH + TEXT1_OUT_VH
 const HALO_START_VH = T1_OUT_END_VH
@@ -139,13 +190,14 @@ const PRESENCE_END_VH = PRESENCE_START_VH + PRESENCE_IN_VH
 const T2_START_VH = HALO_START_VH + TEXT2_DELAY_VH
 const T2_END_VH = T2_START_VH + TEXT2_IN_VH
 
-/**
- * The section is exactly as long as its beats need, plus the still beat and the
- * exit lead. Derived rather than fixed so lengthening any beat above can never
- * push the last one into the exit.
- */
-const SCROLL_VH =
-  Math.max(HALO_END_VH, PRESENCE_END_VH, T2_END_VH) + STILL_VH + EXIT_LEAD_VH
+/** Where the last beat is fully up, and the eased timeline with its run-on. */
+const LAST_VH = Math.max(HALO_END_VH, PRESENCE_END_VH, T2_END_VH)
+const TIMELINE_VH = LAST_VH + TAIL_VH
+
+/** The inverse of `ease`: where in the scrolling an eased value falls. */
+function uneased(p: number): number {
+  return p < 0.5 ? Math.cbrt(p / 4) : 1 - Math.cbrt(2 * (1 - p)) / 2
+}
 
 /**
  * Vertical easing at the section's two edges, in px of content travel.
@@ -193,6 +245,16 @@ const PRESENCE_VH = 49.5
 const PRESENCE_ROOM = 0.1
 const PRESENCE_CAPTION = 0.16
 const PRESENCE_GROUP = 1 + PRESENCE_ROOM + PRESENCE_CAPTION
+
+/**
+ * The sculpture is drawn at 90% of its place, shrunk toward its foot: the
+ * author's asking on 2026-09-28. Its foot stays where it stood and its top
+ * comes down, so the line under it and the ring round both keep their places,
+ * and the room it gives up is left empty above it, inside the ring. The rest is
+ * still measured from the whole place, PRESENCE_VH. The photograph runs from
+ * edge to edge of its file, so the foot of the image is the sculpture's own.
+ */
+const PRESENCE_SIZE = 0.9
 
 /**
  * That field, in thousandths of the drawn height.
@@ -259,26 +321,43 @@ const HALO_VIEW_BOX = [-HALO_RX, -HALO_RY, 2 * HALO_RX, 2 * HALO_RY]
  * For Mind still while it comes out of the same white, so the two read as one
  * dissolve rather than as two sections meeting.
  *
- * This one beat is counted in **real scrolling**, not in the eased vh every
- * beat above uses, and it is the only thing in the file that is. `ease` is
- * nearly flat this close to 1, so a beat written here buys several times its
- * own number in wheel — the 12 eased vh left after the line lands are already
- * some 520px of it. Written raw, 32 is 32: about three turns of a wheel to
- * wash a whole screen out, with the two turns before it holding the finished
- * composition still.
+ * The exit is counted in **real scrolling**, not in the eased vh every beat
+ * above uses. From the moment the line is fully lit, HOLD is a turn of the
+ * wheel with the finished composition on screen, and WHITE_OUT is two more
+ * washing it to white. A turn is about 100px, some 11 vh on a 900px screen.
+ * Until 2026-09-28 the exit was 25 vh held and 32 washing, about five turns
+ * from the line to white; the author asked for it to be quicker.
  */
-const WHITE_OUT_VH = 32
+const HOLD_VH = 12
+const WHITE_OUT_VH = 24
 
-/** vh of scroll → progress through the section (0 → 1). */
-const v = (vh: number) => vh / SCROLL_VH
+/** vh of the eased timeline → progress through it (0 → 1). */
+const v = (vh: number) => vh / TIMELINE_VH
 
-/** Where the wash begins, as a fraction of the section's *uneased* travel. */
+/**
+ * Where the section enters the curve, in its own uneased terms: text 1
+ * starting to fade. Everything before it is the doors' and is played.
+ */
+const ENTRY_U = uneased(v(T1_OUT_START_VH))
+
+/**
+ * The section's real scrolling: the doors' room, then the curve from its entry
+ * to where the line is fully lit, worked back through the curve, then the hold
+ * and the wash. It lets go there, before the timeline has run out. Derived
+ * rather than fixed so lengthening any beat above can never push the last one
+ * into the exit.
+ */
+const LIT_VH =
+  DOORS_ROOM_VH + TIMELINE_VH * (uneased(v(LAST_VH)) - ENTRY_U)
+const SCROLL_VH = LIT_VH + HOLD_VH + WHITE_OUT_VH
+
+/** Real scrolling at which text 1 has gone back to black: the end of its rise. */
+const T1_GONE_VH =
+  DOORS_ROOM_VH + TIMELINE_VH * (uneased(v(T1_OUT_END_VH)) - ENTRY_U)
+
+/** Where the wash begins, as a fraction of the section's real scrolling. */
 const WHITE_OUT_FROM = 1 - WHITE_OUT_VH / SCROLL_VH
 
-const FRAMES_END = v(DOORS_VH)
-
-const TEXT1_IN_START = v(T1_IN_START_VH)
-const TEXT1_IN_END = v(T1_IN_END_VH)
 const TEXT1_OUT_START = v(T1_OUT_START_VH)
 const TEXT1_OUT_END = v(T1_OUT_END_VH)
 
@@ -296,20 +375,8 @@ function ramp(v: number, from: number, to: number): number {
   return clamp01((v - from) / (to - from))
 }
 
-/** Continuous position in the frame sequence, 0 → FRAME_COUNT - 1. */
-function framePos(p: number): number {
-  const t = FRAMES_END > 0 ? clamp01(p / FRAMES_END) : 1
-  return t * (FRAME_COUNT - 1)
-}
-
-/** Frame to draw for a given progress; holds the last frame after FRAMES_END. */
-function frameFor(p: number): number {
-  return Math.min(Math.round(framePos(p)), FRAME_COUNT - 1)
-}
-
-/** Gap edges at any point between frames, as fractions of image width. */
-function gapAt(p: number): [number, number] {
-  const f = framePos(p)
+/** Gap edges at a position in the frames (0 → 19), as fractions of image width. */
+function gapAt(f: number): [number, number] {
   const i = Math.min(Math.floor(f), FRAME_COUNT - 2)
   const t = clamp01(f - i)
   const [l0, r0] = GAP[i]
@@ -320,101 +387,256 @@ function gapAt(p: number): [number, number] {
 export function HeroAnimation() {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const framesRef = useRef<HTMLImageElement[]>([])
-  const [loaded, setLoaded] = useState(false)
+  // Text 1's clip to the opening and its fade in, which belong to the doors
+  // and are written by their player (see `paint`), not by React.
+  const text1DoorsRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
   // The wash to white is the one beat driven by raw scroll — see WHITE_OUT_VH.
   const [rawProgress, setRawProgress] = useState(0)
   // 1 while the section is a full approach away from pinning, 0 once pinned.
   const [arrive, setArrive] = useState(1)
-  const [viewport, setViewport] = useState({ w: 0, h: 0 })
-  // Mirrors `progress` for the resize handler, which is registered once and so
-  // would otherwise close over the initial value forever.
-  const progressRef = useRef(0)
 
-  const setCanvasSize = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    // Use the actual rendered size of the canvas element, not window size
-    // This prevents distortion when CSS size != canvas internal resolution
-    // offsetWidth/Height are layout sizes — unlike getBoundingClientRect they
-    // ignore the settle/lift transform, so the backing resolution stays stable.
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.round(canvas.offsetWidth * dpr)
-    canvas.height = Math.round(canvas.offsetHeight * dpr)
-    const ctx = canvas.getContext("2d")
-    if (ctx) ctx.scale(dpr, dpr)
-  }
-
-  const drawFrame = (frameIndex: number) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    const img = framesRef.current[frameIndex]
-    if (!img || !img.complete || img.naturalWidth === 0) return
-
-    const dpr = window.devicePixelRatio || 1
-    const W = canvas.width / dpr
-    const H = canvas.height / dpr
-    if (W === 0 || H === 0) return
-
-    const scale = H / img.naturalHeight
-    const w = img.naturalWidth * scale
-    const h = img.naturalHeight * scale
-    const x = (W - w) / 2
-    const y = 0
-
-    ctx.clearRect(0, 0, W, H)
-    ctx.drawImage(img, x, y, w, h)
-  }
-
-  // Resize canvas — uses actual DOM size to avoid distortion
+  // The doors: loaded, decoded, played and drawn here, outside React. They
+  // change every frame for a second and a bit, and nothing else on the page
+  // needs to hear of it.
   useEffect(() => {
+    const el = containerRef.current
     const canvas = canvasRef.current
-    if (!canvas) return
-    const resize = () => {
-      setCanvasSize()
-      drawFrame(frameFor(progressRef.current))
+    const ctx = canvas?.getContext("2d")
+    if (!el || !canvas || !ctx) return
+
+    const imgs: HTMLImageElement[] = []
+    let loadedCount = 0
+    let ready = false // every frame has arrived
+    let disposed = false
+
+    let pos = 0 // where the doors stand, 0 shut → 1 open
+    let open = false // where they are going
+    let floor = 0 // how far the scroll alone would have them by now
+    let primed = false
+    let raf = 0
+    let last = 0
+
+    // The canvas's layout size, which text 1's clip is given in.
+    let cssW = 0
+    let cssH = 0
+
+    /**
+     * Each frame decoded ahead of time, cut to the part of it the canvas shows
+     * and scaled to the canvas's own pixels. Drawn from its <img>, a frame is
+     * decoded the first time it is drawn, some 20ms for a 2667 × 1500 JPEG,
+     * and the browser is free to let it go and decode it again the next time:
+     * a second stutter, under the first. On a phone the canvas shows about a
+     * quarter of the frame's width, so the cut is most of the saving there,
+     * 4MB a frame instead of 16.
+     */
+    let bitmaps: ImageBitmap[] = []
+    let fitW = 0
+    let fitH = 0
+    let fitX = 0
+    let fitDW = 0
+    let generation = 0
+    let rebuild = 0
+
+    const decode = async () => {
+      if (!ready || typeof createImageBitmap !== "function") return
+      const W = canvas.width
+      const H = canvas.height
+      if (!W || !H || (W === fitW && H === fitH)) return
+      const gen = ++generation
+      const nw = imgs[0].naturalWidth
+      const nh = imgs[0].naturalHeight
+      const scale = H / nh
+      const sx = Math.floor(Math.max(0, (nw * scale - W) / 2) / scale)
+      const sw = nw - 2 * sx
+      // Never enlarged here: a canvas taller than the frame scales it up as
+      // it draws, as it did before.
+      const k = Math.min(1, scale)
+      try {
+        const made = await Promise.all(
+          imgs.map((img) =>
+            createImageBitmap(img, sx, 0, sw, nh, {
+              resizeWidth: Math.round(sw * k),
+              resizeHeight: Math.round(nh * k),
+              resizeQuality: "high",
+            }),
+          ),
+        )
+        if (disposed || gen !== generation) {
+          made.forEach((b) => b.close())
+          return
+        }
+        bitmaps.forEach((b) => b.close())
+        bitmaps = made
+        fitW = W
+        fitH = H
+        fitX = (W - sw * scale) / 2
+        fitDW = sw * scale
+        paint()
+      } catch {
+        // Left drawing from the images, as it always did.
+      }
     }
-    // Use ResizeObserver for accurate size tracking including mobile chrome bar changes
-    const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
-    resize()
-    return () => ro.disconnect()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load all frames — frame 0 drawn immediately on load to avoid blank canvas
-  useEffect(() => {
-    setCanvasSize()
+    const has = (i: number) =>
+      (fitW === canvas.width && fitH === canvas.height && !!bitmaps[i]) ||
+      (!!imgs[i] && imgs[i].complete && imgs[i].naturalWidth > 0)
 
-    let count = 0
-    const imgs: HTMLImageElement[] = new Array(FRAME_COUNT)
+    const draw = (i: number, W: number, H: number) => {
+      if (fitW === W && fitH === H && bitmaps[i]) {
+        ctx.drawImage(bitmaps[i], fitX, 0, fitDW, H)
+        return
+      }
+      const img = imgs[i]
+      const dw = (img.naturalWidth * H) / img.naturalHeight
+      ctx.drawImage(img, (W - dw) / 2, 0, dw, H)
+    }
+
+    const paint = () => {
+      const f = pos * (FRAME_COUNT - 1)
+
+      // Text 1 lights up from 5% at frame 5 to full at frame 13. It is
+      // clipped to the opening, so it also gets *wider* as the doors slide
+      // apart: the reveal is as much the clip as the light. The canvas draws
+      // each frame scaled to its height and centred, so the gap's percentages
+      // go through that same fit to land on the doors.
+      const layer = text1DoorsRef.current
+      if (layer && cssW > 0) {
+        const drawnW = cssH * FRAME_ASPECT
+        const left = (cssW - drawnW) / 2
+        const [gapL, gapR] = gapAt(f)
+        const clip = `inset(0 ${Math.max(0, cssW - left - gapR * drawnW)}px 0 ${Math.max(0, left + gapL * drawnW)}px)`
+        layer.style.clipPath = clip
+        layer.style.setProperty("-webkit-clip-path", clip)
+        layer.style.opacity = String(
+          f < T1_FIRST_FRAME
+            ? 0
+            : T1_FIRST_OPACITY +
+                ramp(f, T1_FIRST_FRAME, T1_FULL_FRAME) * (1 - T1_FIRST_OPACITY),
+        )
+      }
+
+      const W = canvas.width
+      const H = canvas.height
+      const i = Math.min(Math.floor(f), FRAME_COUNT - 1)
+      if (!W || !H || !has(i)) return
+      ctx.globalAlpha = 1
+      ctx.clearRect(0, 0, W, H)
+      draw(i, W, H)
+      // Between two frames the next is faded in over the last, by how far
+      // the doors have come from one to the other. Both are opaque, so this is
+      // a true mix of the two, as a film editor's frame blending is.
+      const t = f - i
+      if (t > 0.002 && i + 1 < FRAME_COUNT && has(i + 1)) {
+        ctx.globalAlpha = t
+        draw(i + 1, W, H)
+        ctx.globalAlpha = 1
+      }
+    }
+
+    const moving = () => (open ? pos < 1 : pos > 0)
+
+    const tick = (now: number) => {
+      raf = 0
+      // Held to a twentieth of a second, so a tab coming back from the
+      // background carries on where it was rather than leaping to the end.
+      const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60
+      last = now
+      if (open) {
+        pos = Math.min(1, pos + dt / DOORS_S)
+        // A scroll that has got ahead pulls them after it, quickly but
+        // without a jump.
+        if (pos < floor) {
+          pos += (floor - pos) * (1 - Math.exp(-dt / DOORS_CATCH_S))
+          if (floor - pos < 0.001) pos = floor
+        }
+      } else {
+        pos = Math.max(0, pos - dt / DOORS_S)
+      }
+      paint()
+      if (moving()) raf = requestAnimationFrame(tick)
+    }
+
+    const play = () => {
+      if (!ready || raf || !moving()) return
+      last = 0
+      raf = requestAnimationFrame(tick)
+    }
+
+    const measure = () => {
+      const top = el.getBoundingClientRect().top
+      // Where the top of the frames stands on the screen. The canvas reaches
+      // OVERSCAN_PX above the section and lags behind it as it arrives, by
+      // the same settle the render below gives it.
+      const arrive = clamp01(top / (el.offsetTop || 1))
+      open = top - OVERSCAN_PX + ENTRY_SETTLE_PX * Math.pow(arrive, 3) <= 0
+      // The second half of the doors' room, see DOORS_ROOM_VH.
+      const half = (DOORS_ROOM_VH * window.innerHeight) / 200
+      floor = clamp01((-top - half) / half)
+      if (!primed) {
+        // A page that opens part-way down, restored or followed from a link,
+        // finds the doors already open rather than opening them out of sight.
+        primed = true
+        pos = open ? 1 : 0
+        paint()
+      }
+      play()
+    }
+
+    // The backing store follows the canvas's layout size: offsetWidth and
+    // offsetHeight ignore the settle/lift transform, so it stays stable while
+    // the section moves. The frames are cut again once it has settled.
+    const resize = () => {
+      cssW = canvas.offsetWidth
+      cssH = canvas.offsetHeight
+      const dpr = window.devicePixelRatio || 1
+      const W = Math.round(cssW * dpr)
+      const H = Math.round(cssH * dpr)
+      if (canvas.width !== W || canvas.height !== H) {
+        canvas.width = W
+        canvas.height = H
+      }
+      paint()
+      window.clearTimeout(rebuild)
+      rebuild = window.setTimeout(decode, 200)
+    }
 
     for (let i = 0; i < FRAME_COUNT; i++) {
       const img = new window.Image()
-      img.src = FRAME_URLS[i]
       img.onload = () => {
-        count++
-        imgs[i] = img
-        framesRef.current = imgs
-        // Draw frame 0 as soon as it's ready — no waiting for all frames
-        if (i === 0) {
-          drawFrame(0)
-        }
-        if (count === FRAME_COUNT) {
-          setLoaded(true)
+        if (disposed) return
+        // Whatever frame the doors stand at is drawn as soon as it arrives,
+        // without waiting on the rest.
+        paint()
+        if (++loadedCount === FRAME_COUNT) {
+          ready = true
+          decode()
+          play()
         }
       }
+      img.src = FRAME_URLS[i]
       imgs[i] = img
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Draw frame on canvas when progress changes
-  useEffect(() => {
-    if (!loaded) return
-    drawFrame(frameFor(progress))
-  }, [loaded, progress]) // eslint-disable-line react-hooks/exhaustive-deps
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+    resize()
+    measure()
+    window.addEventListener("scroll", measure, { passive: true })
+    window.addEventListener("resize", measure)
+    window.addEventListener("pageshow", measure)
+    return () => {
+      disposed = true
+      cancelAnimationFrame(raf)
+      window.clearTimeout(rebuild)
+      ro.disconnect()
+      window.removeEventListener("scroll", measure)
+      window.removeEventListener("resize", measure)
+      window.removeEventListener("pageshow", measure)
+      imgs.forEach((img) => (img.onload = null))
+      bitmaps.forEach((b) => b.close())
+    }
+  }, [])
 
   // Track scroll progress
   useEffect(() => {
@@ -427,19 +649,18 @@ export function HeroAnimation() {
       // A zero or negative `total` means the container has no scrollable range
       // yet; treat that as "not started" instead of dividing by it.
       const raw = total > 0 ? clamp01(scrolled / total) : 0
-      const eased = ease(raw)
-      progressRef.current = eased
+      // The doors' room is played, not scrolled, so the section enters the
+      // curve after it (see ENTRY_U); and it lets go before the curve runs
+      // out (see SCROLL_VH), so it only ever plays its own share of it.
+      const eased = ease(
+        ENTRY_U + Math.max(0, raw * SCROLL_VH - DOORS_ROOM_VH) / TIMELINE_VH,
+      )
       setProgress(eased)
       setRawProgress(raw)
 
       // Distance still to travel before the sticky child pins, normalised.
       const pinTravel = el.offsetTop || 1
       setArrive(clamp01(rect.top / pinTravel))
-      setViewport((prev) =>
-        prev.w === window.innerWidth && prev.h === window.innerHeight
-          ? prev
-          : { w: window.innerWidth, h: window.innerHeight },
-      )
     }
 
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -458,33 +679,13 @@ export function HeroAnimation() {
     }
   }, [])
 
-  // Text 1 lights up from 5% at frame 5 to full at frame 13, holds to frame 17,
-  // then fades. It is clipped to the opening, so it also gets *wider* as the
-  // doors slide apart — the reveal is as much the clip as the opacity.
-  const t1In = ramp(progress, TEXT1_IN_START, TEXT1_IN_END)
-  const text1Opacity =
-    (progress < TEXT1_IN_START
-      ? 0
-      : T1_FIRST_OPACITY + t1In * (1 - T1_FIRST_OPACITY)) *
-    (1 - ramp(progress, TEXT1_OUT_START, TEXT1_OUT_END))
+  // Text 1 fades with the scroll; its coming up is the doors' (see `paint`).
+  const text1Out = ramp(progress, TEXT1_OUT_START, TEXT1_OUT_END)
 
-  // Drifts upward as you scroll: starts half a rise below centre, ends half a
-  // rise above it, so the fully-lit stretch passes through the middle.
+  // Drifts upward as you scroll: starts half a rise below centre as the
+  // section pins, and ends half a rise above it as the text goes.
   const text1Rise =
-    (0.5 - ramp(progress, TEXT1_IN_START, TEXT1_OUT_END)) * TEXT1_RISE_PX
-
-  // The canvas draws each frame scaled to its height and centred, so the gap
-  // percentages have to be mapped through that same fit to land on the doors.
-  const canvasH = viewport.h + 2 * OVERSCAN_PX
-  const drawnW = canvasH * FRAME_ASPECT
-  const drawnLeft = (viewport.w - drawnW) / 2
-  const [gapL, gapR] = gapAt(progress)
-  const clipLeft = drawnLeft + gapL * drawnW
-  const clipRight = drawnLeft + gapR * drawnW
-  const text1Clip =
-    viewport.w > 0
-      ? `inset(0 ${Math.max(0, viewport.w - clipRight)}px 0 ${Math.max(0, clipLeft)}px)`
-      : "inset(0 50% 0 50%)"
+    (0.5 - ramp(rawProgress * SCROLL_VH, 0, T1_GONE_VH)) * TEXT1_RISE_PX
 
   // The beat follows only after text 1 has gone, and comes up in three.
   // Scrolling back up reverses all of it.
@@ -500,11 +701,11 @@ export function HeroAnimation() {
   const presenceScale = 0.65 + presenceProgress * (1 - 0.65)  // 0.65 → 1.0
   const presenceH = `calc(${PRESENCE_VH}vh * ${presenceScale})`
 
-  // Content lags on the way in and leads on the way out. Cubed so the velocity
-  // relative to the page reaches zero exactly at the pin and unpin boundaries.
+  // Content lags on the way in and leads on the way out, lifting as it washes
+  // to white. Cubed so the velocity relative to the page reaches zero exactly
+  // at the pin and unpin boundaries.
   const entryShift = ENTRY_SETTLE_PX * Math.pow(arrive, 3)
-  const exitShift =
-    -EXIT_LIFT_PX * Math.pow(ramp(progress, 1 - v(EXIT_LEAD_VH), 1), 3)
+  const exitShift = -EXIT_LIFT_PX * Math.pow(whiteOut, 3)
   const shift = entryShift + exitShift
 
   return (
@@ -609,7 +810,8 @@ export function HeroAnimation() {
                   position: "relative",
                   display: "block",
                   opacity: presenceOpacity,
-                  height: presenceH,
+                  height: `calc(${presenceH} * ${PRESENCE_SIZE})`,
+                  marginTop: `calc(${presenceH} * ${+(1 - PRESENCE_SIZE).toFixed(4)})`,
                   width: "auto",
                   objectFit: "contain",
                 }}
@@ -649,40 +851,52 @@ export function HeroAnimation() {
           </div>
 
           {/* Text 1 — clipped to the opening between the doors so it reads as
-              being behind them. The outer layer spans the canvas exactly, which
-              is what lets the inset be given in canvas pixels. */}
+              being behind them. The layers span the canvas exactly, which is
+              what lets the inset be given in canvas pixels. The outer one
+              fades with the scroll; the inner one is the doors', and its clip
+              and light are written by their player, so React sets them once,
+              shut, and never again. */}
           <div
             style={{
               position: "absolute",
               inset: 0,
-              clipPath: text1Clip,
-              WebkitClipPath: text1Clip,
-              opacity: text1Opacity,
+              opacity: 1 - text1Out,
               zIndex: 1,
               pointerEvents: "none",
             }}
           >
             <div
+              ref={text1DoorsRef}
               style={{
                 position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: `translate(-50%, calc(-50% + ${text1Rise}px))`,
-                whiteSpace: "nowrap",
+                inset: 0,
+                clipPath: "inset(0 50% 0 50%)",
+                WebkitClipPath: "inset(0 50% 0 50%)",
+                opacity: 0,
               }}
             >
-                <span
+              <div
                 style={{
-                  fontFamily: "'Julius Sans One', sans-serif",
-                  fontSize: "clamp(11px, 2vw, 20px)",
-                  letterSpacing: "0.2em",
-                  color: "#888",
-                  fontWeight: 400,
-                  textTransform: "uppercase",
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: `translate(-50%, calc(-50% + ${text1Rise}px))`,
+                  whiteSpace: "nowrap",
                 }}
               >
-                We Open The Doors Of Perception
-              </span>
+                <span
+                  style={{
+                    fontFamily: "'Julius Sans One', sans-serif",
+                    fontSize: "clamp(11px, 2vw, 20px)",
+                    letterSpacing: "0.2em",
+                    color: "#888",
+                    fontWeight: 400,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  We Open The Doors Of Perception
+                </span>
+              </div>
             </div>
           </div>
 
