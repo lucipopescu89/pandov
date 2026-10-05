@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
+import { NUDGE_PX, ease, playBeat, ramp } from "@/lib/played-beat"
 
 /** Chess (Mind), figure (Body) and lamp (Space) all sit slightly back. */
 const CATEGORY_IMAGE_OPACITY = 0.85
@@ -63,17 +64,28 @@ const COLUMN_LEFT = `calc(50% - ${COLUMN_OFFSET})`
 const COLUMN_RIGHT = `calc(50% + ${COLUMN_OFFSET})`
 
 /**
- * The room is drawn the full height of its row and at its own proportions,
- * then shown through a window that opens SPACE_FROM into the photograph and
- * runs to its right edge. The window replaces a box cropped with object-fit:
- * cover, which is what let the sculpture wander — a cover crop recentres on
- * the box, and the box was the shape of the screen. Opening an eighth of the
- * way in keeps the white margin to the left of the room about as wide as the
- * fixed 260px that box began at on a 1920px screen, and leaves the sculpture
- * about as much of the room beside it as it had.
+ * The room is drawn the full height of its row, at its own proportions and
+ * whole, placed so the sculpture's axis stands on the left column. Placing it
+ * by that axis replaced a box cropped with object-fit: cover, which is what
+ * let the sculpture wander — a cover crop recentres on the box, and the box
+ * was the shape of the screen.
+ *
+ * Until 2026-09-28 it was shown through a window that opened an eighth of the
+ * way into the photograph, under a white fade a fifth of that window wide.
+ * Between them they took away the curtain at the left of the room, and the
+ * author asked for the photograph whole. Its left edge is already faded
+ * nearly to white in the file (240–255, against the page's 255), so
+ * SPACE_EDGE_FADE only takes the last of that grey off the edge and leaves
+ * the curtain alone. The fade on the right covers the same part of the room
+ * it always did, SPACE_RIGHT_FADE of it.
+ *
+ * Inside a browser window squarer than about 3:2, the left edge runs past the
+ * page's own and the page crops it there. The axis on the column is the rule
+ * that holds.
  */
 const SPACE_W_VH = 100 * SPACE_ASPECT
-const SPACE_FROM = 0.125
+const SPACE_EDGE_FADE = 0.06
+const SPACE_RIGHT_FADE = 0.394
 
 /**
  * On a phone, For Body and For Space stand over their objects, as For Mind
@@ -142,65 +154,44 @@ function onColumn(left: string, lift = 0): React.CSSProperties {
 }
 
 /**
- * For Mind is the only row that is pinned while it arrives.
+ * For Mind comes up out of the hero's white, played, not scrolled (2026-10-02,
+ * the author's asking, after the hero's doors and Presence were played the
+ * same day; see `lib/played-beat.ts`).
  *
- * The hero ends by washing the whole screen to white (see `WHITE_OUT_VH` in
- * `components/hero-animation.tsx`). This row picks the screen up there: it is
- * pinned for MIND_IN_VH of scroll and comes up out of that same white — fading
- * in and rising from below into its place, see MIND_RISE_VH — and when the row
- * unpins it is already travelling with the page, so it goes on up the screen
- * with For Body and For Space behind it.
+ * The scroll after the Presence composition starts it, and the page is held
+ * while it plays: the hero washes the screen to white (MIND_WASH_S, played by
+ * `components/hero-animation.tsx`), a breath of empty white, then For Mind
+ * fades in and rises from below into its place, where it comes to rest. The
+ * scroll after that carries it on up the page with For Body and For Space
+ * behind it. Scrolled back up, it sinks and fades and the white washes off
+ * Presence again.
  *
  * It does not grow as it comes. Until 2026-09-21 it also eased forward from
  * 94% of its size over the fade; the author asked for that to go, and the
- * entrance is now the fade and the rise alone.
+ * entrance is the fade and the rise alone.
  *
- * WHITE is a breath of empty white before it starts, REVEAL the stretch it
- * fades in over, and what is left of MIND_IN lets it finish rising before the
- * page takes it. All three are counted in real scrolling, so they are also
- * what they look like: at roughly 9px of wheel per vh, the reveal runs about
- * three turns.
+ * The proportions are those of the scrolled beat the author approved, a vh of
+ * which a steady hand covered in about a thirtieth of a second: a wash of 24
+ * vh, a breath of 12, a fade of 34 and a rise of 46. The breath is shorter
+ * here, because still white held for a whole turn of the wheel read as a gap,
+ * not a breath. 2.6s in all, as long as Presence's.
+ *
+ * Until then the row was pinned for 58 vh of scrolling and rose at the page's
+ * own speed, so that it could hand over to the page without a seam at the
+ * unpin. Played, it comes to rest before the page moves it on, so it eases in
+ * and out instead. The fade leads the rise, so the picture is seen while it is
+ * still low: at half strength it is still some 37 vh under its place, about
+ * where the author asked for it to show on 2026-09-28.
  */
-const MIND_IN_VH = 50
-const MIND_WHITE_VH = 12
-const MIND_REVEAL_VH = 34
-
-/**
- * How far below its place the picture starts, and why it is exactly this far.
- *
- * The rise goes with the hand, the same way For Body and For Space come in, so
- * it has to hand over to them without a seam. The row unpins at the top of the
- * rise, and from that moment the page carries it at the full speed of the
- * scroll. A rise that settled and stopped first would leave the picture
- * standing still for a beat and then jerk into motion; one that ran at a
- * steady fraction of the scroll would visibly lurch faster at the unpin.
- *
- * So the rise starts from rest and accelerates — an ease-in, t² — and is sized
- * to be moving at exactly the page's speed when the pin lets go. It runs from
- * the first glimmer to the unpin, the MIND_IN - MIND_WHITE stretch; t² covers a
- * distance in half the time the speed it ends at would, which makes half that
- * stretch the one distance whose last step matches the scroll's. Anything
- * shorter hands over slower than the page and anything longer faster. Keep it
- * derived: retune the beats above and it stays matched.
- *
- * Given in vh, not px, for the same reason — the pin is measured in vh, so the
- * handover only matches on every screen if the rise is too. It is about 137px
- * on a 720px-high window and 205px on a 1080px one, and it is spent mostly
- * while the picture is still faint: it has only started moving when it first
- * shows, and is some 20% short of its place when it is fully there.
- */
-const MIND_RISE_VH = (MIND_IN_VH - MIND_WHITE_VH) / 2
-
-/**
- * Clamp to 0..1, treating a non-finite value as 0. `scrolled / total` is NaN
- * when the pinned container and the viewport measure the same — a background
- * tab, a bfcache restore, a prerender — and NaN survives Math.max/min, so an
- * unguarded one would leave the row stuck at whatever branch NaN falls
- * through to.
- */
-function clamp01(v: number): number {
-  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0
-}
+export const MIND_WASH_S = 0.8
+const MIND_BREATH_S = 0.3
+const MIND_FROM_S = MIND_WASH_S + MIND_BREATH_S
+const MIND_FADE_S = 1.1
+const MIND_RISE_S = 1.5
+/** The whole beat, s, wash included: the time the scroll is held for. */
+export const MIND_BEAT_S = MIND_FROM_S + Math.max(MIND_FADE_S, MIND_RISE_S)
+/** How far below its place the picture starts, vh. */
+const MIND_RISE_VH = 46
 
 const textStyle = {
   fontFamily: "'Julius Sans One', sans-serif",
@@ -363,16 +354,15 @@ function SpaceRow() {
         overflow: "hidden",
       }}
     >
-      {/* The window onto the room, placed so the sculpture's axis stands on
-          the left column. See SPACE_FROM. */}
+      {/* The whole room, placed so the sculpture's axis stands on the left
+          column. See SPACE_W_VH. */}
       <div
         style={{
           position: "absolute",
           top: 0,
-          left: `calc(${COLUMN_LEFT} - ${+((SPACE_AXIS - SPACE_FROM) * SPACE_W_VH).toFixed(3)}vh)`,
+          left: `calc(${COLUMN_LEFT} - ${+(SPACE_AXIS * SPACE_W_VH).toFixed(3)}vh)`,
           height: "100%",
-          width: `${+((1 - SPACE_FROM) * SPACE_W_VH).toFixed(3)}vh`,
-          overflow: "hidden",
+          width: `${+SPACE_W_VH.toFixed(3)}vh`,
         }}
       >
         <Image
@@ -380,24 +370,24 @@ function SpaceRow() {
           alt="For Space sculpture"
           width={SPACE_W}
           height={SPACE_H}
-          sizes={`${SPACE_W_VH}vh`}
+          sizes={`${+SPACE_W_VH.toFixed(3)}vh`}
           style={{
             position: "absolute",
             top: 0,
-            left: `${-SPACE_FROM * SPACE_W_VH}vh`,
+            left: 0,
             height: "100%",
-            width: `${SPACE_W_VH}vh`,
+            width: "100%",
             maxWidth: "none",
             opacity: CATEGORY_IMAGE_OPACITY,
           }}
         />
 
-        {/* Left white gradient */}
+        {/* Left white gradient, on the edge alone */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            width: "20%",
+            width: `${+(SPACE_EDGE_FADE * 100).toFixed(2)}%`,
             background: "linear-gradient(to right, #fff, transparent)",
             opacity: 0.8 + gradientOpacity * 0.2,
             pointerEvents: "none",
@@ -411,7 +401,7 @@ function SpaceRow() {
             inset: 0,
             left: "auto",
             right: 0,
-            width: "45%",
+            width: `${+(SPACE_RIGHT_FADE * 100).toFixed(2)}%`,
             background: "linear-gradient(to left, #fff, transparent)",
             opacity: 1,
             pointerEvents: "none",
@@ -428,10 +418,10 @@ function SpaceRow() {
   )
 }
 
-// FOR MIND — held still while it comes up out of the hero's white
+// FOR MIND — comes up out of the hero's white, played
 function MindRow() {
   const ref = useRef<HTMLDivElement>(null)
-  const [pinned, setPinned] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -441,121 +431,116 @@ function MindRow() {
     return () => window.removeEventListener("resize", check)
   }, [])
 
+  // Its place is the hero's last: the row stands exactly on the screen when
+  // the hero lets go, and the scroll that starts the beat nudges the page
+  // NUDGE_PX past it, so on is the row's top within that of the screen's.
   useEffect(() => {
-    const onScroll = () => {
-      const el = ref.current
-      if (!el) return
-      const total = el.offsetHeight - window.innerHeight
-      const scrolled = -el.getBoundingClientRect().top
-      setPinned(total > 0 ? clamp01(scrolled / total) : 0)
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    // The measurements themselves move on a resize, and a tab that loaded in
-    // the background only gets a real viewport once it is looked at.
-    window.addEventListener("resize", onScroll)
-    window.addEventListener("pageshow", onScroll)
-    document.addEventListener("visibilitychange", onScroll)
-    onScroll()
-    return () => {
-      window.removeEventListener("scroll", onScroll)
-      window.removeEventListener("resize", onScroll)
-      window.removeEventListener("pageshow", onScroll)
-      document.removeEventListener("visibilitychange", onScroll)
-    }
+    const el = ref.current
+    const content = contentRef.current
+    if (!el || !content) return
+    const beat = playBeat(
+      MIND_BEAT_S,
+      () => el.getBoundingClientRect().top < NUDGE_PX,
+      (t) => {
+        const fade = ease(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_FADE_S))
+        const rise = MIND_RISE_VH * (1 - ease(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_RISE_S)))
+        content.style.opacity = String(fade)
+        content.style.transform = `translateY(${rise.toFixed(3)}vh)`
+        content.style.pointerEvents = fade > 0 ? "auto" : "none"
+      },
+      // One beat with the hero's wash, so that the hero can send both back
+      // to the start together (see `rewind`).
+      "mind",
+    )
+    return beat.dispose
   }, [])
 
-  // Linear in scroll, not eased: this beat is short, and a dissolve that lags
-  // the hand reads as a delay rather than as a fade.
-  const reveal = clamp01((pinned * MIND_IN_VH - MIND_WHITE_VH) / MIND_REVEAL_VH)
-  // From the first glimmer to the unpin, 0 → 1, eased in. See MIND_RISE_VH.
-  const climb = clamp01((pinned * MIND_IN_VH - MIND_WHITE_VH) / (MIND_IN_VH - MIND_WHITE_VH))
-  const rise = MIND_RISE_VH * (1 - climb * climb)
-
   return (
-    <div ref={ref} style={{ height: `${100 + MIND_IN_VH}vh`, position: "relative" }}>
-      {/* Deliberately transparent, not white. Because this section is pulled
-          up over the hero's last screen, a white ground here would creep up
-          from the bottom edge and cover the hero while it is still washing —
-          which is the very thing the wash replaced. Left clear, the white
-          under all of this is the section's own background, which paints below
-          every pinned frame, so the hero washes out over it and then slides
-          away against it without a seam. */}
+    /* One screen, and no longer pinned: the beat is played where the row
+       stands, and the scroll after it carries the row on with the page.
+       Deliberately transparent, not white. This section is pulled up over the
+       hero's last screen, and a white ground here would cover the hero while
+       it is still washing. Left clear, the white under all of this is the
+       section's own background, which paints below the hero, so the hero
+       washes out over it and then slides away against it without a seam. The
+       overflow keeps the rising picture inside the screen it rises on. */
+    <div
+      ref={ref}
+      style={{
+        position: "relative",
+        height: "100vh",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+      }}
+    >
+      {/* Not clickable until it has begun to appear. This row is pulled up
+          over the hero's last screen, so for the whole Presence beat it is
+          already there at opacity 0, behind "We give form to presence", and
+          an invisible link still takes the click, which sent people to /mind
+          from what looked like empty ground. Its player writes the fade, the
+          rise and the clicks; React sets them once, unseen, and never again. */}
       <div
+        ref={contentRef}
         style={{
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
+          width: "100%",
+          opacity: 0,
+          transform: `translateY(${MIND_RISE_VH}vh)`,
+          willChange: "opacity, transform",
+          pointerEvents: "none",
         }}
       >
-        {/* Not clickable until it has begun to appear. This row is pulled up
-            over the hero's last screen, so for the whole Presence beat it is
-            already there at opacity 0, climbing the screen behind "We give form
-            to presence" — and an invisible link still takes the click, which
-            sent people to /mind from what looked like empty ground. */}
+        {/* Centred by flex rather than by text-align, so the link is only as
+            wide as its two lines. Under text-align the <a> wrapped a block
+            that ran the full width of the page, and the whole band either
+            side of the words was a link too.
+
+            On a wide screen it is set 60px below where the flow puts it,
+            down onto the white at the top of the photograph, which leaves it
+            some 45px clear of the board on a laptop and more on anything
+            wider. Moved by `top` rather than by
+            changing the padding, so the photograph stays where it was and
+            the pair stays centred on the screen as it was drawn. The z-index
+            is what keeps the words visible: the photograph's opacity makes it
+            a layer of its own, painted after this one, and its white would
+            otherwise cover them.
+
+            Not on a phone. The mobile photograph is a closer crop and its
+            tallest gold piece stands almost to the top edge, straight under
+            the words: 60px down puts the arrow of "→ Explore" on its tip. */}
         <div
           style={{
-            width: "100%",
-            opacity: reveal,
-            transform: `translateY(${rise}vh)`,
-            willChange: "opacity, transform",
-            pointerEvents: reveal > 0 ? "auto" : "none",
+            display: "flex",
+            justifyContent: "center",
+            paddingBottom: "24px",
+            position: "relative",
+            top: isMobile ? 0 : "60px",
+            zIndex: 1,
           }}
         >
-          {/* Centred by flex rather than by text-align, so the link is only as
-              wide as its two lines. Under text-align the <a> wrapped a block
-              that ran the full width of the page, and the whole band either
-              side of the words was a link too.
-
-              On a wide screen it is set 60px below where the flow puts it,
-              down onto the white at the top of the photograph, which leaves it
-              some 45px clear of the board on a laptop and more on anything
-              wider. Moved by `top` rather than by
-              changing the padding, so the photograph stays where it was and
-              the pair stays centred on the screen as it was drawn. The z-index
-              is what keeps the words visible: the photograph's opacity makes it
-              a layer of its own, painted after this one, and its white would
-              otherwise cover them.
-
-              Not on a phone. The mobile photograph is a closer crop and its
-              tallest gold piece stands almost to the top edge, straight under
-              the words: 60px down puts the arrow of "→ Explore" on its tip. */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              paddingBottom: "24px",
-              position: "relative",
-              top: isMobile ? 0 : "60px",
-              zIndex: 1,
-            }}
-          >
-            <CategoryLabel title="For Mind" align="center" href="/mind" />
-          </div>
-          <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-            {isMobile ? (
-              <Image
-                src="/images/cat-mind-mobile.jpg?v=3"
-                alt="Chess set — For Mind"
-                width={900}
-                height={1200}
-                style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
-                priority
-              />
-            ) : (
-              <Image
-                src="/images/cat-mind.jpg"
-                alt="Chess set — For Mind"
-                width={1600}
-                height={600}
-                style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
-                priority
-              />
-            )}
-          </div>
+          <CategoryLabel title="For Mind" align="center" href="/mind" />
+        </div>
+        <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+          {isMobile ? (
+            <Image
+              src="/images/cat-mind-mobile.jpg?v=3"
+              alt="Chess set — For Mind"
+              width={900}
+              height={1200}
+              style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
+              priority
+            />
+          ) : (
+            <Image
+              src="/images/cat-mind.jpg"
+              alt="Chess set — For Mind"
+              width={1600}
+              height={600}
+              style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
+              priority
+            />
+          )}
         </div>
       </div>
     </div>
@@ -639,10 +624,10 @@ export function CategoriesSection() {
      * between the wash and For Mind arriving.
      *
      * Overlapping this section onto it by exactly that one screen puts For
-     * Mind's pin at the moment the hero's pin releases. The hero then slides
-     * away behind this section's own white sticky viewport, which is opaque
-     * and covers the frame, so nothing of it is ever seen leaving and the two
-     * beats read as one dissolve.
+     * Mind's row exactly on the screen at the moment the hero's pin releases,
+     * which is where For Mind's beat is played. The hero then slides away,
+     * washed white, against this section's own white, so nothing of it is ever
+     * seen leaving and the two beats read as one dissolve.
      */
     <section style={{ background: "#fff", width: "100%", marginTop: "-100vh" }}>
       <MindRow />

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { preload } from "react-dom"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
+import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
+import { NUDGE_PX, playBeat, rewind } from "@/lib/played-beat"
 
 /**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
@@ -57,13 +59,14 @@ function ease(t: number): number {
 /**
  * The doors are played, not scrolled (2026-09-29, the author's asking).
  *
- * They start once the section stands in place, when the top of the frames
- * reaches the top of the screen, and open at their own pace, DOORS_S from the
- * first frame to the last, whatever the hand does next. Scrolled back until
- * the top of the frames leaves the top of the screen, they close the same way.
- * For an afternoon the first turn of the wheel set them going, while the
- * section was still rising into place; the author asked for them to wait for
- * it.
+ * They start on the first scroll past the pin and open at their own pace,
+ * DOORS_S from the first frame to the last, whatever the hand does next.
+ * Scrolled back to the pin, they close the same way. For an afternoon the
+ * first turn of the wheel set them going, while the section was still rising
+ * into place; the author asked for them to wait for it. Then, from 2026-09-29,
+ * they started as the section pinned, and a hand still turning the wheel to
+ * get there found them already opening. Since 2026-10-02 the page comes to
+ * rest at the pin first (`holdScroll`), and they wait for the next scroll.
  *
  * Until then the frames were tied to the scroll, and it read as stuttering:
  *   - the curve the section scrolls along starts flat, so the first frame came
@@ -74,51 +77,60 @@ function ease(t: number): number {
  *     4 vh apart, so every turn jumped three or four frames at once and then
  *     stood still until the next one.
  *
- * A scroll that outruns them drags them along instead of leaving them behind
- * (DOORS_CATCH_S), so they are always open by the end of DOORS_ROOM_VH, where
- * text 1 starts to fade. Between two frames the next is faded in over the last
- * (see `paint`), so the frames read as a movement rather than as pictures.
+ * Nothing hurries them (2026-10-02, the author's asking): they open at the
+ * same pace however much, or however fast, the page is scrolled. Until then a
+ * scroll that outran them dragged them along, so they were always open by the
+ * end of the 40 vh of scrolling they had after the pin (DOORS_ROOM_VH, gone
+ * with it), and a quick turn of the wheel threw them open in a
+ * fraction of their time. Now the page is held while they open instead (see
+ * `holdScroll`), so a hand cannot carry it on to text 1's fade before they
+ * have finished. Between two frames the next is faded in over the last (see
+ * `paint`), so the frames read as a movement rather than as pictures.
  *
  * 1.6s for the render of 2026-09-29, about 24 frames a second. Its doors open
  * (19 → 38) in 0.8s of it, as fast as the old twenty frames opened them in
  * their 1.2s, and the handles have the 0.8s before to turn in.
  */
 const DOORS_S = 1.6
-/** How quickly the doors catch up with a scroll that has got ahead of them, s. */
-const DOORS_CATCH_S = 0.08
-/**
- * Real scrolling, after the section pins, before text 1 starts to fade: about
- * four turns of the wheel on a 900px screen. The doors open inside it, and
- * text 1 comes up with them and holds. It was 30 while the doors took 1.2s,
- * and grew with them, so text 1 is lit for as long as it was.
- *
- * Only its second half can hurry the doors. A hand turning the wheel every
- * half second reaches it with them over a third of the way, and at most their
- * last frames, where they leave the picture, are hurried; a slower hand never
- * pulls them at all. With the pull spread over the whole room, the first turn
- * after the pin could throw them half-way at once, and then they slowed to
- * their own pace: a lurch. It was 12 while the doors opened during the
- * approach to the pin, which gave them the three turns of the menu and the
- * band under it.
- */
-const DOORS_ROOM_VH = 40
 
 /**
- * Choreography, expressed as distances in vh of scroll. Naming the durations
- * rather than the boundaries means a beat can be lengthened without hand-
- * retuning every number after it.
+ * The section is a few pictures, and the scroll moves from one to the next:
  *
- *   doors open ──┤ text 1: in ── hold ── out ┤ field ── presence ── line ┤ white
+ *   doors shut ─(doors)→ text 1 lit ─(presence)→ the composition ─(mind)→ For Mind
  *
- * The doors and text 1's first half are no longer on this line; they are
- * played (see DOORS_S). The line still starts with the doors' 120 vh, but the
- * section enters it where text 1 begins to fade, as it ends before its run-on
- * (TAIL_VH): only for the shape of the curve, so every beat from text 1's fade
- * on lands exactly where the author approved it.
+ * Each arrow is played at its own pace, and the page is held while it plays
+ * (`holdScroll`, `lib/played-beat.ts`). The last is For Mind's: the wash to
+ * white is its first second, played here, and For Mind's rise out of the white
+ * the rest, played by its row in `components/categories-section.tsx`. Each
+ * beat stands at a place on the page, in px of real scrolling past the pin: on
+ * past it, off before it. A scroll down nudges the page just past the next one
+ * (NUDGE_PX), so the beats come one to a scroll however much the hand scrolls,
+ * and a scroll back up past one plays it backwards.
+ *
+ * The doors stand at the pin itself (PAST_PIN_PX). Presence stands
+ * PRESENCE_AT_VH further on, about a turn of the wheel on a 900px screen, and
+ * For Mind MIND_GAP_VH past Presence's resting place. The page between them
+ * shows nothing that moves with it, so the nudge across a gap is never seen.
+ * The gaps are there for the way back: each turn of the wheel up plays one
+ * beat backwards.
+ *
+ * For Mind's resting place is where the pin lets go, and where For Mind's row
+ * stands exactly on the screen. The scroll after it carries both on with the
+ * page.
+ *
+ * Until 2026-10-02 everything from text 1's fade to For Mind in its place was
+ * tied to the scroll: an eased curve of some 73 vh to Presence's line, 36
+ * more to white, and 58 of For Mind's own pin. The author asked for each to
+ * come on one scroll, or on any number of them, fluidly, as the doors do.
  */
-const DOORS_VH = 120           // the old twenty frames, when they were scrolled
-const TEXT1_OUT_VH = 55        // fade back to black, after the hold
-const TEXT1_RISE_PX = 60       // slow drift upward across its whole life
+const PRESENCE_AT_VH = 12
+const MIND_GAP_VH = 12
+/**
+ * Text 1's slow drift upward across its whole life: the first half as it
+ * comes up with the doors, the second as it fades out ahead of Presence. It
+ * stands still while it is lit and waiting.
+ */
+const TEXT1_RISE_PX = 60
 
 /**
  * Text 1 lives *behind* the doors: it is drawn over the canvas but clipped to
@@ -161,87 +173,82 @@ const GAP: [number, number][] = [
 const FRAME_ASPECT = 2667 / 1500
 
 // Text 1 comes up against the frames, so it stays locked to the doors however
-// they are played. It fades against the scroll. Its two frames are where the
+// they are played. It fades with Presence's beat. Its two frames are where the
 // opening is as wide as it was at the old frames 5 and 13.
 const T1_FIRST_FRAME = 20      // first glimmer through the crack
 const T1_FIRST_OPACITY = 0.05
 const T1_FULL_FRAME = 32       // fully lit
+
 /**
- * The last beat arrives in three, not at once: the field out of the dark
- * first, then the sculpture standing in it, then the line under it. Each one
- * starts while the one before is still coming up and takes a little longer to
- * finish, so what you read is something opening rather than something
- * switching on.
+ * Presence's beat, played: seconds from the scroll that starts it.
  *
- * Both delays are counted from the field, which opens the beat the moment
- * text 1 has gone black — it takes over the empty beat that used to sit there.
+ * Text 1 goes back to black first. Then the last beat arrives in three, not
+ * at once: the field out of the dark first, then the sculpture standing in
+ * it, then the line under it. Each one starts while the one before is still
+ * coming up and takes a little longer to finish, so what you read is
+ * something opening rather than something switching on. Both delays are
+ * counted from the field, which opens the moment text 1 has gone black.
  *
- * **These are floors, not preferences.** A beat is worth staggering only if a
- * turn of the wheel can land inside it, and a wheel notch is about 100px of
- * scroll. This stretch of the section runs at roughly 5px of real scrolling
- * per vh, so anything under about 20vh apart arrives, to a hand on a mouse, at
- * the same instant — which is what a first pass at 7vh did. 18 and 40 put a
- * notch between the field and the sculpture and two between the field and the
- * line. Don't tighten them back without checking at 100px steps rather than at
- * 10px ones; the fine sweep shows a cascade that nobody scrolling can see.
+ * Each fade is eased in and out, so nothing starts or stops with a jolt.
+ * Played backwards, scrolling up, the line goes first and text 1 comes back
+ * last.
+ *
+ * The proportions are those of the scrolled beat the author approved, where
+ * at a steady hand text 1 took about 20 vh to fade, the field 10, the
+ * sculpture 16 starting 8 after it, and the line 32 starting 21 after it. The
+ * line's was long only because it landed on the flat end of the eased curve,
+ * and the played beat gives it about as long as the sculpture's. 2.6s in all,
+ * the time the scroll is held for.
  *
  * Only the fades are staggered. The scale is shared, because the ring is drawn
  * at a fixed distance from the sculpture: letting the two grow on different
  * curves would pull the composition apart while it arrives.
  */
-const HALO_IN_VH = 22          // the field, first
-const PRESENCE_DELAY_VH = 18   // the sculpture trails it by a notch
-const PRESENCE_IN_VH = 28
-const TEXT2_DELAY_VH = 40      // and the line by another
-const TEXT2_IN_VH = 34
+const TEXT1_OUT_S = 0.8
+const HALO_IN_S = 0.9          // the field, first
+const PRESENCE_DELAY_S = 0.3   // the sculpture trails it
+const PRESENCE_IN_S = 1.2
+const TEXT2_DELAY_S = 0.8      // and the line trails the sculpture
+const TEXT2_IN_S = 1.0
+
+const HALO_FROM_S = TEXT1_OUT_S
+const PRESENCE_FROM_S = HALO_FROM_S + PRESENCE_DELAY_S
+const TEXT2_FROM_S = HALO_FROM_S + TEXT2_DELAY_S
+/** The whole beat, s: where the last of the three is fully up. */
+const PRESENCE_BEAT_S = Math.max(
+  HALO_FROM_S + HALO_IN_S,
+  PRESENCE_FROM_S + PRESENCE_IN_S,
+  TEXT2_FROM_S + TEXT2_IN_S,
+)
+
+/** easeOutCubic: the sculpture's growth, quick to start and long to settle. */
+function easeOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
 
 /**
- * How far the eased timeline runs on past the line. None of it is played: the
- * section lets go before it gets there (see SCROLL_VH). It is here for the
- * shape of the curve, because easeInOutCubic is nearly flat as it approaches
- * 1. With no run-on, the line would land right on that flat end and take
- * several turns of the wheel to finish lighting.
- *
- * It was two beats until 2026-09-28, 4 held still and 8 for the exit lift, and
- * the section played them out to the end. Being eased, those 12 vh cost some
- * 57 vh of real scrolling after the line was lit, about five turns of the wheel
- * before the screen was white. The author asked for the exit to be quicker.
- * Shortening the run-on was not the way: it slides the line onto the flatter
- * part of the curve, and its fade grows by nearly what the tail loses. So the
- * run-on is kept, every beat up to the line is exactly where it was, and only
- * the end moved. Don't answer a stall here by trimming the beats above
- * instead: those are the ones you can see.
+ * Presence's place, px past the pin. Measured on the pinned screen, which is
+ * what the section's vh are, rather than on `innerHeight`: on a phone the two
+ * differ by the browser's bars.
  */
-const TAIL_VH = 12
+function presenceAt(sticky: HTMLElement | null): number {
+  return (PRESENCE_AT_VH * (sticky?.offsetHeight || window.innerHeight)) / 100
+}
 
-// Beat boundaries in vh, each one following from the last. Text 1 began to
-// fade where the old frame 17 of 20 fell on the curve.
-const T1_OUT_START_VH = (17 / 19) * DOORS_VH
-const T1_OUT_END_VH = T1_OUT_START_VH + TEXT1_OUT_VH
-const HALO_START_VH = T1_OUT_END_VH
-const HALO_END_VH = HALO_START_VH + HALO_IN_VH
-const PRESENCE_START_VH = HALO_START_VH + PRESENCE_DELAY_VH
-const PRESENCE_END_VH = PRESENCE_START_VH + PRESENCE_IN_VH
-const T2_START_VH = HALO_START_VH + TEXT2_DELAY_VH
-const T2_END_VH = T2_START_VH + TEXT2_IN_VH
-
-/** Where the last beat is fully up, and the eased timeline with its run-on. */
-const LAST_VH = Math.max(HALO_END_VH, PRESENCE_END_VH, T2_END_VH)
-const TIMELINE_VH = LAST_VH + TAIL_VH
-
-/** The inverse of `ease`: where in the scrolling an eased value falls. */
-function uneased(p: number): number {
-  return p < 0.5 ? Math.cbrt(p / 4) : 1 - Math.cbrt(2 * (1 - p)) / 2
+/** For Mind's place, px past the pin, measured as Presence's is. */
+function mindAt(sticky: HTMLElement | null): number {
+  return presenceAt(sticky) + NUDGE_PX + (MIND_GAP_VH * (sticky?.offsetHeight || window.innerHeight)) / 100
 }
 
 /**
  * Vertical easing at the section's two edges, in px of content travel.
  *
  * A sticky section otherwise snaps between two states: the page scrolls, then
- * it abruptly holds; at the end it abruptly resumes. These let the content keep
- * moving a little into the pin and start moving a little before the unpin, so
- * the eye reads a deceleration rather than a stop. Both use a cubic curve,
- * which reaches zero velocity exactly at the boundary.
+ * it abruptly holds; at the end it abruptly resumes. The settle lets the
+ * content keep moving a little into the pin, on a cubic curve, which reaches
+ * zero velocity exactly there, so the eye reads a deceleration rather than a
+ * stop. The lift raises it a little as it washes to white, played with the
+ * wash, so it leaves already moving the way the page will carry it.
  */
 const ENTRY_SETTLE_PX = 28
 const EXIT_LIFT_PX = 28
@@ -352,57 +359,22 @@ const HALO_VIEW_BOX = [-HALO_RX, -HALO_RY, 2 * HALO_RX, 2 * HALO_RY]
 /**
  * The exit: the screen washes to white rather than handing the page on by
  * scrolling the next section up behind it. `MindRow` in
- * `components/categories-section.tsx` picks the screen up from there and holds
- * For Mind still while it comes out of the same white, so the two read as one
- * dissolve rather than as two sections meeting.
+ * `components/categories-section.tsx` picks the screen up from there and
+ * brings For Mind up out of the same white, so the two read as one dissolve
+ * rather than as two sections meeting.
  *
- * The exit is counted in **real scrolling**, not in the eased vh every beat
- * above uses. From the moment the line is fully lit, HOLD is a turn of the
- * wheel with the finished composition on screen, and WHITE_OUT is two more
- * washing it to white. A turn is about 100px, some 11 vh on a 900px screen.
- * Until 2026-09-28 the exit was 25 vh held and 32 washing, about five turns
- * from the line to white; the author asked for it to be quicker.
+ * The wash is the first MIND_WASH_S of For Mind's beat, played. Until
+ * 2026-09-28 it was scrolled, 25 vh held and 32 washing, about five turns
+ * from the line to white, and the author asked for it to be quicker. It was
+ * then 12 held and 24 washing until 2026-10-02, when For Mind's beat came to
+ * be played and the wash with it.
+ *
+ * The section's real scrolling past the pin is then only the places of its
+ * beats: up to Presence's, the nudge past it, the gap to For Mind's, and the
+ * nudge past that, where the pin lets go.
  */
-const HOLD_VH = 12
-const WHITE_OUT_VH = 24
-
-/** vh of the eased timeline → progress through it (0 → 1). */
-const v = (vh: number) => vh / TIMELINE_VH
-
-/**
- * Where the section enters the curve, in its own uneased terms: text 1
- * starting to fade. Everything before it is the doors' and is played.
- */
-const ENTRY_U = uneased(v(T1_OUT_START_VH))
-
-/**
- * The section's real scrolling: the doors' room, then the curve from its entry
- * to where the line is fully lit, worked back through the curve, then the hold
- * and the wash. It lets go there, before the timeline has run out. Derived
- * rather than fixed so lengthening any beat above can never push the last one
- * into the exit.
- */
-const LIT_VH =
-  DOORS_ROOM_VH + TIMELINE_VH * (uneased(v(LAST_VH)) - ENTRY_U)
-const SCROLL_VH = LIT_VH + HOLD_VH + WHITE_OUT_VH
-
-/** Real scrolling at which text 1 has gone back to black: the end of its rise. */
-const T1_GONE_VH =
-  DOORS_ROOM_VH + TIMELINE_VH * (uneased(v(T1_OUT_END_VH)) - ENTRY_U)
-
-/** Where the wash begins, as a fraction of the section's real scrolling. */
-const WHITE_OUT_FROM = 1 - WHITE_OUT_VH / SCROLL_VH
-
-const TEXT1_OUT_START = v(T1_OUT_START_VH)
-const TEXT1_OUT_END = v(T1_OUT_END_VH)
-
-/** None of the three begins until text 1 is fully back to black. */
-const HALO_IN_START = v(HALO_START_VH)
-const HALO_IN_END = v(HALO_END_VH)
-const PRESENCE_IN_START = v(PRESENCE_START_VH)
-const PRESENCE_IN_END = v(PRESENCE_END_VH)
-const TEXT2_IN_START = v(T2_START_VH)
-const TEXT2_IN_END = v(T2_END_VH)
+const SCROLL_VH = PRESENCE_AT_VH + MIND_GAP_VH
+const SCROLL_PX = 2 * NUDGE_PX
 
 /** Linear 0 → 1 ramp across [from, to], flat outside it. */
 function ramp(v: number, from: number, to: number): number {
@@ -419,17 +391,329 @@ function gapAt(f: number): [number, number] {
   return [(l0 + (l1 - l0) * t) / 100, (r0 + (r1 - r0) * t) / 100]
 }
 
+/**
+ * The arrival (2026-10-02, the author's asking). The first scroll down from
+ * the top of the page goes only as far as the hero, to where the doors fill
+ * the screen, and comes to rest there. The doors open on the next one.
+ *
+ * Until then the page scrolled freely into the hero and the doors started as
+ * it pinned. The menu and the band under it are 345px on a 1440 × 900 screen,
+ * three or four turns of the wheel. A hand turning the wheel that many times
+ * was already inside the doors' room as they began, and a trackpad's fling
+ * carried it through them.
+ *
+ * So a scroll down that starts above the pin is taken over. The page is
+ * carried there by itself, leaving at about the speed a turn of the wheel
+ * scrolls at and slowing to nothing exactly at the pin: the inertia the author
+ * asked for, so that it settles rather than stops. Whatever more the same hand
+ * sends is absorbed: the rest of a quick turn of several notches, a trackpad's
+ * momentum, a key held down.
+ *
+ * The next scroll opens the doors, and the page is held again while they do
+ * (the same day, the author's asking: they must open at the same pace however
+ * much or however fast the page is scrolled). The one after brings Presence
+ * on, held the same way (the author's asking again, the same day). Each such
+ * scroll moves the page NUDGE_PX past the beat's place, where nothing on the
+ * screen moves with it, and the beat starts: the players wait for the page to
+ * go past their place. The rest of that scroll is absorbed, and so is every
+ * scroll down until the beat has played. Before, a quick turn carried the
+ * page on through text 1's fade while the doors were still opening, and
+ * dragged them open to keep up.
+ *
+ * Once the last beat has played, a new turn after GESTURE_GAP_MS of quiet
+ * scrolls on as ever, into the wash.
+ *
+ * These are the only places on the page where the scroll is held, at the
+ * author's asking. Only on the way down; going back up is never held. A finger
+ * is followed as it drags to the pin and, once lifted, the page glides on from
+ * the finger's own speed. The scrollbar is left alone. While the doors' frames
+ * are still loading, nothing waits on them.
+ *
+ * The listeners that can hold the scroll are on the page only while it is
+ * above the last beat's place. A wheel listener that may cancel makes the
+ * browser wait for the page's script before every scroll it starts, and the
+ * rest of the page has nothing to wait for.
+ */
+/** px/s the page leaves at, for a wheel or a key: about a turn of the wheel. */
+const ARRIVE_SPEED = 900
+/** The glide's length, s: 345px at ARRIVE_SPEED is 1.15s. */
+const ARRIVE_MIN_S = 0.4
+const ARRIVE_MAX_S = 1.3
+/**
+ * Quiet that ends a turn of the hand, ms. A quick turn's notches come 30–100ms
+ * apart and a trackpad's momentum every 16ms. A hand that stops to look and
+ * turns again is well past it.
+ */
+const GESTURE_GAP_MS = 250
+/**
+ * The glide's last pixels, where it is still easing in but no longer seen to
+ * move. A new turn that comes then finds the page arrived: they are covered at
+ * once and the turn opens the doors.
+ */
+const SETTLED_PX = 4
+/**
+ * How far past the pin the page must go for the doors to open. Not 0: a pin at
+ * 345.14px leaves the page a fraction of a pixel either side of it.
+ */
+const PAST_PIN_PX = 2
+
+/** A played beat, as the scroll's hold sees it. */
+type Beat = {
+  /** Its place, px of real scrolling past the pin: on past it, off before. */
+  at: () => number
+  /** How far it has played, 0 → 1; 1 also while it cannot play at all. */
+  done: () => number
+}
+
+/**
+ * Holds the first scroll down at the pin, and every scroll down while a beat
+ * plays. `beats` are in the order they come. Returns its undoing.
+ */
+function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
+  // How far the page still has to go: the section's own top on the screen.
+  const rest = () => el.getBoundingClientRect().top
+
+  let wrote = 0
+  const to = (y: number) => {
+    window.scrollTo({ top: y, behavior: "instant" })
+    wrote = window.scrollY
+  }
+
+  // The glide: a cubic from the speed it leaves at to rest. With `lead` 3 it
+  // is the plain ease-out; under 3 it leaves slower than that and gathers
+  // first, as it must when a finger lets go of it slowly.
+  let raf = 0
+  let gliding = false
+  let from = 0
+  let span = 0
+  let lead = 0
+  let start = 0
+  let length = 0
+
+  const stop = () => {
+    cancelAnimationFrame(raf)
+    raf = 0
+    gliding = false
+  }
+
+  const step = (now: number) => {
+    // Something else has moved the page (the scrollbar): it is theirs.
+    if (Math.abs(window.scrollY - wrote) > 2) return stop()
+    const s = clamp01((now - start) / length)
+    to(from + span * ((s * s * s - 2 * s * s + s) * lead + (3 - 2 * s) * s * s))
+    if (s < 1) raf = requestAnimationFrame(step)
+    else stop()
+  }
+
+  const glide = (speed: number) => {
+    stop()
+    const d = rest()
+    if (d <= 0.5) return
+    if (reduce.matches) return to(window.scrollY + d)
+    from = window.scrollY
+    wrote = from
+    span = d
+    length =
+      1000 *
+      Math.min(ARRIVE_MAX_S, Math.max(ARRIVE_MIN_S, (3 * d) / Math.max(speed, ARRIVE_SPEED)))
+    lead = Math.min(3, (speed * length) / 1000 / d)
+    start = performance.now()
+    gliding = true
+    raf = requestAnimationFrame(step)
+  }
+
+  // A new turn in the glide's last pixels: they are covered at once.
+  const land = () => {
+    if (!gliding) return
+    stop()
+    to(window.scrollY + rest())
+  }
+
+  /** Past the last beat's resting place, nothing here holds the page. */
+  const end = () => beats[beats.length - 1].at() + NUDGE_PX + 1
+
+  /**
+   * Whether the page takes a scroll down, rather than the browser. `same` is
+   * whether it comes from a hand already being held: within GESTURE_GAP_MS of
+   * the last turn, or a key held down.
+   */
+  let held = false
+  const take = (same: boolean): boolean => {
+    // Above the pin: carried there.
+    if (rest() > SETTLED_PX) {
+      held = true
+      if (!gliding) glide(ARRIVE_SPEED)
+      return true
+    }
+    if (-rest() > end()) {
+      held = false
+      return false
+    }
+    // The rest of a hand already held, whether it brought the page in or
+    // started a beat.
+    if (held && same) return true
+    land()
+    const x = -rest()
+    // The last beat the page is past: while it plays, the page waits.
+    let i = beats.length - 1
+    while (i >= 0 && x <= beats[i].at()) i--
+    if (i >= 0 && beats[i].done() < 1) {
+      held = true
+      return true
+    }
+    // The next one: this scroll starts it.
+    const next = beats[i + 1]
+    if (!next) {
+      held = false
+      return false
+    }
+    held = true
+    to(window.scrollY + next.at() + NUDGE_PX - x)
+    return true
+  }
+
+  // The wheel, and a trackpad, which the browser sends as one.
+  let lastWheel = -Infinity
+  const onWheel = (e: WheelEvent) => {
+    if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+    const gap = e.timeStamp - lastWheel
+    lastWheel = e.timeStamp
+    if (e.deltaY < 0) {
+      stop()
+      held = false
+      return
+    }
+    if (e.deltaY === 0 || !e.cancelable) return
+    if (take(gap < GESTURE_GAP_MS)) e.preventDefault()
+  }
+
+  // The keys that scroll down. One held down repeats as the same hand.
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
+    if (!(e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey))) return
+    const t = e.target
+    if (t instanceof HTMLElement && (t.isContentEditable || t.closest("input, textarea, select, button"))) return
+    if (take(e.repeat)) e.preventDefault()
+  }
+
+  // A finger. What the touch is is settled on its first move, the only one
+  // the browser lets the page cancel. Going down above the pin, it brings the
+  // page in: the page follows the finger, as far as the pin and no further,
+  // and once it is lifted glides on from the finger's speed. Going down where
+  // it starts a beat, or while one plays, it is held whole. Anything else is the
+  // browser's.
+  type Touching = { x: number; y: number; at: number; v: number; mode: "arrive" | "hold" | "native" | null }
+  let touch: Touching | null = null
+  const onTouchStart = (e: TouchEvent) => {
+    touch = null
+    if (e.touches.length !== 1) return
+    const p = e.touches[0]
+    touch = { x: p.clientX, y: p.clientY, at: e.timeStamp, v: 0, mode: null }
+  }
+  const onTouchMove = (e: TouchEvent) => {
+    if (!touch) return
+    if (e.touches.length !== 1) {
+      touch = null
+      return
+    }
+    const p = e.touches[0]
+    const dy = touch.y - p.clientY
+    if (touch.mode === null) {
+      // A tap leaves a glide running. A drag takes the page from it.
+      stop()
+      if (!e.cancelable || dy <= 0 || dy < Math.abs(p.clientX - touch.x)) touch.mode = "native"
+      else if (rest() > SETTLED_PX) touch.mode = "arrive"
+      else touch.mode = take(false) ? "hold" : "native"
+    }
+    if (touch.mode === "native") return
+    e.preventDefault()
+    if (touch.mode === "hold") return
+    const y = window.scrollY
+    to(Math.max(0, Math.min(y + rest(), y + dy)))
+    const dt = e.timeStamp - touch.at
+    if (dt > 0) touch.v = 0.75 * ((dy / dt) * 1000) + 0.25 * touch.v
+    touch.x = p.clientX
+    touch.y = p.clientY
+    touch.at = e.timeStamp
+  }
+  const onTouchEnd = (e: TouchEvent) => {
+    const t = touch
+    touch = null
+    if (t?.mode !== "arrive") return
+    // A finger that stopped before it was lifted throws nothing; one that
+    // turned back up leaves the page where it is.
+    const v = e.timeStamp - t.at > 80 ? 0 : t.v
+    if (v >= 0) glide(v)
+  }
+
+  // On the page only while it is short of the last beat's resting place, or
+  // being carried to the pin.
+  let armed = false
+  const arm = () => {
+    const want = gliding || -rest() <= end()
+    if (want === armed) return
+    armed = want
+    if (want) {
+      window.addEventListener("wheel", onWheel, { passive: false })
+      window.addEventListener("touchmove", onTouchMove, { passive: false })
+    } else {
+      window.removeEventListener("wheel", onWheel)
+      window.removeEventListener("touchmove", onTouchMove)
+    }
+  }
+
+  arm()
+  window.addEventListener("scroll", arm, { passive: true })
+  window.addEventListener("resize", arm)
+  window.addEventListener("keydown", onKeyDown)
+  window.addEventListener("touchstart", onTouchStart, { passive: true })
+  window.addEventListener("touchend", onTouchEnd, { passive: true })
+  window.addEventListener("touchcancel", onTouchEnd, { passive: true })
+  return () => {
+    stop()
+    window.removeEventListener("wheel", onWheel)
+    window.removeEventListener("touchmove", onTouchMove)
+    window.removeEventListener("scroll", arm)
+    window.removeEventListener("resize", arm)
+    window.removeEventListener("keydown", onKeyDown)
+    window.removeEventListener("touchstart", onTouchStart)
+    window.removeEventListener("touchend", onTouchEnd)
+    window.removeEventListener("touchcancel", onTouchEnd)
+  }
+}
+
 export function HeroAnimation() {
   const containerRef = useRef<HTMLDivElement>(null)
+  // The pinned screen, whose height is the section's vh.
+  const stickyRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Text 1's clip to the opening and its fade in, which belong to the doors
   // and are written by their player (see `paint`), not by React.
   const text1DoorsRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
-  // The wash to white is the one beat driven by raw scroll — see WHITE_OUT_VH.
-  const [rawProgress, setRawProgress] = useState(0)
+  // Presence's beat, written by its player (see the second effect), not by
+  // React: text 1's fade, the field, the sculpture and the line, and the scale
+  // the three share, as `--presence-scale` on the stage.
+  const stageRef = useRef<HTMLDivElement>(null)
+  const text1OutRef = useRef<HTMLDivElement>(null)
+  const haloRef = useRef<HTMLDivElement>(null)
+  const sculptureRef = useRef<HTMLImageElement>(null)
+  const captionRef = useRef<HTMLDivElement>(null)
+  // The wash to white, the start of For Mind's beat, written by its player
+  // with the lift that goes with it, as `--exit-lift` on the stage.
+  const washRef = useRef<HTMLDivElement>(null)
+  // The field's rings run only while it can be seen.
+  const [haloLive, setHaloLive] = useState(false)
   // 1 while the section is a full approach away from pinning, 0 once pinned.
   const [arrive, setArrive] = useState(1)
+  // How far each played beat has gone, 0 → 1, for the scroll's hold to wait
+  // on. The doors read 1 while they cannot play, so that nothing waits on
+  // frames still loading.
+  const doorsRef = useRef<() => number>(() => 1)
+  const presenceRef = useRef<() => number>(() => 1)
+  const mindRef = useRef<() => number>(() => 1)
+  // Shuts the doors at once, on frame 0, rather than playing them shut.
+  const shutDoorsRef = useRef<() => void>(() => {})
 
   // The doors: loaded, decoded, played and drawn here, outside React. They
   // change every frame for a second and a bit, and nothing else on the page
@@ -447,8 +731,8 @@ export function HeroAnimation() {
 
     let pos = 0 // where the doors stand, 0 shut → 1 open
     let open = false // where they are going
-    let floor = 0 // how far the scroll alone would have them by now
     let primed = false
+    doorsRef.current = () => (ready ? pos : 1)
     let raf = 0
     let last = 0
 
@@ -561,6 +845,9 @@ export function HeroAnimation() {
             : T1_FIRST_OPACITY +
                 ramp(f, T1_FIRST_FRAME, T1_FULL_FRAME) * (1 - T1_FIRST_OPACITY),
         )
+        // The first half of its drift, from its first glimmer to the last
+        // frame (see TEXT1_RISE_PX).
+        layer.style.setProperty("--t1-in", String(ease(ramp(f, T1_FIRST_FRAME, FRAME_COUNT - 1))))
       }
 
       const W = canvas.width
@@ -589,19 +876,19 @@ export function HeroAnimation() {
       // background carries on where it was rather than leaping to the end.
       const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60
       last = now
-      if (open) {
-        pos = Math.min(1, pos + dt / DOORS_S)
-        // A scroll that has got ahead pulls them after it, quickly but
-        // without a jump.
-        if (pos < floor) {
-          pos += (floor - pos) * (1 - Math.exp(-dt / DOORS_CATCH_S))
-          if (floor - pos < 0.001) pos = floor
-        }
-      } else {
-        pos = Math.max(0, pos - dt / DOORS_S)
-      }
+      pos = open ? Math.min(1, pos + dt / DOORS_S) : Math.max(0, pos - dt / DOORS_S)
       paint()
       if (moving()) raf = requestAnimationFrame(tick)
+    }
+
+    // A page scrolled back up above the pin finds them shut, the handles
+    // there at once (see `rewind` in lib/played-beat.ts).
+    shutDoorsRef.current = () => {
+      if (pos === 0 && !raf) return
+      cancelAnimationFrame(raf)
+      raf = 0
+      pos = 0
+      paint()
     }
 
     const play = () => {
@@ -612,14 +899,9 @@ export function HeroAnimation() {
 
     const measure = () => {
       const top = el.getBoundingClientRect().top
-      // Where the top of the frames stands on the screen. The canvas reaches
-      // OVERSCAN_PX above the section and lags behind it as it arrives, by
-      // the same settle the render below gives it.
-      const arrive = clamp01(top / (el.offsetTop || 1))
-      open = top - OVERSCAN_PX + ENTRY_SETTLE_PX * Math.pow(arrive, 3) <= 0
-      // The second half of the doors' room, see DOORS_ROOM_VH.
-      const half = (DOORS_ROOM_VH * window.innerHeight) / 200
-      floor = clamp01((-top - half) / half)
+      // Past the pin, not at it: the page comes to rest at the pin first (see
+      // `holdScroll`), and the doors wait for the next scroll.
+      open = top < -PAST_PIN_PX
       if (!primed) {
         // A page that opens part-way down, restored or followed from a link,
         // finds the doors already open rather than opening them out of sight.
@@ -692,6 +974,8 @@ export function HeroAnimation() {
     window.addEventListener("pageshow", measure)
     return () => {
       disposed = true
+      doorsRef.current = () => 1
+      shutDoorsRef.current = () => {}
       cancelAnimationFrame(raf)
       window.clearTimeout(rebuild)
       ro.disconnect()
@@ -706,33 +990,110 @@ export function HeroAnimation() {
     }
   }, [])
 
+  // Presence's beat, and the wash that opens For Mind's: played here, outside
+  // React, as the doors are (see `lib/played-beat.ts`). Each starts with the
+  // scroll that nudges the page past its place and plays whatever the hand
+  // does next; scrolled back before its place, it plays backwards, unless the
+  // page has gone back past an earlier beat's place too.
+  useEffect(() => {
+    const el = containerRef.current
+    const stage = stageRef.current
+    if (!el || !stage) return
+    const past = () => -el.getBoundingClientRect().top
+    let live = false
+
+    // Text 1 goes back to black, then the field, the sculpture and the line
+    // come up, PRESENCE_BEAT_S in all.
+    const presence = playBeat(
+      PRESENCE_BEAT_S,
+      () => past() > presenceAt(stickyRef.current),
+      (t) => {
+        const fade = (from: number, length: number) => ease(ramp(t, from, from + length))
+        const out = fade(0, TEXT1_OUT_S)
+        const halo = fade(HALO_FROM_S, HALO_IN_S)
+        const grow = ramp(t, PRESENCE_FROM_S, PRESENCE_FROM_S + PRESENCE_IN_S)
+        stage.style.setProperty("--t1-out", String(out))
+        stage.style.setProperty("--presence-scale", String(0.65 + 0.35 * easeOut(grow)))
+        if (text1OutRef.current) text1OutRef.current.style.opacity = String(1 - out)
+        if (haloRef.current) haloRef.current.style.opacity = String(halo)
+        if (sculptureRef.current) sculptureRef.current.style.opacity = String(ease(grow))
+        if (captionRef.current) {
+          captionRef.current.style.opacity = String(fade(TEXT2_FROM_S, TEXT2_IN_S))
+        }
+        // Nothing of the field is on screen while the doors are still
+        // opening, and that is the stretch the page can least spare.
+        if (halo > 0 !== live) {
+          live = halo > 0
+          setHaloLive(live)
+        }
+      },
+      "presence",
+    )
+
+    // For Mind's beat, whose first MIND_WASH_S is the wash to white and the
+    // lift that goes with it. Its row plays the rest on the same clock: both
+    // start on the same scroll, and its place is the row's (see MindRow).
+    const mind = playBeat(
+      MIND_BEAT_S,
+      () => past() > mindAt(stickyRef.current),
+      (t) => {
+        const wash = ease(ramp(t, 0, MIND_WASH_S))
+        if (washRef.current) washRef.current.style.opacity = String(wash)
+        stage.style.setProperty("--exit-lift", `${(-EXIT_LIFT_PX * wash).toFixed(2)}px`)
+      },
+      "mind",
+    )
+
+    // Only the last beat the page has gone back before plays backward: the
+    // ones after it go straight back to their start (see `rewind`). Above the
+    // pin they all do, the doors with them, so a page scrolled back to the top
+    // finds the handles there at once. Added after the beats' own listeners,
+    // so it has the last word on every scroll.
+    const back = () => {
+      const x = past()
+      if (x < 0) {
+        shutDoorsRef.current()
+        rewind("presence")
+      }
+      if (x < presenceAt(stickyRef.current)) rewind("mind")
+    }
+    back()
+    window.addEventListener("scroll", back, { passive: true })
+
+    presenceRef.current = presence.done
+    mindRef.current = mind.done
+    return () => {
+      window.removeEventListener("scroll", back)
+      presence.dispose()
+      mind.dispose()
+      presenceRef.current = () => 1
+      mindRef.current = () => 1
+    }
+  }, [])
+
+  // The page comes to rest where the doors fill the screen, and stays while
+  // each beat plays (see holdScroll).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    return holdScroll(el, [
+      { at: () => PAST_PIN_PX, done: () => doorsRef.current() },
+      { at: () => presenceAt(stickyRef.current), done: () => presenceRef.current() },
+      { at: () => mindAt(stickyRef.current), done: () => mindRef.current() },
+    ])
+  }, [])
+
   // The first frame is what the hero shows until the wheel turns, so the page
   // asks for it with the document rather than once the script has run.
   preload(FRAME_URLS[0], { as: "image", fetchPriority: "high" })
 
-  // Track scroll progress
+  // The one thing still driven by the scroll: the settle into the pin.
   useEffect(() => {
     const onScroll = () => {
       const el = containerRef.current
       if (!el) return
-      const rect = el.getBoundingClientRect()
-      const total = el.offsetHeight - window.innerHeight
-      const scrolled = -rect.top
-      // A zero or negative `total` means the container has no scrollable range
-      // yet; treat that as "not started" instead of dividing by it.
-      const raw = total > 0 ? clamp01(scrolled / total) : 0
-      // The doors' room is played, not scrolled, so the section enters the
-      // curve after it (see ENTRY_U); and it lets go before the curve runs
-      // out (see SCROLL_VH), so it only ever plays its own share of it.
-      const eased = ease(
-        ENTRY_U + Math.max(0, raw * SCROLL_VH - DOORS_ROOM_VH) / TIMELINE_VH,
-      )
-      setProgress(eased)
-      setRawProgress(raw)
-
       // Distance still to travel before the sticky child pins, normalised.
-      const pinTravel = el.offsetTop || 1
-      setArrive(clamp01(rect.top / pinTravel))
+      setArrive(clamp01(el.getBoundingClientRect().top / (el.offsetTop || 1)))
     }
 
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -751,40 +1112,31 @@ export function HeroAnimation() {
     }
   }, [])
 
-  // Text 1 fades with the scroll; its coming up is the doors' (see `paint`).
-  const text1Out = ramp(progress, TEXT1_OUT_START, TEXT1_OUT_END)
-
-  // Drifts upward as you scroll: starts half a rise below centre as the
-  // section pins, and ends half a rise above it as the text goes.
-  const text1Rise =
-    (0.5 - ramp(rawProgress * SCROLL_VH, 0, T1_GONE_VH)) * TEXT1_RISE_PX
-
-  // The beat follows only after text 1 has gone, and comes up in three.
-  // Scrolling back up reverses all of it.
-  const haloOpacity = ramp(progress, HALO_IN_START, HALO_IN_END)
-  const presenceProgress = ramp(progress, PRESENCE_IN_START, PRESENCE_IN_END)
-  const presenceOpacity = presenceProgress
-  const captionOpacity = ramp(progress, TEXT2_IN_START, TEXT2_IN_END)
-  const whiteOut = ramp(rawProgress, WHITE_OUT_FROM, 1)
-
   // One scale for the whole composition, taken from the sculpture's own
-  // arrival. The halo is sized in multiples of this height, so the field and
-  // the sculpture grow together however differently the two of them light up.
-  const presenceScale = 0.65 + presenceProgress * (1 - 0.65)  // 0.65 → 1.0
-  const presenceH = `calc(${PRESENCE_VH}vh * ${presenceScale})`
+  // arrival, 0.65 → 1, written by Presence's player. The halo is sized in
+  // multiples of this height, so the field and the sculpture grow together
+  // however differently the two of them light up.
+  const presenceH = `calc(${PRESENCE_VH}vh * var(--presence-scale, 0.65))`
 
-  // Content lags on the way in and leads on the way out, lifting as it washes
-  // to white. Cubed so the velocity relative to the page reaches zero exactly
-  // at the pin and unpin boundaries.
+  // Text 1 drifts up half a rise as it comes up with the doors (`--t1-in`)
+  // and half again as it fades ahead of Presence (`--t1-out`).
+  const text1Rise = `${TEXT1_RISE_PX}px * (0.5 - 0.5 * var(--t1-in, 0) - 0.5 * var(--t1-out, 0))`
+
+  // Content lags on the way in, cubed so its velocity relative to the page
+  // reaches zero exactly at the pin. On the way out it lifts as it washes to
+  // white, played with the wash (`--exit-lift`).
   const entryShift = ENTRY_SETTLE_PX * Math.pow(arrive, 3)
-  const exitShift = -EXIT_LIFT_PX * Math.pow(whiteOut, 3)
-  const shift = entryShift + exitShift
 
   return (
-    // Container height = 1 sticky screen + SCROLL_VH of scroll to drive it.
-    <div ref={containerRef} style={{ height: `${100 + SCROLL_VH}vh`, position: "relative" }}>
+    // Container height = 1 sticky screen + the places of the beats past the
+    // pin, the last of which is where the pin lets go (see SCROLL_VH).
+    <div
+      ref={containerRef}
+      style={{ height: `calc(${100 + SCROLL_VH}vh + ${SCROLL_PX}px)`, position: "relative" }}
+    >
       {/* Sticky viewport */}
       <div
+        ref={stickyRef}
         style={{
           position: "sticky",
           top: 0,
@@ -797,13 +1149,14 @@ export function HeroAnimation() {
         {/* Everything that moves, shifted as one so the section eases into the
             pin and out of it instead of snapping between scrolling and held. */}
         <div
+          ref={stageRef}
           style={{
             position: "absolute",
             top: -OVERSCAN_PX,
             bottom: -OVERSCAN_PX,
             left: 0,
             right: 0,
-            transform: `translateY(${shift}px)`,
+            transform: `translateY(calc(${entryShift}px + var(--exit-lift, 0px)))`,
             willChange: "transform",
           }}
         >
@@ -846,6 +1199,7 @@ export function HeroAnimation() {
                   the field would rise in front of the sculpture rather than
                   behind it. */}
               <div
+                ref={haloRef}
                 style={{
                   position: "absolute",
                   top: "50%",
@@ -853,7 +1207,7 @@ export function HeroAnimation() {
                   width: `calc(${presenceH} * ${HALO_BOX_W})`,
                   height: `calc(${presenceH} * ${HALO_BOX_H})`,
                   transform: "translate(-50%, -50%)",
-                  opacity: haloOpacity,
+                  opacity: 0,
                 }}
               >
                 <RadiantRings
@@ -867,12 +1221,11 @@ export function HeroAnimation() {
                   peak={HALO_PEAK}
                   reach={HALO_REACH}
                   growth={HALO_GROWTH}
-                  // Nothing of this beat is on screen while the doors are still
-                  // opening, and that is the stretch the page can least spare.
-                  paused={haloOpacity === 0}
+                  paused={!haloLive}
                 />
               </div>
               <Image
+                ref={sculptureRef}
                 src="/presence.png?v=3"
                 alt="Presence sculpture"
                 width={220}
@@ -881,7 +1234,7 @@ export function HeroAnimation() {
                 style={{
                   position: "relative",
                   display: "block",
-                  opacity: presenceOpacity,
+                  opacity: 0,
                   height: `calc(${presenceH} * ${PRESENCE_SIZE})`,
                   marginTop: `calc(${presenceH} * ${+(1 - PRESENCE_SIZE).toFixed(4)})`,
                   width: "auto",
@@ -895,10 +1248,11 @@ export function HeroAnimation() {
                   the ring is drawn round both and neither can drift out from
                   under it. */}
               <div
+                ref={captionRef}
                 style={{
                   position: "relative",
                   marginTop: `calc(${presenceH} * ${PRESENCE_ROOM})`,
-                  opacity: captionOpacity,
+                  opacity: 0,
                   textAlign: "center",
                   whiteSpace: "nowrap",
                   // A line's advance width carries the letter-spacing after its
@@ -925,14 +1279,14 @@ export function HeroAnimation() {
           {/* Text 1 — clipped to the opening between the doors so it reads as
               being behind them. The layers span the canvas exactly, which is
               what lets the inset be given in canvas pixels. The outer one
-              fades with the scroll; the inner one is the doors', and its clip
-              and light are written by their player, so React sets them once,
-              shut, and never again. */}
+              fades with Presence's beat; the inner one is the doors'. Their
+              players write both, so React sets them once and never again. */}
           <div
+            ref={text1OutRef}
             style={{
               position: "absolute",
               inset: 0,
-              opacity: 1 - text1Out,
+              opacity: 1,
               zIndex: 1,
               pointerEvents: "none",
             }}
@@ -952,7 +1306,7 @@ export function HeroAnimation() {
                   position: "absolute",
                   top: "50%",
                   left: "50%",
-                  transform: `translate(-50%, calc(-50% + ${text1Rise}px))`,
+                  transform: `translate(-50%, calc(-50% + ${text1Rise}))`,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -976,13 +1330,15 @@ export function HeroAnimation() {
               well as the composition — so what leaves the screen is one white
               field rather than a sculpture fading off a dark ground. It sits
               inside the moving layer, which is overscanned past the viewport
-              on both edges, so no strip of #202020 can show under it. */}
+              on both edges, so no strip of #202020 can show under it. Its
+              strength is written by For Mind's player. */}
           <div
+            ref={washRef}
             style={{
               position: "absolute",
               inset: 0,
               background: "#fff",
-              opacity: whiteOut,
+              opacity: 0,
               pointerEvents: "none",
               zIndex: 4,
             }}
