@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import Image from "next/image"
 import { readMandala, type MoonArt, type MoonMotion, type MoonRing, type MoonShape } from "@/lib/moon-mandala"
+import { DROP_LARGE, dropUnit } from "@/components/seam-drops"
 
 /* --------------------------------------------------------------------------
    The mandala over the Chess Set's moon, and the drop that sets it off.
@@ -16,14 +17,15 @@ import { readMandala, type MoonArt, type MoonMotion, type MoonRing, type MoonSha
 
    1. Dark drops fall from the middle of the seam, where the photograph's
       water already falls into the page, and fade as the seam's own do. When
-      the moon's rim first shows at the foot of the window, the drop then
-      falling does not fade: it carries on down to the moon's centre, at the
-      pace of the seam's own drops.
-   2. As it falls the rings slow, to a fifth of their pace.
-   3. Where it lands, the mandala is inked black from the centre outward, a
+      the seam reaches the middle of the window, the drop then falling does
+      not fade: it carries on down to the moon's centre, at the pace of the
+      seam's own drops.
+   2. Where it lands, the mandala is inked black from the centre outward, a
       ring at a time, like a drop spreading in water.
+   3. Once it is black through, the rings slow, to a fifth of their pace.
    4. As the reader scrolls on, every shape draws in toward the centre and
-      shrinks: a bow being drawn.
+      shrinks: a bow being drawn. The centre goes first and the rest follow
+      it outward, so it tightens rather than scales.
    5. When the moon reaches the middle of the screen, it lets go. Every shape
       shoots straight out along its own radius, streaking as it goes, a volley
       of arrows loosed in every direction at once.
@@ -42,8 +44,9 @@ import { readMandala, type MoonArt, type MoonMotion, type MoonRing, type MoonSha
    Scroll must never stop on this site, and nothing here holds the page. The
    drop and the ink keep their own time whatever the reader does: the drop
    falls as the seam's water falls, which the author asked for once it had
-   been seen hurried by the scroll. It is sent on as soon as the moon shows,
-   so it is well on its way by the time the reader has brought the moon up,
+   been seen hurried by the scroll. It is sent on before the moon shows, as
+   the seam passes the middle of the window, so it is well on its way by the
+   time the reader has brought the moon up,
    and a reader who scrolls on ahead of it finds the moon waiting, with the
    rest playing where it stands. The draw is the one step that follows the
    scroll, since it is the reader's own hand drawing the bow, and it gives
@@ -56,11 +59,12 @@ const SRC = "/images/chess-set/mandala.svg"
 const MOON_RIM = 63.5
 /**
  * How much of the mandala's square the canvas covers, from its top. The page
- * cuts the mandala at 82% of the moon's canvas (the veil under the clouds is
- * solid white below that), which is 66.2% of the way down its own box, so
- * there is nothing to draw further down.
+ * cuts the mandala at 92% of the moon's canvas (the white veil under the moon
+ * is solid below that), which is 70.6% of the way down its own box, so there
+ * is nothing to draw further down. It was 82% and 66.2% until 2026-10-02,
+ * when the veil went down to uncover the whole moon.
  */
-const VISIBLE = 0.662
+const VISIBLE = 0.706
 const MAX_DPR = 2
 /** The most pixels the canvas may hold. A very large screen draws it a little less finely. */
 const MAX_PIXELS = 6e6
@@ -77,12 +81,26 @@ const SURFACE = 0.2
 /* --- The drops ------------------------------------------------------------- */
 
 /**
- * The share of the window the moon's disc has come up into when the drop
- * then falling is sent on to its centre: its rim just showing at the foot of
- * the screen. It was 60% of the disc at first, which left the drop, at the
+ * Where the seam stands in the window, as a share of its height from the top,
+ * when the drop then falling is sent on to the moon's centre: the middle (the
+ * author's asking, 2026-10-04). Going down, it is sent as the seam climbs past
+ * that line; going back up, as the seam comes back down to it.
+ *
+ * Until then, going down, it waited for the moon's rim to show at the foot of
+ * the window (RIM_SHOWN). The seam had climbed to 39–47% of the window by
+ * then, so the drop set off 23 to 101px of scrolling later than it does now
+ * (measured from 375 × 667 to 1920 × 1080), and the author asked for it
+ * earlier. At first it waited for 60% of the disc, which left the drop, at the
  * seam's slow pace, still falling long after the reader had scrolled past.
  */
-const RELEASE_SHOWN = 0.03
+const SEND_AT = 0.5
+/**
+ * The reader's way to the strike is counted from here: the moon's rim just
+ * showing at the foot of the window, this share of the window up it. The drop
+ * was sent on there until 2026-10-04. The bow's draw is still measured from
+ * it, so that sending the drop earlier did not change the draw.
+ */
+const RIM_SHOWN = 0.03
 /**
  * Seconds a bead gathers at the middle of the seam before it lets go: a little
  * more often than the seam's own, whose beads take 1.4 to 5.6 seconds, so the
@@ -95,7 +113,7 @@ const SWELL = 0.45
 /**
  * The seam's water, from `components/seam-drops.tsx`: the speed a drop leaves
  * the line at, how fast it quickens (px/s²), and the speed the air holds it
- * to, each times the pace of its largest drop, which these are. The one sent
+ * to, each times the quickest of its paces, which these go at. The one sent
  * on crosses 700px in about seven and a half seconds. Unlike the seam's, they
  * do not quicken with the scroll: the author asked for the drop to fall as it
  * falls.
@@ -115,16 +133,19 @@ const REACH_NARROW = 184
 const SHORT = 0.3
 const DECAY = 1.7
 const R_END = 0.55
-/** Their radius: 7px across, the largest of the seam's own drops. A phone's are smaller. */
-const DROP_R = 3.5
-const DROP_R_NARROW = 2.8
+/**
+ * Their size is the larger of the seam's two, read from `seam-drops.tsx`
+ * rather than copied, so the middle of the seam can never drift from the rest
+ * of it: the Waterfall figure's drops, on the author's asking of 2026-09-28.
+ * They were 7px across until then, the largest the seam had.
+ */
 const NARROW_W = 640
 /** Width of the strip the drops fall down, in CSS pixels. */
 const DROP_W = 40
 const DROP_RGB = "32,32,32"
 const DROP_PEAK = 0.85
 /** The seam's streak: seconds of travel smeared out behind the head, its cap, and how far the head draws out at speed. */
-const SMEAR = 0.22
+const SMEAR = 0.12
 const TAIL_MAX = 46
 const STRETCH = 0.9
 /**
@@ -153,9 +174,12 @@ function falling(t: number) {
 /* --- The ink and the draw ------------------------------------------------ */
 
 /**
- * The pace the rings slow to as the drop falls, as a share of their own. A
- * tenth at first; the author found the rings all but stopped there and asked
- * for them quicker, at rest and drawn alike.
+ * The pace the rings slow to once the ink has filled the mandala, as a share
+ * of their own. A tenth at first; the author found the rings all but stopped
+ * there and asked for them quicker, at rest and drawn alike. They slowed as
+ * the drop set off until 2026-10-02, when the author asked for the hush to
+ * wait for the mandala to be black through: the ink spreads over rings still
+ * moving at their own pace, and only then do they quieten.
  */
 const HUSH = 0.2
 /** Time constants, in seconds, for slowing down and for waking again after the strike. */
@@ -197,6 +221,16 @@ const DRAW_ROOM = 0.15
 const DRAW_MIN = 0.12
 const DRAW_MAX = 0.3
 const SHRINK = 0.38
+/**
+ * The bow is drawn from the centre out, not all at once. Each shape draws over
+ * the last 1 − DRAW_WAVE of the draw, and begins the later the further out it
+ * stands: the centre at once, the rim once the draw is DRAW_WAVE of its way
+ * in. So the middle is half in before the rim has begun to follow. When the
+ * bow draws itself, in DRAW_MIN_S, that is about 0.4 seconds from the centre
+ * to the rim. Drawn all together, as it was until 2026-09-28, the author
+ * found it read as the whole drawing being scaled.
+ */
+const DRAW_WAVE = 0.3
 /** The ring the drop leaves in the ink as it lands: seconds, and how far it spreads, in units. */
 const SPLASH_S = 0.9
 const SPLASH_R = 16
@@ -255,6 +289,9 @@ const RUSH_END_S = 12
 /** Non-finite to 0, as everywhere on the site that divides by a measurement. */
 const clamp01 = (t: number) => (t > 0 ? (t < 1 ? t : 1) : 0)
 const smooth = (t: number) => t * t * (3 - 2 * t)
+/** How far a shape `r` units from the centre is drawn, of a mandala `reach` across, when the bow is drawn `d`. */
+const bowAt = (d: number, r: number, reach: number) =>
+  smooth(clamp01((d - (DRAW_WAVE * r) / reach) / (1 - DRAW_WAVE)))
 /** Eases `value` toward `target` over the time constant `tau`, whatever the frame rate. */
 const approach = (value: number, target: number, tau: number, dt: number) =>
   value + (target - value) * (1 - Math.exp(-dt / tau))
@@ -430,7 +467,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     let dropDpr = 1
     /** CSS pixels from the seam down to the moon's centre, the drops' size and how far they fall. */
     let dropH = 0
-    let dropR = DROP_R
+    let dropR = DROP_LARGE
     let fallReach = REACH
 
     /* The drops at the middle of the seam. */
@@ -485,7 +522,8 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       const frameTop = frameEl.getBoundingClientRect().top
       const narrow = window.innerWidth < NARROW_W
       dropH = rect.top + cssW / 2 - seam
-      dropR = narrow ? DROP_R_NARROW : DROP_R
+      // The page's width, as the seam measures it: the section spans it.
+      dropR = DROP_LARGE * dropUnit(section.getBoundingClientRect().width)
       fallReach = narrow ? REACH_NARROW : REACH
       dropDpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       const stripH = Math.max(1, dropH + dropR * 4)
@@ -601,12 +639,14 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       const rim = centre - discR
       // 0 when the moon's rim first shows, 1 when its centre stands in the
       // middle of the window: the strike.
-      const release = vh * (1 - RELEASE_SHOWN) + discR
-      const way = (release - centre) / (release - vh / 2)
+      const wayStart = vh * (1 - RIM_SHOWN) + discR
+      const way = (wayStart - centre) / (wayStart - vh / 2)
       const gone = centre + discR < 0
-      // The white section coming back down to the middle of the window: the
-      // page is being scrolled back up past the moon.
-      const comingBack = lastSeam < vh / 2 && seam >= vh / 2
+      // The line the seam crosses to send the drop on, and the white section
+      // coming back down to it: the page is being scrolled back up past the
+      // moon.
+      const sendAt = vh * SEND_AT
+      const comingBack = lastSeam < sendAt && seam >= sendAt
       lastSeam = seam
       let drawRate = 1 / DRAW_MIN_S
 
@@ -614,10 +654,12 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         case "rest":
           // Armed once the white section stands in the lower half of the
           // window, or the moon is out of sight below it: on the way down it is
-          // sent on as the rim first shows, and on the way back up it is sent
-          // on again the moment the section comes back down to the middle.
-          if (seam >= vh / 2 || rim >= vh) armed = true
-          if (!gone && (comingBack || (armed && rim <= vh * (1 - RELEASE_SHOWN)))) {
+          // sent on as the seam climbs past the middle, and on the way back up
+          // it is sent on again the moment the section comes back down to it.
+          // A reader who lands with the seam already past the middle and the
+          // moon still out of sight has it sent at once.
+          if (seam >= sendAt || rim >= vh) armed = true
+          if (!gone && (comingBack || (armed && seam <= sendAt))) {
             phase = "fall"
             armed = false
             sendOn()
@@ -685,7 +727,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         const most = drawRate * dt
         drawn = drawn + Math.max(-most, Math.min(most, eased - drawn))
       }
-      const hushed = phase === "fall" || phase === "ink" ? 1 : 0
+      const hushed = phase === "ink" && ink >= 1 ? 1 : 0
       hush = approach(hush, hushed, hushed > hush ? HUSH_S : WAKE_S, dt)
     }
 
@@ -705,8 +747,8 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
 
       const reach = art.reach
       const strikeAge = phase === "strike" ? (now - strikeAt) / 1000 : -1
-      const held = smooth(drawn)
-      const cocked = smooth(drawnAtStrike)
+      /** A shape's place under the bow, as a share of its own, when it is drawn `b`. */
+      const pull = (b: number, s: MoonShape) => 1 - b * (DRAW_MIN + ((DRAW_MAX - DRAW_MIN) * s.r) / reach)
 
       // The ink: a radial gradient while its edge is crossing the mandala,
       // solid once it has passed the rim, so that shapes flying out beyond
@@ -787,9 +829,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
 
         if (strikeAge < 0) {
           // At rest, falling, inking, drawn: every shape in its place, drawn in
-          // toward the centre by the bow and shrunk in itself.
-          const across = 1 - held * SHRINK
-          const pull = (s: MoonShape) => 1 - held * (DRAW_MIN + ((DRAW_MAX - DRAW_MIN) * s.r) / reach)
+          // toward the centre by the bow and shrunk in itself, the centre first.
           if (!drift && !lengthen) {
             // A ring that only turns, or grows and shrinks as it breathes, is
             // traced once as it stands under the bow and drawn turned and
@@ -800,8 +840,12 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
                 alpha,
                 true,
                 !inkOnly,
-                (s, path) => trace(path, s, s.r * pull(s), 0, across, 0, across),
-                `${held}`,
+                (s, path) => {
+                  const b = bowAt(drawn, s.r, reach)
+                  const across = 1 - b * SHRINK
+                  trace(path, s, s.r * pull(b, s), 0, across, 0, across)
+                },
+                `${drawn}`,
                 g.turn,
                 1 + grow * out,
               )
@@ -809,11 +853,12 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
           } else {
             for (const { out, alpha } of air) {
               const zoom = 1 + grow * out
-              const size = across * zoom
-              const along = size * (1 + lengthen * out)
-              paint(g, alpha, true, !inkOnly, (s, path) =>
-                trace(path, s, (s.r * zoom + out * drift) * pull(s), g.turn, along, 0, size),
-              )
+              paint(g, alpha, true, !inkOnly, (s, path) => {
+                const b = bowAt(drawn, s.r, reach)
+                const size = (1 - b * SHRINK) * zoom
+                const along = size * (1 + lengthen * out)
+                trace(path, s, (s.r * zoom + out * drift) * pull(b, s), g.turn, along, 0, size)
+              })
             }
           }
           continue
@@ -824,21 +869,21 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         // along its way by as far as it travels in BLUR_S.
         const loose = strikeAge - (LOOSE_STAGGER * g.radius) / reach
         if (loose < LOOSE_FADE_S) {
-          const across = 1 - cocked * SHRINK
           const fade = loose < 0 ? 1 : 1 - smooth(clamp01((loose - 0.05) / (LOOSE_FADE_S - 0.05)))
           const drag = loose < 0 ? 1 : Math.exp(-loose / LOOSE_TAU)
           for (const { out, alpha } of air) {
             const zoom = 1 + grow * out
-            const size = across * zoom
-            const along = size * (1 + lengthen * out)
             paint(g, alpha * fade, true, false, (s, path) => {
-              const pull = 1 - cocked * (DRAW_MIN + ((DRAW_MAX - DRAW_MIN) * s.r) / reach)
+              // Loosed from where the bow held it at the strike.
+              const b = bowAt(drawnAtStrike, s.r, reach)
+              const size = (1 - b * SHRINK) * zoom
+              const along = size * (1 + lengthen * out)
               const far = LOOSE_FAR + LOOSE_FAR_PER * s.r
               const flown = loose < 0 ? 0 : far * (1 - drag)
               const streak = loose < 0 ? 0 : Math.min(STREAK_MAX, (far / LOOSE_TAU) * drag * BLUR_S)
               // Streaked backward, so its leading edge stays where it would be.
               const streaked = s.half > 0 ? along + streak / (2 * s.half) : along
-              trace(path, s, (s.r * zoom + out * drift) * pull + flown, g.turn, streaked, s.half * (along - streaked), size)
+              trace(path, s, (s.r * zoom + out * drift) * pull(b, s) + flown, g.turn, streaked, s.half * (along - streaked), size)
             })
           }
         }
@@ -914,7 +959,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
           gradient.addColorStop(0, `rgba(${DROP_RGB},0)`)
           gradient.addColorStop(1, `rgba(${DROP_RGB},${alpha})`)
           dctx.strokeStyle = gradient
-          dctx.lineWidth = r * 1.5
+          dctx.lineWidth = r * 1.2
           dctx.lineCap = "round"
           dctx.beginPath()
           dctx.moveTo(x, y - tail)

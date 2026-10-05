@@ -15,12 +15,17 @@ import { useEffect, useRef } from "react"
 
    It is the same water as the drips off the Waterfall figure in
    `particle-field.tsx` — the gather, the sag, the smear behind the head, the
-   small chaser — with three differences. It runs both ways from a line
-   instead of down from points of an artwork. The drops are an order larger
-   (7px across at the biggest, against the sculpture's two), because here
-   they carry the idea rather than merely wet a figure. And it works in CSS
-   pixels rather than artwork units, since there is no artwork underneath it
-   to scale with.
+   small chaser, and since 2026-09-28 the size — with two differences. It runs
+   both ways from a line instead of down from points of an artwork. And its
+   travel is in CSS pixels rather than artwork units, since there is no
+   artwork underneath it to scale with; only the drops' size follows Second
+   Wind's canvas, so that the two waters stay one on any screen.
+
+   The drops were an order larger until then, 3 to 7px across and most of
+   them small, on the thought that here they carry the idea rather than merely
+   wet a figure. Side by side they read as spots of every size. The author
+   asked for them uniform, the size of the figure's, in two sizes close
+   together.
 
    The two halves never trespass, and that is what makes them read as coming
    *out of* the line rather than sitting on top of it: a white drop is only
@@ -46,12 +51,32 @@ const REACH = 240
 const REACH_NARROW = 184
 const NARROW_W = 640
 
-/** Drop radius in CSS pixels — the largest is 7px across, the size asked for. */
-const R_MIN = 1.4
-const R_MAX = 3.5
-const R_NARROW_MAX = 2.8
-/** `rand()` is raised to this before it picks a size, so the big ones stay rare. */
-const R_BIAS = 1.5
+/**
+ * The two sizes a drop comes in: its radius in the units of Second Wind's
+ * canvas, in which the Waterfall figure's beads are 0.85 to 1.15. A bead
+ * gathers to one or the other, as often each; a chaser is always the smaller.
+ * The moon's drops, in `moon-mandala.tsx`, are the larger.
+ */
+export const DROP_SMALL = 0.9
+export const DROP_LARGE = 1.1
+/** Share of fresh beads that gather to the larger size. */
+const LARGE_SHARE = 0.5
+/** Second Wind's canvas, whose units those are: 1920 of them across the page. */
+const CANVAS_W = 1920
+/**
+ * The least one of those units is drawn at, in CSS pixels. On a phone Second
+ * Wind crops its canvas and draws it wider than the page, and it never draws a
+ * bead under 0.6px across the radius, so the figure's are 0.6 to 0.72 there.
+ * Two thirds brings the smaller size to that same 0.6 and keeps the larger
+ * apart from it, where a floor on the radius would make the two one.
+ */
+const UNIT_MIN = 2 / 3
+
+/** CSS pixels to one unit of Second Wind's canvas, on a page this wide. */
+export function dropUnit(pageW: number) {
+  return Math.max(UNIT_MIN, pageW / CANVAS_W)
+}
+
 /** What a radius has thinned to by the end of its travel, as the drop gives way. */
 const R_END = 0.55
 
@@ -94,17 +119,20 @@ const BOTH_WAYS = 0.24
 const V_0 = 18
 const G = 40
 const V_MAX = 82
-/** A big drop goes a little harder than a small one; this scales both, by size. */
+/**
+ * Each drop goes at its own pace within this range, which scales all three,
+ * so no two fall in step. It went with the drop's size while the sizes ran
+ * from 3 to 7px; with two sizes a fifth apart it would have made two speeds.
+ */
 const PACE_MIN = 0.8
 const PACE_SPREAD = 0.45
 
 /**
- * Seconds of travel smeared out behind the head, and the cap on that streak.
- * Twice the Waterfall figure's, because these drops are ten times the size
- * and a tail in proportion to the head is what makes a drop read as drawn out
- * by its own falling rather than as a dot that happens to be moving.
+ * Seconds of travel smeared out behind the head, and the cap on that streak:
+ * the Waterfall figure's smear. It was twice that while these drops were ten
+ * times the figure's size, to keep the tail in proportion to the head.
  */
-const SMEAR = 0.22
+const SMEAR = 0.12
 const TAIL_MAX = 46
 /** How far the head itself is drawn out along its way, at full speed. */
 const STRETCH = 0.9
@@ -164,7 +192,8 @@ type Drop = {
   t: number
   /** -1 rising, 1 descending. */
   dir: number
-  r: number
+  /** `DROP_SMALL` or `DROP_LARGE`, drawn at the page's unit. */
+  size: number
   pace: number
   /** CSS pixels it travels before it is gone. */
   reach: number
@@ -178,7 +207,7 @@ type Source = {
   /** Seconds the hanging bead has been gathering, of the time it takes. */
   gathered: number
   gather: number
-  r: number
+  size: number
   drops: Drop[]
 }
 
@@ -196,13 +225,13 @@ export function SeamDrops() {
     let dpr = 1
     let cssW = 0
     let reach = REACH
-    let rMax = R_MAX
+    /** CSS pixels to a unit of drop size. */
+    let unit = 1
     let columns = 0
     let sources: Source[] = []
 
-    /** Small far more often than large, and never under the floor. */
     const size = (pick: () => number) =>
-      R_MIN + Math.pow(pick(), R_BIAS) * (rMax - R_MIN)
+      pick() < LARGE_SHARE ? DROP_LARGE : DROP_SMALL
 
     const build = (n: number) => {
       const pick = seeded(0x51de)
@@ -216,7 +245,7 @@ export function SeamDrops() {
           // Part-way through, so the line doesn't let go all at once on arrival.
           gathered: pick() * gather,
           gather,
-          r: size(pick),
+          size: size(pick),
           drops: [],
         })
       }
@@ -228,7 +257,7 @@ export function SeamDrops() {
       if (!w) return
       const narrow = w < NARROW_W
       reach = narrow ? REACH_NARROW : REACH
-      rMax = narrow ? R_NARROW_MAX : R_MAX
+      unit = dropUnit(w)
       dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       cssW = w
       canvas.style.top = `${-reach}px`
@@ -289,21 +318,20 @@ export function SeamDrops() {
 
           s.gathered += advance
           if (s.gathered >= s.gather) {
-            const grown = (s.r - R_MIN) / (rMax - R_MIN)
             s.drops.push({
               t: s.gathered - s.gather,
               dir: s.dir,
-              r: s.r,
-              pace: PACE_MIN + PACE_SPREAD * grown,
+              size: s.size,
+              pace: PACE_MIN + PACE_SPREAD * rand(),
               reach: reach * (1 - rand() * SHORT),
             })
             // Only a full drop is chased, so the small ones never run on.
-            const follow = grown > 0.35 && rand() < DOUBLE
+            const follow = s.size === DROP_LARGE && rand() < DOUBLE
             s.gathered = 0
             s.gather = follow
               ? FOLLOW_MIN + rand() * FOLLOW_SPREAD
               : GATHER_MIN + rand() * GATHER_SPREAD
-            s.r = follow ? R_MIN + rand() * (rMax - R_MIN) * 0.28 : size(rand)
+            s.size = follow ? DROP_SMALL : size(rand)
             // A chaser is the same water and goes the same way; a fresh bead
             // at a point that runs both ways takes the other one.
             if (!follow && s.both) s.dir = -s.dir
@@ -317,7 +345,7 @@ export function SeamDrops() {
             (s.gathered / s.gather - (1 - SWELL)) / SWELL,
           )
           if (p > 0) {
-            const hang = s.r * Math.sqrt(p)
+            const hang = s.size * unit * Math.sqrt(p)
             ctx.fillStyle = `rgba(${s.dir < 0 ? RISE_RGB : FALL_RGB},${
               PEAK * (0.15 + 0.85 * p)
             })`
@@ -344,9 +372,10 @@ export function SeamDrops() {
             const gone = dist / d.reach
             const rgb = d.dir < 0 ? RISE_RGB : FALL_RGB
             const alpha = PEAK * (1 - Math.pow(gone, DECAY))
-            const r = d.r * (1 - (1 - R_END) * gone)
+            const full = d.size * unit
+            const r = full * (1 - (1 - R_END) * gone)
             // Let go from where the hanging bead had sagged to.
-            const head = line + d.dir * (d.r * 1.2 + dist)
+            const head = line + d.dir * (full * 1.2 + dist)
             const v = speed(d.t, d.pace) * (1 + boost)
             const tail = Math.min(TAIL_MAX, v * SMEAR)
 
@@ -356,7 +385,8 @@ export function SeamDrops() {
               grad.addColorStop(0, `rgba(${rgb},0)`)
               grad.addColorStop(1, `rgba(${rgb},${alpha})`)
               ctx.strokeStyle = grad
-              ctx.lineWidth = r * 1.5
+              // As thick as the figure's streaks are to their heads.
+              ctx.lineWidth = r * 1.2
               ctx.beginPath()
               ctx.moveTo(x, back)
               ctx.lineTo(x, head)

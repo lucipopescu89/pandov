@@ -18,6 +18,55 @@ export const metadata = {
   description: "Chess Set — For Mind collection",
 }
 
+/**
+ * Whether the bank of cloud is drawn at the moon's foot. Taken off on
+ * 2026-10-02, on the author's asking, to see the moon without it; everything
+ * that makes the bank is left as it was, so `true` brings it back exactly. The
+ * white veil under the bank stays either way: without it the mandala would
+ * end on the hard line where it is cut. The veil and the poem stand where the
+ * clouds call for, below.
+ */
+const SHOW_CLOUDS = false
+
+/**
+ * The white veil under the moon, in shares of the moon's canvas: where it
+ * begins and where it is solid. Under the clouds it rises to meet their
+ * shoulders, 66 to 82, and fills the valleys between them with white. Without
+ * them it waits for the disc's foot (80.2), on the author's asking of
+ * 2026-10-02, so that it covers none of the moon, and is solid by 92. The
+ * mandala is cut at 92 (`.chess-mandala`), so its cut is always under white.
+ */
+const VEIL_FROM = SHOW_CLOUDS ? 66 : 80
+const VEIL_SOLID = SHOW_CLOUDS ? 82 : 92
+/**
+ * The veil's ease, as the clouds' veil had it: strengths at shares of the way
+ * from VEIL_FROM to VEIL_SOLID. A straight ramp read as a band. The element
+ * runs on to the canvas's foot, so the shares are rescaled to its height.
+ */
+const VEIL_GRADIENT = `linear-gradient(to bottom, ${[
+  [0, 0],
+  [10 / 47, 0.15],
+  [20 / 47, 0.38],
+  [30 / 47, 0.65],
+  [40 / 47, 0.88],
+  [1, 1],
+]
+  .map(([at, a]) => `rgba(255, 255, 255, ${a}) ${((100 * at * (VEIL_SOLID - VEIL_FROM)) / (100 - VEIL_FROM)).toFixed(2)}%`)
+  .join(", ")})`
+/**
+ * Where the poem's first line stands on a computer, in shares of the canvas:
+ * in the white of the clouds' bodies at 77, or, without them, just under the
+ * solid veil, so no line of the mandala runs behind it.
+ */
+const POEM_AT = SHOW_CLOUDS ? 77 : VEIL_SOLID + 1
+/**
+ * The phone's moon is 0.977 of the page's width tall and its disc begins
+ * 10.5% down it: the width from the disc's top to the solid veil, and from
+ * there to the frame's foot. 69.9vw and 17.59vw under the clouds.
+ */
+const PHONE_MOON_VW = ((VEIL_SOLID - 10.5) * 0.977).toFixed(1)
+const PHONE_BELOW_VW = ((100 - VEIL_SOLID) * 0.977).toFixed(2)
+
 /** The author's four clouds, at the pixel sizes `scripts/chess-clouds.mjs` cuts them to. */
 const CLOUD_PX: Record<number, { w: number; h: number }> = {
   1: { w: 855, h: 419 },
@@ -287,10 +336,12 @@ export default async function ChessSetPage() {
            wide, centred on the moon's centre (50%, 45.3%).
 
            Upward it runs until the page cuts it: the section's top edge,
-           where the dark photograph ends. Downward the clouds are its limit:
-           it is cut off at 82% of the canvas, where the veil under the
-           clouds turns solid white, so on a phone it never shows under the
-           bank. 82% is 33.8% of the way up its own box.
+           where the dark photograph ends. Downward the white veil is its
+           limit: it is cut off at 92% of the canvas, where the veil is solid
+           without the clouds (VEIL_SOLID), so its cut is never seen. Under
+           the clouds the veil is solid by 82% and hides the rest. 92% is
+           29.4% of the way up its own box. It was cut at 82% until
+           2026-10-02, when the veil went down to uncover the whole moon.
 
            Its grey lines are as fine as Second Wind's, at every width: the
            author asked for them to match. The white ones on the moon are a
@@ -308,7 +359,7 @@ export default async function ChessSetPage() {
           top: -67.92%;
           width: 100.59%;
           aspect-ratio: 1 / 1;
-          clip-path: inset(0 0 33.8% 0);
+          clip-path: inset(0 0 29.4% 0);
           pointer-events: none;
         }
         .chess-mandala-image {
@@ -322,7 +373,7 @@ export default async function ChessSetPage() {
           left: 0;
           top: 0;
           width: 100%;
-          height: 66.2%;
+          height: 70.6%;
         }
         /* The strip the dark drop falls down, from the seam to the moon's
            centre; the component sets its top and height, which are measured.
@@ -370,6 +421,10 @@ export default async function ChessSetPage() {
            read as a band. It stands still over the moving clouds, and
            nothing under it is repainted as they pass.
 
+           Without the clouds (SHOW_CLOUDS) the veil goes down to the disc's
+           foot and leaves the whole moon showing: 80% to 92%, on the same
+           ease (VEIL_FROM, VEIL_SOLID, VEIL_GRADIENT above the page).
+
            The words stay on top of it all. */
         .chess-cloud-bank {
           position: absolute;
@@ -387,19 +442,10 @@ export default async function ChessSetPage() {
           position: absolute;
           left: 0;
           right: 0;
-          top: 66%;
+          top: ${VEIL_FROM}%;
           bottom: 0;
           pointer-events: none;
-          /* Solid at 47% of its height: 82% of the canvas. */
-          background: linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.15) 10%,
-            rgba(255, 255, 255, 0.38) 20%,
-            rgba(255, 255, 255, 0.65) 30%,
-            rgba(255, 255, 255, 0.88) 40%,
-            #fff 47%
-          );
+          background: ${VEIL_GRADIENT};
         }
         .chess-cloud-track img {
           position: absolute;
@@ -448,9 +494,13 @@ export default async function ChessSetPage() {
         .chess-moon-media .chess-line span {
           display: block;
         }
+        /* Without the clouds (SHOW_CLOUDS) there is no white body under the
+           disc for the first line to stand in: at 77% it sat on the moon's
+           lower rim. It then starts just under the solid veil (POEM_AT, 93%),
+           so the mandala's lines have faded out before it. */
         .moon-poem {
           position: relative;
-          margin-top: -10.2%;
+          margin-top: ${(-(100 - POEM_AT) * 0.4442).toFixed(1)}%;
           padding-bottom: 80px;
         }
         .moon-poem .chess-line + .chess-line {
@@ -556,11 +606,16 @@ export default async function ChessSetPage() {
              from the moon's top to the clouds' feet. The type is in px here
              because it is 10px on every phone (the clamp never leaves its
              floor under 768) and the lift is read by the frame, whose own em
-             is not the type's. */
+             is not the type's.
+
+             Without the clouds the veil is solid at 92%, not 82%, so the
+             moon and its fade take 79.6vw and the frame's foot below it
+             7.82vw (PHONE_MOON_VW, PHONE_BELOW_VW). The breaths come to 46px
+             on a 390 × 844 phone and 54 on a 430 × 932. */
           .chess-moon-media {
-            height: max(78svh, calc(276px + 69.9vw));
-            --air: max(32px, calc((78svh - 69.9vw - 116px) / 5));
-            --moon-lift: calc(var(--air) + 35px - 17.59vw);
+            height: max(78svh, calc(276px + ${PHONE_MOON_VW}vw));
+            --air: max(32px, calc((78svh - ${PHONE_MOON_VW}vw - 116px) / 5));
+            --moon-lift: calc(var(--air) + 35px - ${PHONE_BELOW_VW}vw);
           }
           /* Here the stanzas are placed one by one in the moon's block, not
              stacked under the moon as a computer has them, and keep the 2.5em
@@ -646,25 +701,27 @@ export default async function ChessSetPage() {
               className="chess-moon-image"
             />
             <MoonMandala rings={MOON_RINGS} />
-            <div className="chess-cloud-bank" aria-hidden="true">
-              <div className="chess-cloud-track">
-                {CLOUD_BANK.map(({ n, w, h, size, top, flip, left }) => (
-                  <Image
-                    key={left}
-                    src={`/images/chess-set/cloud-${n}.avif`}
-                    alt=""
-                    width={w}
-                    height={h}
-                    style={{
-                      left: `${left}%`,
-                      top: `${top}%`,
-                      width: `${size}%`,
-                      transform: flip ? "scaleX(-1)" : undefined,
-                    }}
-                  />
-                ))}
+            {SHOW_CLOUDS && (
+              <div className="chess-cloud-bank" aria-hidden="true">
+                <div className="chess-cloud-track">
+                  {CLOUD_BANK.map(({ n, w, h, size, top, flip, left }) => (
+                    <Image
+                      key={left}
+                      src={`/images/chess-set/cloud-${n}.avif`}
+                      alt=""
+                      width={w}
+                      height={h}
+                      style={{
+                        left: `${left}%`,
+                        top: `${top}%`,
+                        width: `${size}%`,
+                        transform: flip ? "scaleX(-1)" : undefined,
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div className="chess-cloud-veil" aria-hidden="true" />
           </div>
           <div className="moon-poem">
