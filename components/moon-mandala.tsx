@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import Image from "next/image"
 import { readMandala, type MoonArt, type MoonMotion, type MoonRing, type MoonShape } from "@/lib/moon-mandala"
 import { DROP_LARGE, dropUnit } from "@/components/seam-drops"
+import { gearScroll } from "@/lib/geared-scroll"
 
 /* --------------------------------------------------------------------------
    The mandala over the Chess Set's moon, and the drop that sets it off.
@@ -19,16 +20,16 @@ import { DROP_LARGE, dropUnit } from "@/components/seam-drops"
       water already falls into the page, and fade as the seam's own do. When
       the seam reaches the middle of the window, the drop then falling does
       not fade: it carries on down to the moon's centre, at the pace of the
-      seam's own drops.
+      seam's own drops as far as theirs go, and gathering speed below that.
    2. Where it lands, the mandala is inked black from the centre outward, a
       ring at a time, like a drop spreading in water.
    3. Once it is black through, the rings slow, to a fifth of their pace.
    4. As the reader scrolls on, every shape draws in toward the centre and
       shrinks: a bow being drawn. The centre goes first and the rest follow
       it outward, so it tightens rather than scales.
-   5. When the moon reaches the middle of the screen, it lets go. Every shape
-      shoots straight out along its own radius, streaking as it goes, a volley
-      of arrows loosed in every direction at once.
+   5. When the bow is full and the moon stands in the middle of the screen, it
+      lets go. Every shape shoots straight out along its own radius, streaking
+      as it goes, a volley of arrows loosed in every direction at once.
    6. The clouds, drifting at their calm pace until then, are hurried by it for
       a few seconds and slowly come back to it; the mandala gathers itself
       again where it was, from the centre out, and its rings wake to their
@@ -41,16 +42,22 @@ import { DROP_LARGE, dropUnit } from "@/components/seam-drops"
    Canvas rather than the ring layers Mother Nature uses: see
    `lib/moon-mandala.ts` for why a ring's transform could not say this.
 
-   Scroll must never stop on this site, and nothing here holds the page. The
-   drop and the ink keep their own time whatever the reader does: the drop
+   The drop and the ink keep their own time whatever the reader does: the drop
    falls as the seam's water falls, which the author asked for once it had
    been seen hurried by the scroll. It is sent on before the moon shows, as
-   the seam passes the middle of the window, so it is well on its way by the
-   time the reader has brought the moon up,
-   and a reader who scrolls on ahead of it finds the moon waiting, with the
-   rest playing where it stands. The draw is the one step that follows the
-   scroll, since it is the reader's own hand drawing the bow, and it gives
-   back if the page is scrolled back.
+   the seam passes the middle of the window.
+
+   The page waits for them (the author's asking, 2026-10-07). Until then
+   nothing here held it: a reader scrolling at an ordinary pace had the moon
+   in the middle of the window a second or two after the drop set off, some
+   seven seconds before it landed, and was past the moon before any of it had
+   played. So from the moment the drop is sent, a scroll down carries the page
+   less and less far, and it comes to rest with the moon in the middle of the
+   window. There the reader's scrolling draws the bow instead of moving the
+   page, and the strike gives the scroll back. The figures and the reasons are
+   under "The slowed scroll" below; the scroll itself is carried by
+   `lib/geared-scroll.ts`. Going back up is never slowed, and the bow gives
+   back as the page goes back.
    -------------------------------------------------------------------------- */
 
 const SRC = "/images/chess-set/mandala.svg"
@@ -87,20 +94,13 @@ const SURFACE = 0.2
  * that line; going back up, as the seam comes back down to it.
  *
  * Until then, going down, it waited for the moon's rim to show at the foot of
- * the window (RIM_SHOWN). The seam had climbed to 39–47% of the window by
- * then, so the drop set off 23 to 101px of scrolling later than it does now
- * (measured from 375 × 667 to 1920 × 1080), and the author asked for it
- * earlier. At first it waited for 60% of the disc, which left the drop, at the
- * seam's slow pace, still falling long after the reader had scrolled past.
+ * the window, 3% of the window up it. The seam had climbed to 39–47% of the
+ * window by then, so the drop set off 23 to 101px of scrolling later than it
+ * does now (measured from 375 × 667 to 1920 × 1080), and the author asked for
+ * it earlier. At first it waited for 60% of the disc, which left the drop, at
+ * the seam's slow pace, still falling long after the reader had scrolled past.
  */
 const SEND_AT = 0.5
-/**
- * The reader's way to the strike is counted from here: the moon's rim just
- * showing at the foot of the window, this share of the window up it. The drop
- * was sent on there until 2026-10-04. The bow's draw is still measured from
- * it, so that sending the drop earlier did not change the draw.
- */
-const RIM_SHOWN = 0.03
 /**
  * Seconds a bead gathers at the middle of the seam before it lets go: a little
  * more often than the seam's own, whose beads take 1.4 to 5.6 seconds, so the
@@ -111,12 +111,21 @@ const GATHER_MIN = 1.6
 const GATHER_SPREAD = 1.2
 const SWELL = 0.45
 /**
+ * Seconds the bead takes to swell and let go when it is the one being sent on
+ * (2026-10-07). Sent with nothing in the air to send, the drop used to wait
+ * for the bead to gather at its own pace, up to 2.8 seconds, which was why it
+ * landed anywhere from seven to ten seconds after it was sent. The page now
+ * waits for it, so it goes at once: the bead skips the part of its gathering
+ * in which nothing shows, and swells in this long.
+ */
+const SEND_SWELL_S = 0.3
+/**
  * The seam's water, from `components/seam-drops.tsx`: the speed a drop leaves
  * the line at, how fast it quickens (px/s²), and the speed the air holds it
- * to, each times the quickest of its paces, which these go at. The one sent
- * on crosses 700px in about seven and a half seconds. Unlike the seam's, they
- * do not quicken with the scroll: the author asked for the drop to fall as it
- * falls.
+ * to, each times the quickest of its paces, which these go at. Unlike the
+ * seam's, they do not quicken with the scroll: the author asked for the drop
+ * to fall as it falls. The one sent on is let go by the air once it is past
+ * the seam's reach (see `fallen`).
  */
 const V_0 = 18
 const G = 40
@@ -156,19 +165,43 @@ const STRETCH = 0.9
 const SEND_WITHIN = 0.7
 const RECOVER_S = 0.8
 
-/** CSS pixels a drop has fallen `t` seconds after letting go. */
-function fallen(t: number) {
+/**
+ * Seconds a drop quickens before the air has it, the ground it covers by
+ * then, and how long after that it has fallen `free` px, where the air lets go
+ * of it again.
+ */
+function airs(free: number) {
   const v0 = V_0 * PACE
   const g = G * PACE
   const top = V_MAX * PACE
-  // Seconds of quickening before the air has it, and the ground it covered.
   const held = (top - v0) / g
-  return t < held ? v0 * t + 0.5 * g * t * t : v0 * held + 0.5 * g * held * held + top * (t - held)
+  const ground = v0 * held + 0.5 * g * held * held
+  return { v0, g, top, held, ground, level: Math.max(0, (free - ground) / top) }
+}
+
+/**
+ * CSS pixels a drop has fallen `t` seconds after letting go.
+ *
+ * Past `free` px the air no longer holds it and it quickens again, as it did
+ * when it left the line. Only the drop sent on to the moon ever gets that far,
+ * and `free` is where the seam's own have faded out (2026-10-07, with the
+ * author's leave). Held to the seam's speed all the way, it took seven and a
+ * half seconds to reach the moon on a 1440 screen and ten on a 1920 one. Since
+ * that day the page waits for it at the moon, and that was the wait. Down to
+ * where the seam's drops go it is still theirs to the pixel, so the two can be
+ * told apart only where there is nothing left to tell it from.
+ */
+function fallen(t: number, free = Infinity) {
+  const { v0, g, top, held, ground, level } = airs(free)
+  if (t < held) return v0 * t + 0.5 * g * t * t
+  const over = t - held - level
+  return over <= 0 ? ground + top * (t - held) : ground + top * (level + over) + 0.5 * g * over * over
 }
 
 /** And how fast it is going then. */
-function falling(t: number) {
-  return Math.min(V_0 * PACE + G * PACE * t, V_MAX * PACE)
+function falling(t: number, free = Infinity) {
+  const { v0, g, top, held, level } = airs(free)
+  return t < held ? v0 + g * t : top + g * Math.max(0, t - held - level)
 }
 
 /* --- The ink and the draw ------------------------------------------------ */
@@ -204,15 +237,12 @@ const INK_BEFORE_DRAW = 0.3
 /** The draw follows the scroll through this time constant, so a jump of the page is not a jump of the bow. */
 const DRAW_EASE_S = 0.25
 /**
- * The quickest a full draw may be, in seconds. A reader who is already at the
- * strike when the ink is done sees the bow drawn over this long, not snapped.
+ * The quickest a full draw may be, in seconds. A hand that gives the bow all
+ * its pull at once, a trackpad's fling, sees it drawn over this long, not
+ * snapped; and so does a page carried past the moon by the scrollbar, where
+ * the bow draws itself.
  */
 const DRAW_MIN_S = 1.4
-/**
- * A reader closer to the strike than this share of the way when the drop
- * lands has no scroll left to draw the bow with; it draws itself.
- */
-const DRAW_ROOM = 0.15
 /**
  * How far the rings draw in at full draw, as a share of their radius: the
  * innermost by DRAW_MIN, the outermost by DRAW_MAX, so the mandala tightens as
@@ -270,6 +300,69 @@ const RETURN_STAGGER = 0.8
 /** Where a returning shape starts from, as shares of its place and its size. */
 const RETURN_FROM = 0.9
 const RETURN_SHRINK = 0.82
+
+/* --- The slowed scroll ------------------------------------------------------ */
+
+/**
+ * From the drop's being sent to the strike, a scroll down goes less far than
+ * the hand asks (the author's asking, 2026-10-07: slower by degrees, many
+ * scrolls to draw the bow, the moon held in the middle while it is drawn, and
+ * everything as before once it has let go).
+ *
+ * There are two stretches, and the page stands at one place at the end of
+ * both: the moon's centre in the middle of the window, where the strike has
+ * always been.
+ *
+ * While the drop falls, how far a scroll goes is the share of the way to that
+ * place still left: all of it where the drop is sent, half of it half-way
+ * there, nothing on arrival. So each notch of the wheel carries the page about
+ * an eighth less than the one before (on a 1440 screen, where the way is
+ * 709px), it is never brought up short, and it cannot overshoot: the first
+ * five notches cover half the way, the next five half of what is left. It is
+ * worked out from where the page is, not from how long or how hard the reader
+ * has scrolled, so going back up and coming down again finds it the same.
+ * Twenty notches bring the moon to within 42px of the middle, which at a
+ * steady four or five a second is about when the drop lands. A hand that
+ * scrolls faster than that is there first and waits for it: three seconds at
+ * nine notches a second, four at seventeen. That wait was seven until the
+ * drop was let go at once and given its speed past the seam's reach
+ * (SEND_SWELL_S, `fallen`), both the same day, when the author found it long.
+ *
+ * Once the drop has landed, the scroll draws the bow. ARM_PX of scrolling
+ * draws it fully, sixteen notches of a mouse's wheel, wherever the page
+ * stands: there, or still on its way. What is left of the way is covered in
+ * step with the bow, so the page arrives as the bow is full. A reader already
+ * there draws it with the moon standing still, which is what the author asked
+ * for. Scrolling done before the drop lands does not count toward it: the bow
+ * cannot be drawn before it is inked, and banked, it would draw itself.
+ *
+ * Going back up gives the bow back: the page climbing RELAX of the way from
+ * the send line to the moon undoes a full draw.
+ */
+const ARM_PX = 1600
+const RELAX = 0.5
+/**
+ * How near the middle of the window the moon's centre must stand for the
+ * strike, in px. A page is written to a whole pixel, so it cannot be asked to
+ * stand closer than half of one.
+ */
+const CENTRE_PX = 1.5
+/**
+ * A page with the moon's centre more than this far above the middle has been
+ * carried past by something that is not slowed: the scrollbar, a fling on a
+ * phone that cannot be stopped. It is left alone, and the sequence plays where
+ * it stands, as all of it did until 2026-10-07: the bow draws itself.
+ */
+const PAST_PX = 4
+/**
+ * The strike gives the scroll back, but not at once: a hand still turning
+ * would carry the moon off the screen while its arrows are in the air. The
+ * page stays where it is for FREE_AFTER_S, by when the arrows have flown most
+ * of their way, and then goes further with each scroll until, FREE_S later,
+ * it scrolls as it always has.
+ */
+const FREE_AFTER_S = 0.3
+const FREE_S = 0.9
 
 /* --- The clouds ------------------------------------------------------------ */
 
@@ -490,10 +583,19 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     let drawTarget = 0
     let drawn = 0
     let drawnAtStrike = 0
-    let landWay = 0
     let landAt = -1
     let strikeAt = -1
     let hush = 0
+
+    /* The slowed scroll. */
+    /** How far the reader's scrolling has drawn the bow since the drop landed, 0 → 1. */
+    let pulled = 0
+    /** Whether the page was standing at the moon when it struck, and so is given back by degrees. */
+    let struckHeld = false
+    /** Where the page stood last frame, to tell it climbing. */
+    let lastY = window.scrollY
+    /** The page's own end, moved up to the moon for a finger: the height `main` is cut to, or -1. */
+    let cut = -1
 
     /* The clouds' gust. */
     let rushAt = -1
@@ -584,6 +686,8 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         newest.sentR = r
       } else {
         sendNext = true
+        // From where the bead begins to show, so it does not jump.
+        gathered = Math.max(gathered, gatherS * (1 - SWELL))
       }
       dropAlpha = 1
     }
@@ -594,10 +698,11 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       // While one is on its way to the moon, the middle of the seam holds its
       // water, unless that one has still to let go.
       if (!sending || sendNext) {
-        gathered += dt
+        // The bead that is to be sent on swells in SEND_SWELL_S.
+        gathered += sendNext ? (dt * gatherS * SWELL) / SEND_SWELL_S : dt
         if (gathered >= gatherS) {
           drips.push({
-            t: gathered - gatherS,
+            t: sendNext ? 0 : gathered - gatherS,
             reach: fallReach * (1 - rand() * SHORT),
             sent: sendNext,
             since: 0,
@@ -620,11 +725,129 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     const reset = () => {
       phase = "rest"
       armed = false
-      ink = drawn = drawTarget = 0
+      ink = drawn = drawTarget = pulled = 0
       inkAlpha = dropAlpha = 1
       landAt = strikeAt = -1
       sendNext = false
       drips = drips.filter((d) => !d.sent)
+    }
+
+    /* The slowed scroll: see the figures above for what it does and why. */
+
+    /** Where the moon's centre stands in the window, and the window's middle. */
+    const standing = () => {
+      const rect = box.getBoundingClientRect()
+      return { centre: rect.top + rect.width / 2, mid: window.innerHeight / 2 }
+    }
+    /** Whether the scroll is still being given back after the strike. */
+    const givingBack = () =>
+      phase === "strike" && struckHeld && (performance.now() - strikeAt) / 1000 < FREE_AFTER_S + FREE_S
+
+    /**
+     * A hand asks the page, standing at `y` px of scroll, to go `px` further
+     * down: where it goes. Once the drop has landed, the asking also draws the
+     * bow.
+     */
+    const pull = (y: number, px: number) => {
+      const free = y + px
+      if (!art || !(dropH > 0)) return free
+      if (phase === "strike") {
+        const age = (performance.now() - strikeAt) / 1000
+        if (age < RETURN_AFTER + RETURN_S + RETURN_STAGGER)
+          return struckHeld ? y + px * smooth(clamp01((age - FREE_AFTER_S) / FREE_S)) : free
+        // Longer ago than that, the strike is over, though no frame has said
+        // so: the moon went off the screen before it had finished, and
+        // nothing is drawn there. The page is at rest.
+      }
+      if (phase === "recede") return free
+      const { centre, mid } = standing()
+      // Where the page stands with the moon in the middle of the window, and
+      // where it stood when the drop was sent: the slow stretch between them.
+      const lock = window.scrollY + centre - mid
+      const send = lock - dropH
+      if (y > lock + PAST_PX) return free
+      // At rest the stretch is slow for a hand coming down onto it from
+      // above, which is about to send the drop, and for one the page has seen
+      // above it. A page that was opened part-way down it sends no drop, and
+      // is not slowed.
+      if (phase !== "fall" && phase !== "ink" && !armed && y >= send) return free
+      let to = y
+      let left = px
+      if (to < send) {
+        const step = Math.min(left, send - to)
+        to += step
+        left -= step
+      }
+      if (left <= 0) return to
+      if (phase === "ink") {
+        const before = pulled
+        pulled = Math.min(1, pulled + left / ARM_PX)
+        if (to >= lock) return to
+        if (before >= 1) return Math.min(lock, to + left)
+        // The rest of the way in step with the bow, and never faster than
+        // the hand.
+        return to + Math.min(left, ((lock - to) * (pulled - before)) / (1 - before))
+      }
+      if (to >= lock) return to
+      return lock - (lock - to) * Math.exp(-left / dropH)
+    }
+
+    const geared = gearScroll({
+      pull,
+      finger: () => {
+        if (!art) return false
+        if (phase === "strike") return givingBack()
+        if (phase !== "fall" && phase !== "ink") return false
+        const { centre, mid } = standing()
+        return centre >= mid - PAST_PX
+      },
+    })
+
+    /**
+     * The page's own end, for a finger.
+     *
+     * A finger's scroll can only be slowed if the touch may still be
+     * cancelled, and on a phone that is not so while a fling is running: a
+     * reader flicking down the page one flick after another is never the
+     * page's to slow, and went past the moon as before. So where the first
+     * pointer is a finger, the page ends at the moon from the drop's being
+     * sent to the strike: `main` is cut off one window under the place the
+     * page comes to rest, and the browser itself stops there, a fling
+     * included, exactly as it stops at the foot of any page. A flick that
+     * arrives that way is not slowed on its way, but it stops at the moon,
+     * and the next ones draw the bow.
+     *
+     * Stopping it from a scroll listener was the other way, and is the one
+     * this site already knows not to take: the listener hears of a scroll
+     * after it is drawn, so each frame of the fling would show the page past
+     * the moon and then put back.
+     *
+     * Not where the pointer is a mouse. There the wheel is slowed properly,
+     * and a page that suddenly ended would show in the scrollbar, whose thumb
+     * would jump to the foot of its track.
+     */
+    const coarse = window.matchMedia("(pointer: coarse)")
+    const main = box.closest<HTMLElement>("main")
+    const endPage = (at: number) => {
+      if (!main || Math.abs(at - cut) < 0.5) return
+      cut = at
+      main.style.maxHeight = at < 0 ? "" : `${at}px`
+      main.style.overflow = at < 0 ? "" : "clip"
+    }
+
+    /** Takes the scroll, or gives it back, as the page and the sequence now stand. */
+    const govern = () => {
+      if (!art || disposed) {
+        geared.hold(false, false)
+        return endPage(-1)
+      }
+      const { centre, mid } = standing()
+      const slow = phase === "fall" || phase === "ink"
+      // The wheel is the page's wherever a turn of it could still reach the
+      // slow stretch: anywhere above the moon (see `lib/geared-scroll.ts`).
+      const above = slow ? centre >= mid - PAST_PX : centre > mid + PAST_PX
+      geared.hold(above || givingBack(), (slow && above) || givingBack())
+      endPage(slow && above && coarse.matches && main ? centre - main.getBoundingClientRect().top + mid + 1 : -1)
     }
 
     /** Where the moon stands in the window, and the phase it calls for. */
@@ -637,11 +860,11 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       const vh = window.innerHeight
       const seam = centre - dropH
       const rim = centre - discR
-      // 0 when the moon's rim first shows, 1 when its centre stands in the
-      // middle of the window: the strike.
-      const wayStart = vh * (1 - RIM_SHOWN) + discR
-      const way = (wayStart - centre) / (wayStart - vh / 2)
       const gone = centre + discR < 0
+      // How far the page has climbed back up since the last frame.
+      const here = window.scrollY
+      const climbed = lastY - here
+      lastY = here
       // The line the seam crosses to send the drop on, and the white section
       // coming back down to it: the page is being scrolled back up past the
       // moon.
@@ -669,31 +892,35 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
           const sent = drips.find((d) => d.sent)
           if (seam > vh) phase = "recede"
           else if (gone) reset()
-          else if (sent && dropR * 1.2 + fallen(sent.t) >= dropH) {
+          else if (sent && dropR * 1.2 + fallen(sent.t, fallReach) >= dropH) {
             phase = "ink"
             ink = 0
             inkAlpha = 1
             landAt = now
-            landWay = way
+            pulled = 0
             drips = drips.filter((d) => !d.sent)
           }
           break
         }
         case "ink": {
           ink = Math.min(1, ink + dt / INK_S)
-          // The reader's scroll from where the drop landed to the strike draws
-          // the bow. A drop that lands with less than DRAW_ROOM of the way
-          // left draws it over that last stretch, so that at the strike it
-          // draws itself, and it still gives back if the page goes back.
-          const from = Math.min(landWay, 1 - DRAW_ROOM)
-          const byScroll = clamp01((way - from) / (1 - from))
-          drawTarget = Math.min(smooth(byScroll), smooth(clamp01((ink - INK_BEFORE_DRAW) / (1 - INK_BEFORE_DRAW))))
+          // The reader's scrolling since the drop landed draws the bow (see
+          // `pull`), and the page climbing back gives it back. A page carried
+          // past the moon by a hand that is not slowed has no scrolling left
+          // to draw it with: there it draws itself.
+          if (climbed > 0) pulled = Math.max(0, pulled - climbed / (RELAX * dropH))
+          const past = centre < vh / 2 - PAST_PX
+          drawTarget = Math.min(
+            smooth(past ? 1 : pulled),
+            smooth(clamp01((ink - INK_BEFORE_DRAW) / (1 - INK_BEFORE_DRAW))),
+          )
           if (seam > vh) phase = "recede"
           else if (gone) reset()
-          else if (ink >= 1 && way >= 1 && drawn >= 0.97) {
+          else if (ink >= 1 && centre <= vh / 2 + CENTRE_PX && drawn >= 0.97) {
             phase = "strike"
             strikeAt = now
             drawnAtStrike = drawn
+            struckHeld = !past
             startRush(now)
           }
           break
@@ -701,7 +928,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         case "strike":
           if ((now - strikeAt) / 1000 > RETURN_AFTER + RETURN_S + RETURN_STAGGER) {
             phase = "rest"
-            ink = drawn = drawTarget = 0
+            ink = drawn = drawTarget = pulled = 0
             strikeAt = -1
             armed = false
           }
@@ -710,7 +937,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
           // The page was scrolled back up past the white section before the
           // strike: the drop and the ink fade, the bow is eased and the rings
           // wake, and it can all play again.
-          drawTarget = 0
+          drawTarget = pulled = 0
           drawRate = Infinity
           inkAlpha = Math.max(0, inkAlpha - dt / 1.2)
           dropAlpha = Math.max(0, dropAlpha - dt / 0.4)
@@ -951,8 +1178,10 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         // behind it, from where the bead had sagged to.
         const { alpha, r } = look(d)
         if (alpha < 0.002) continue
-        const y = Math.min(dropH, dropR * 1.2 + fallen(d.t))
-        const v = falling(d.t)
+        // The one sent on is let go by the air past the seam's reach.
+        const free = d.sent ? fallReach : Infinity
+        const y = Math.min(dropH, dropR * 1.2 + fallen(d.t, free))
+        const v = falling(d.t, free)
         const tail = Math.min(TAIL_MAX, v * SMEAR)
         if (tail > r) {
           const gradient = dctx.createLinearGradient(x, y - tail, x, y)
@@ -995,6 +1224,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         }
       }
       rushClouds(now)
+      govern()
       raf = requestAnimationFrame(frame)
     }
 
@@ -1002,8 +1232,9 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       if (raf) return
       last = performance.now()
       // Not known until the first frame has measured it, so that frame is
-      // never read as the page coming back.
+      // never read as the page coming back, nor as the page climbing.
       lastSeam = NaN
+      lastY = window.scrollY
       raf = requestAnimationFrame(frame)
     }
     const stop = () => {
@@ -1013,6 +1244,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       // Off the screen mid-sequence, it goes back to rest where nobody sees
       // it; after the strike it simply finishes.
       if (phase !== "strike") reset()
+      govern()
     }
 
     fetch(SRC)
@@ -1022,6 +1254,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         art = readMandala(text, rings)
         groups = groupRings(art, rings)
         measure()
+        govern()
         if (visible) start()
       })
       // Without the drawing's data, the still picture simply stays.
@@ -1043,13 +1276,21 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     const ro = new ResizeObserver(measure)
     ro.observe(box)
     ro.observe(section)
+    // The wheel has to be the page's before the moon is on the screen, while
+    // nothing here is being drawn and no frame would see to it.
+    window.addEventListener("scroll", govern, { passive: true })
+    window.addEventListener("resize", govern)
 
     return () => {
       disposed = true
       io.disconnect()
       ro.disconnect()
+      window.removeEventListener("scroll", govern)
+      window.removeEventListener("resize", govern)
       if (raf) cancelAnimationFrame(raf)
       stopRush()
+      govern()
+      geared.dispose()
       if (imageRef.current) imageRef.current.style.visibility = ""
     }
   }, [rings])
