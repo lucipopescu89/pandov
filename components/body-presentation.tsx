@@ -30,50 +30,28 @@ const GROUND = "#202020"
 const CANVAS_H = 7610
 
 /**
- * Mobile framing.
+ * The canvas is drawn at its own size, one unit to a pixel, on every screen
+ * up to 1920 wide, and a narrower screen sees a centred window onto it, the
+ * ornament running off both edges (2026-10-28, the author's asking). Until
+ * then it shrank with the page from 720 up, so the verses, set at 12 units in
+ * the artwork, came out at 9px on a 1440 laptop and 5px on a tablet held
+ * upright. Everything the page is about stands in a narrow band down the
+ * middle: every caption between x 850 and x 1135, the pendants on x 960, so a
+ * crop takes only line work.
  *
- * The composition is drawn wide: every section's line work reaches far out
- * past its pendant, and the pendants and captions themselves sit in a narrow
- * band down the middle. Fitting the whole 1920-unit canvas into a phone puts
- * that band at a fifth of its size — 12px captions land at 2px and the
- * sculptures at a thumbnail — so the page is cropped instead of shrunk: a
- * phone sees a centred window onto the canvas, the ornament running off both
- * edges.
+ * On a phone it is shrunk again, only so far: a window `PHONE_WINDOW` units
+ * wide, which holds whole the outstretched hands of the figure over Waterfall
+ * (x 665 to 1257). The author tried 520 first and asked for 85% of it, 612,
+ * the same day, for the hands. The verses, which that leaves at about 7px,
+ * are scaled up to 10px on a phone by `CaptionFade` (`VERSE_MIN_PX`). From
+ * `PHONE_WINDOW` px wide up, the canvas is at its own size; there is no
+ * breakpoint, the two meet.
  *
- * `PHONE_WINDOW` is how much of the canvas, in its own units, a phone up to
- * `PHONE_W` wide sees; a narrower phone sees the same framing, drawn smaller.
- * It is set by the widest thing the frame has to keep whole: the outstretched
- * hands of the figure over Waterfall, which reach from x 665 to x 1257 on the
- * canvas. 620 units, 650 to 1270, holds them with 8-10px to spare either side
- * on a 390px phone. Every caption on the page lives between x 850 and x 1135,
- * and the pendants are centred on x 960 to within a couple of units.
+ * Until then a phone saw 620 units with each pendant lifted 1.2× to stay the
+ * largest thing in the frame; the lift is gone, and the pendants stand in the
+ * artwork's own proportion.
  */
-const PHONE_W = 390
-const PHONE_WINDOW = 620
-/** The canvas's drawn width on a `PHONE_W` phone, in CSS pixels. */
-const PHONE_CANVAS_W = (CANVAS_W * PHONE_W) / PHONE_WINDOW
-
-/**
- * Where the crop has opened out completely. From `PHONE_W` up to here the
- * canvas eases back down to the width of the page, and at this width the two
- * are the same number — so the canvas is simply the page from here on, exactly
- * as it was, and nothing jumps on the way there. There is no breakpoint: the
- * layout is one expression that meets the desktop one.
- */
-const CROP_MEETS = 720
-/** Pixels of canvas width lost per pixel of page width, over that stretch. */
-const CROP_EASE = (PHONE_CANVAS_W - CROP_MEETS) / (CROP_MEETS - PHONE_W)
-/** Canvas width over that stretch: `CROP_BASE - CROP_EASE * page width`. */
-const CROP_BASE = PHONE_CANVAS_W + CROP_EASE * PHONE_W
-
-/**
- * Widest page the mobile framing applies to. Under it the pendant photos are
- * lifted to `PENDANT_SCALE` — the sculpture is what the page is about, and the
- * crop brings the line work in close around it, so the pendant is given the
- * room to stay the largest thing in the frame.
- */
-const PENDANT_MAX_W = 640
-const PENDANT_SCALE = 1.2
+const PHONE_WINDOW = 612
 
 type Section = {
   /** file name in /public/images/body */
@@ -484,8 +462,7 @@ async function loadSvg(file: string): Promise<string> {
   svg = svg.replace(/<svg([^>]*?)\swidth="[^"]*"/, "<svg$1")
   svg = svg.replace(/<svg([^>]*?)\sheight="[^"]*"/, "<svg$1")
   svg = svg.replace(/<svg /, '<svg style="display:block;width:100%;height:auto" ')
-  // The pendant photo is the one rect filled from an image pattern. Tagged so
-  // the mobile framing can lift it; see `PENDANT_SCALE`.
+  // The pendant photo is the one rect filled from an image pattern, tagged.
   svg = svg.replace(/<rect\b([^>]*?)fill="url\(#pattern/, '<rect class="bp-pendant"$1fill="url(#pattern')
   return svg
 }
@@ -577,9 +554,9 @@ export async function BodyPresentation() {
         style={{ maxWidth: CANVAS_W, overflowX: "clip" }}
       >
       <CaptionFade
-        className="relative flex-none"
+        className="bp-canvas relative flex-none"
         style={{
-          width: `max(100%, min(${(CANVAS_W / PHONE_WINDOW) * 100}%, ${CROP_BASE}px - ${CROP_EASE * 100}vw))`,
+          width: `min(${CANVAS_W}px, ${+((CANVAS_W / PHONE_WINDOW) * 100).toFixed(3)}%)`,
           aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
           containerType: "inline-size",
         }}
@@ -711,13 +688,15 @@ export async function BodyPresentation() {
         @media (prefers-reduced-motion: reduce) {
           .bp-float { animation: none; }
         }
-        @media (max-width: ${PENDANT_MAX_W}px) {
-          .bp-pendant {
-            transform-box: fill-box;
-            transform-origin: center;
-            transform: scale(${PENDANT_SCALE});
+        /* On a phone the artwork is drawn at about 0.6 of its size, and its
+           lines, 0.3 to 1 unit wide, with it: under a third of a pixel, drawn
+           faint and broken. There every stroke keeps its width in screen
+           pixels, as on a computer, while the shapes scale (2026-10-28, the
+           author's asking). */
+        @media (max-width: 767px) {
+          .bp-canvas svg :is(path, line, circle, ellipse, polyline, polygon, rect) {
+            vector-effect: non-scaling-stroke;
           }
-          .bp-pendant-link { transform: scale(${PENDANT_SCALE}); }
         }
       `}</style>
     </main>

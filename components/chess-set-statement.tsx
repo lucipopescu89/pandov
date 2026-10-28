@@ -102,6 +102,32 @@ const DRIVE_NEAR = 1.13
 const CENTRE = 360.9
 
 /**
+ * The lines are drawn one device pixel wide, whatever size the drawing is shown
+ * at (2026-10-23, the author's asking).
+ *
+ * The export draws every contour and the rosette at 0.6 units, in boxes of 722
+ * and 358. Shown at 420px on a screen of ordinary density that came to 0.35px,
+ * and on a phone, at 80% of the page, not much more in device pixels. A screen
+ * cannot draw a line thinner than its pixel: it smears it, and on the curves
+ * whole stretches fall between pixels, so the lines read as broken and dotted
+ * on the second monitor and on phones, and the ornament looked paler there than
+ * the rest of the site. Scaled by the wave, they shimmered too.
+ *
+ * So the strokes no longer scale (`vector-effect: non-scaling-stroke`) and are
+ * 1px wide on every screen. The same day they were first set to one *device*
+ * pixel, which on a phone is half or a third of a CSS pixel; the author found
+ * them still dotted in Chrome's phone view and asked for 1px everywhere. To
+ * keep the drawing as fine as the export meant, the lines lose the ink they
+ * gained: `--sr-ink` is how wide the export's line would have been, in CSS
+ * pixels, so a line drawn at a third of a pixel now shows at a third of the
+ * ink. LINE_INK_MIN is the least it takes, because a solid pixel at a third of
+ * the ink reads fainter than the smeared line it replaces did.
+ */
+const EXPORT_LINE = 0.6
+const EXPORT_BOX = 722
+const LINE_INK_MIN = 0.55
+
+/**
  * Closing statement of the Chess Set page: the commission note on the left,
  * the radiant ornament on the right. The rosette at the centre of the radiant
  * turns continuously and speeds up with the scroll, so the drawing reads as a
@@ -114,8 +140,8 @@ const CENTRE = 360.9
  * is moving. It is Presence's halo said in the only way this drawing allows —
  * see the note in that file for why its rings could not simply be copied here.
  */
-export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
-  const rosetteRef = useRef<HTMLImageElement>(null)
+export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rosette: string }) {
+  const rosetteRef = useRef<HTMLDivElement>(null)
   const ornamentRef = useRef<HTMLDivElement>(null)
   const rotationRef = useRef(0)
   const velocityRef = useRef(0)
@@ -196,6 +222,20 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
     }
+  }, [])
+
+  // The ink that keeps a 1px line as fine as the export's line.
+  useEffect(() => {
+    const ornament = ornamentRef.current
+    if (!ornament) return
+    const fit = () => {
+      const drawn = (EXPORT_LINE * ornament.clientWidth) / EXPORT_BOX
+      ornament.style.setProperty("--sr-ink", Math.min(1, Math.max(LINE_INK_MIN, drawn)).toFixed(3))
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(ornament)
+    return () => observer.disconnect()
   }, [])
 
   // Seconds from one contour taking the light to the next — the wave's speed,
@@ -289,6 +329,14 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
              once, rather than on each contour — the fifteen inherit it, so a
              frame of drive costs one property write. */
           --sr-near: ${NEAR};
+          /* 1px on every screen, and the ink to go with it until the page
+             has measured the ornament; see EXPORT_LINE above. */
+          --sr-line: 1px;
+          --sr-ink: ${LINE_INK_MIN};
+        }
+        .statement-ornament path {
+          vector-effect: non-scaling-stroke;
+          stroke-width: var(--sr-line);
         }
         .statement-radiant {
           width: 100%;
@@ -297,7 +345,7 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
           /* The drawing used to be held at half ink. That half now lives in the
              wave below instead, which rests under it and peaks above it, so the
              lit band reads brighter than the frame ever was. */
-          opacity: 1;
+          opacity: var(--sr-ink);
         }
         .statement-radiant svg {
           /* An SVG clips to its own box by default. The outermost contour sits
@@ -337,7 +385,7 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
           width: 42%;
           height: 42%;
           margin: -21% 0 0 -21%;
-          opacity: 0.65;
+          opacity: calc(0.65 * var(--sr-ink));
         }
         @media (max-width: 900px) {
           .statement-section {
@@ -383,12 +431,12 @@ export function ChessSetStatement({ radiant }: { radiant: Radiant }) {
               dangerouslySetInnerHTML={{ __html: radiant.html }}
             />
             {/* Rosette — turns with the scroll, centred on the radiant */}
-            <img
+            <div
               ref={rosetteRef}
-              src="/images/desen-rotita.svg"
-              alt=""
+              aria-hidden="true"
               className="statement-rotita"
               style={{ transformOrigin: "center center" }}
+              dangerouslySetInnerHTML={{ __html: rosette }}
             />
           </div>
         </div>

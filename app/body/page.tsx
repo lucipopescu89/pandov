@@ -1,9 +1,9 @@
 import { BodyCollections } from "@/components/body-collections"
+import { BODY_INTRO, introText } from "@/components/collection-intro"
 
 export const metadata = {
   title: "Body — PANDOV",
-  description:
-    "Jewellery worn with intention. Designed not only as accessories but also as companions. They become part of the person who wears them.",
+  description: introText(BODY_INTRO),
 }
 
 export default function BodyPage() {

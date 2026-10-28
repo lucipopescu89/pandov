@@ -132,3 +132,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Presence on a phone (2026-10-28, the author's asking): the sculpture at 80%
+   and the ellipses at 70% of their desktop proportion, so the sculpture no
+   longer fills the screen and the rings are seen inside it. Read by
+   hero-animation.tsx. */
+@media (max-width: 767px) {
+  :root {
+    --presence-sculpture-k: 0.8;
+    --presence-halo-k: 0.7;
+  }
+}

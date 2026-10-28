@@ -239,12 +239,13 @@ export const SECOND_WIND: Record<string, Pendant> = {
     height: "60 mm",
     model: "/models/emperor.glb",
     cutout: "/images/body/emperor-pendant.avif",
+    // The cord photograph (6) last, not first: the author's asking on 2026-10-27.
     photos: photos("emperor", [
-      ["6", "Emperor of Nothingness turning on its cord against a black top"],
       ["3", "Emperor of Nothingness worn on a black cord with an open white shirt"],
       ["7", "Emperor of Nothingness on dark stone, under a glow of embers"],
       ["8", "Emperor of Nothingness on dark slate"],
       ["5", "A pair of Emperor of Nothingness pendants on dark slate, one turned to show its back"],
+      ["6", "Emperor of Nothingness turning on its cord against a black top"],
     ]),
     materials: PRICES,
   },

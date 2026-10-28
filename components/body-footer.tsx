@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { TO_TOP_EVENT } from "@/lib/played-beat"
 
 const NAV = [
   { label: "making", href: "/making" },
@@ -56,6 +57,9 @@ export function BodyFooter({
   const scrollToTop = () => {
     // Honour the OS "reduce motion" setting rather than always animating.
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    // First, so the homepage's hero can make ready for the way up: anything it
+    // did once the smooth scroll had started would stop it part-way.
+    window.dispatchEvent(new Event(TO_TOP_EVENT))
     window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })
   }
 

@@ -35,6 +35,18 @@ const OUT_GONE = 0.28
  */
 const GATHER = 40
 
+/**
+ * On a phone the verses are drawn at least this large, px (2026-10-28, the
+ * author's asking). The artwork is shrunk to fit a phone (`PHONE_WINDOW` in
+ * `body-presentation.tsx`), and its 12-unit verses with it, to about 7px. So
+ * under `PHONE_MAX_W` each caption is scaled up about its own centre until it
+ * reads at this size: it stays in the SVG, where it was set, its lines keep
+ * their spacing, and a caption made of several elements (grey words and a
+ * white name) grows as one.
+ */
+const VERSE_MIN_PX = 10
+const PHONE_MAX_W = 767
+
 type Caption = {
   els: SVGTextElement[]
   /** The caption's middle, from the top of the document. */
@@ -94,7 +106,50 @@ export function CaptionFade({ className, style, children }: Props) {
       return found
     }
 
+    // Each caption, in its artwork's own units, scaled up on a phone to
+    // VERSE_MIN_PX about its centre. getBBox ignores the transform, so the
+    // groups and the centre are the same however often this runs.
+    const enlarge = () => {
+      const phone = window.innerWidth <= PHONE_MAX_W
+      for (const svg of wrap.querySelectorAll("svg")) {
+        const texts = [...svg.querySelectorAll("text")]
+        if (texts.length === 0) continue
+        const boxWidth = svg.viewBox.baseVal?.width
+        const unit = boxWidth ? svg.getBoundingClientRect().width / boxWidth : 1
+        const boxes = texts
+          .map((el) => {
+            const b = el.getBBox()
+            return { els: [el], top: b.y, bottom: b.y + b.height, left: b.x, right: b.x + b.width }
+          })
+          .sort((a, b) => a.top - b.top)
+        const groups = [boxes[0]]
+        for (const box of boxes.slice(1)) {
+          const open = groups[groups.length - 1]
+          if (box.top - open.bottom < GATHER) {
+            open.els.push(...box.els)
+            open.bottom = Math.max(open.bottom, box.bottom)
+            open.left = Math.min(open.left, box.left)
+            open.right = Math.max(open.right, box.right)
+          } else groups.push(box)
+        }
+        for (const g of groups) {
+          const size = parseFloat(getComputedStyle(g.els[0]).fontSize) || 12
+          const k = phone && unit > 0 ? Math.max(1, VERSE_MIN_PX / (size * unit)) : 1
+          for (const el of g.els) {
+            if (k === 1) {
+              el.style.transform = ""
+              continue
+            }
+            el.style.transformBox = "view-box"
+            el.style.transformOrigin = `${(g.left + g.right) / 2}px ${(g.top + g.bottom) / 2}px`
+            el.style.transform = `scale(${k.toFixed(4)})`
+          }
+        }
+      }
+    }
+
     const measure = () => {
+      enlarge()
       const vh = window.innerHeight
       const scrollY = window.scrollY
       const maxScroll = document.documentElement.scrollHeight - vh
@@ -150,7 +205,11 @@ export function CaptionFade({ className, style, children }: Props) {
       window.removeEventListener("resize", measure)
       window.removeEventListener("scroll", onScroll)
       if (raf) cancelAnimationFrame(raf)
-      for (const c of captions) for (const el of c.els) el.style.opacity = ""
+      for (const c of captions)
+        for (const el of c.els) {
+          el.style.opacity = ""
+          el.style.transform = ""
+        }
       captions = []
     }
   }, [])

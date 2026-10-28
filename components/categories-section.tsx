@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { NUDGE_PX, ease, playBeat, ramp } from "@/lib/played-beat"
+import { NUDGE_PX, ease, heroUp, playBeat, ramp } from "@/lib/played-beat"
 
 /** Chess (Mind), figure (Body) and lamp (Space) all sit slightly back. */
 const CATEGORY_IMAGE_OPACITY = 0.85
@@ -183,15 +183,28 @@ function onColumn(left: string, lift = 0): React.CSSProperties {
  * still low: at half strength it is still some 37 vh under its place, about
  * where the author asked for it to show on 2026-09-28.
  */
-export const MIND_WASH_S = 0.8
-const MIND_BREATH_S = 0.3
+/*
+ * Quicker and more direct (2026-10-27, the author's asking: For Mind should
+ * come in sooner after the scroll past Presence, keeping the inertia but
+ * lighter and smaller). The wash, the breath, the fade and the rise are all
+ * shorter, the rise is a third of the way it was (46 vh before), and the rise
+ * runs on an ease-out: it moves at once and only settles at the end, where it
+ * used to gather speed first. 1.55s in all, from 2.6.
+ */
+export const MIND_WASH_S = 0.5
+const MIND_BREATH_S = 0.1
 const MIND_FROM_S = MIND_WASH_S + MIND_BREATH_S
-const MIND_FADE_S = 1.1
-const MIND_RISE_S = 1.5
+const MIND_FADE_S = 0.7
+const MIND_RISE_S = 0.95
 /** The whole beat, s, wash included: the time the scroll is held for. */
 export const MIND_BEAT_S = MIND_FROM_S + Math.max(MIND_FADE_S, MIND_RISE_S)
 /** How far below its place the picture starts, vh. */
-const MIND_RISE_VH = 46
+const MIND_RISE_VH = 16
+
+// easeOutCubic: the rise leaves at speed and settles into its place.
+function easeOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
 
 const textStyle = {
   fontFamily: "'Julius Sans One', sans-serif",
@@ -440,10 +453,12 @@ function MindRow() {
     if (!el || !content) return
     const beat = playBeat(
       MIND_BEAT_S,
-      () => el.getBoundingClientRect().top < NUDGE_PX,
+      // On the way back up it stays in its place and scrolls away with the
+      // page, rather than sinking (see `heroUp`).
+      () => heroUp.on || el.getBoundingClientRect().top < NUDGE_PX,
       (t) => {
         const fade = ease(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_FADE_S))
-        const rise = MIND_RISE_VH * (1 - ease(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_RISE_S)))
+        const rise = MIND_RISE_VH * (1 - easeOut(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_RISE_S)))
         content.style.opacity = String(fade)
         content.style.transform = `translateY(${rise.toFixed(3)}vh)`
         content.style.pointerEvents = fade > 0 ? "auto" : "none"

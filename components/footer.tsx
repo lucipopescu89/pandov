@@ -84,6 +84,13 @@ const HAND_FADE = `linear-gradient(to bottom, rgba(255,255,255,0) ${40 / VEIL_H}
 const CLEAN_TO = 0.25
 const WHITE_TO = 0.5
 const TEXT_TO = 0.72
+/**
+ * "Get in touch" comes in this much scrolling sooner than its beat above says,
+ * px: about one turn of the wheel (2026-10-27, the author's asking: the words
+ * a scroll earlier, the bird and its rings where they were). In px, not as a
+ * share of the stretch, so it is one turn on every screen.
+ */
+const TEXT_EARLY_PX = 100
 const BIRD_FROM = 0.72
 
 /**
@@ -95,6 +102,33 @@ const BIRD_FROM = 0.72
  * of the page's speed — rather than only starting to once it has.
  */
 const SETTLE_FROM = -0.5
+
+/**
+ * On a computer the finale starts once the hand's box is on screen whole, or
+ * once its top has come up to START_TOP of the screen, whichever is later.
+ *
+ * 2026-10-27, the author's asking, in two steps. It used to start as soon as
+ * the box was whole on screen. On a wide screen that was with its top about a
+ * quarter of the way down, and on a squarer one, where the same hand is short
+ * against the screen, with it still in the middle (the white came up with the
+ * photograph's top 42% down at 1100 × 1000, 18% at 1440 × 900). First it was
+ * made to wait for a quarter of the screen everywhere; then the author asked
+ * for the hand to rise much nearer the top on every screen before the white
+ * covers it. So it starts at an eighth, and the photograph's top is a few
+ * percent from the top of the screen as the white comes up.
+ */
+const START_TOP = 0.12
+
+/**
+ * Where "Get in touch" stands at the end of the page on a computer, as a share
+ * of the screen: where it stood at 1440 × 900 before any of this (181px of
+ * 900). On a squarer screen the page used to end before the hand had risen at
+ * all far, so there white is added under the bird (`roomRef`) until the page
+ * can carry the words up this far. That gives the finale its stretch to play
+ * in once the hand is near the top, and ends the page on the same composition
+ * as a wide screen. Where the page already goes that far, nothing is added.
+ */
+const WORDS_END = 0.2
 
 /**
  * The hand's box, for `MakingSection`, which dissolves as it comes up. It
@@ -318,6 +352,8 @@ const LAYOUT = `
 export function Footer() {
   const handRef = useRef<HTMLDivElement>(null)
   const photoRef = useRef<HTMLDivElement>(null)
+  const wordsRef = useRef<HTMLAnchorElement>(null)
+  const roomRef = useRef<HTMLDivElement>(null)
   const [white, setWhite] = useState(0)
   const [ctaIn, setCtaIn] = useState(0)
   const [birdIn, setBirdIn] = useState(0)
@@ -335,13 +371,27 @@ export function Footer() {
       // From the whole hand on screen — its box's foot at the bottom of the
       // screen — to the end of the page. The box, not the photograph: the box
       // never moves off the page, so this is not thrown by the settling below.
+      const phone = window.matchMedia(PHONE).matches
+      // The white under the bird a squarer screen needs (see WORDS_END). It
+      // depends only on the layout, not on the scroll, so once set it holds.
+      const room = roomRef.current
+      const words = wordsRef.current
+      if (room && words) {
+        const had = room.offsetHeight
+        const natural = document.documentElement.scrollHeight - had - vh
+        const want = phone ? 0 : Math.max(0, Math.round(y + words.getBoundingClientRect().top - WORDS_END * vh - natural))
+        if (Math.abs(want - had) > 1) room.style.height = `${want}px`
+      }
       const box = hand.getBoundingClientRect()
-      const whole = y + box.bottom - vh
+      // On a computer, not before the box's top has come up to START_TOP of
+      // the screen: a squarer screen has the whole hand on it while it is
+      // still in the middle.
+      const whole = phone ? y + box.bottom - vh : y + box.top - Math.min(vh - box.height, START_TOP * vh)
       const pageEnd = document.documentElement.scrollHeight - vh
-      const span = settlingSpan(box, y, whole, pageEnd, window.matchMedia(PHONE).matches)
+      const span = settlingSpan(box, y, whole, pageEnd, phone)
       const p = ramp(y, whole, pageEnd)
       setWhite(ramp(p, CLEAN_TO, WHITE_TO))
-      setCtaIn(ramp(p, WHITE_TO, TEXT_TO))
+      setCtaIn(ramp(y + TEXT_EARLY_PX, whole + WHITE_TO * (pageEnd - whole), whole + TEXT_TO * (pageEnd - whole)))
       setBirdIn(ramp(p, BIRD_FROM, 1))
 
       // The photograph is handed to the browser as an animation on the scroll
@@ -455,6 +505,7 @@ export function Footer() {
             begun to show: an invisible link still takes a click, which is how
             For Mind came to be reached from the empty ground of the hero. */}
         <Link
+          ref={wordsRef}
           href="/contact"
           className="ft-words transition-opacity hover:opacity-50"
           style={{
@@ -503,6 +554,10 @@ export function Footer() {
           <BirdRings size="100%" style={{ opacity: birdIn, pointerEvents: "none" }} />
         </Link>
       </div>
+
+      {/* White under the bird, only where a squarer screen needs it to carry
+          the hand up near the top (see WORDS_END). Set from the finale. */}
+      <div ref={roomRef} aria-hidden="true" style={{ height: 0 }} />
 
       {/* Bottom menu — the shared `BodyFooter`, exactly as every other page
           renders it: same logo, same type, same spacing, all its own. */}

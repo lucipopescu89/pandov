@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import Image from "next/image"
-import { splitRadiant } from "@/lib/radiant"
+import { fluidSvg, splitRadiant } from "@/lib/radiant"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { ChessSetGallery } from "@/components/chess-set-gallery"
@@ -195,6 +195,11 @@ export default async function ChessSetPage() {
   // light has its order before the page is ever painted. See `lib/radiant.ts`.
   const radiant = splitRadiant(
     await readFile(path.join(process.cwd(), "public", "images", "desen-radiant.svg"), "utf8"),
+  )
+  // The rosette at its centre is inlined as well, so its lines can be held at
+  // one device pixel like the contours'. See `fluidSvg`.
+  const rosette = fluidSvg(
+    await readFile(path.join(process.cwd(), "public", "images", "desen-rotita.svg"), "utf8"),
   )
 
   return (
@@ -749,7 +754,7 @@ export default async function ChessSetPage() {
       </section>
 
       {/* ================= Statement + ornament ================= */}
-      <ChessSetStatement radiant={radiant} />
+      <ChessSetStatement radiant={radiant} rosette={rosette} />
 
       {/* ================= Pieces — gold and dark, face to face ================= */}
       <section className="chess-pieces-section">

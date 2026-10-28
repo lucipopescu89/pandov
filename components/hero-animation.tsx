@@ -5,7 +5,7 @@ import { preload } from "react-dom"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
 import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
-import { NUDGE_PX, playBeat, rewind } from "@/lib/played-beat"
+import { NUDGE_PX, TO_TOP_EVENT, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
 
 /**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
@@ -92,6 +92,12 @@ function ease(t: number): number {
  * their 1.2s, and the handles have the 0.8s before to turn in.
  */
 const DOORS_S = 1.6
+/**
+ * How long the page waits at the doors for frames still loading, ms, before it
+ * lets the reader on without them. Measured from the scroll that asks them to
+ * open.
+ */
+const DOORS_WAIT_MS = 3500
 
 /**
  * The section is a few pictures, and the scroll moves from one to the next:
@@ -220,6 +226,14 @@ const PRESENCE_BEAT_S = Math.max(
   PRESENCE_FROM_S + PRESENCE_IN_S,
   TEXT2_FROM_S + TEXT2_IN_S,
 )
+
+/**
+ * How long Presence takes to go off on a scroll up from inside the hero, s,
+ * before the doors close by their frames (2026-10-28, the author's asking).
+ * The same beat played backward, the line first and text 1 back last, only
+ * faster than it comes on.
+ */
+const PRESENCE_OFF_S = 0.7
 
 /** easeOutCubic: the sculpture's growth, quick to start and long to settle. */
 function easeOut(t: number): number {
@@ -456,6 +470,11 @@ const SETTLED_PX = 4
  * 345.14px leaves the page a fraction of a pixel either side of it.
  */
 const PAST_PIN_PX = 2
+/**
+ * How long after a finger is lifted its fling may still be carrying the page,
+ * ms. A hard flick on a phone decelerates over two seconds or so.
+ */
+const FLING_MS = 3000
 
 /** A played beat, as the scroll's hold sees it. */
 type Beat = {
@@ -540,6 +559,11 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
    */
   let held = false
   const take = (same: boolean): boolean => {
+    // On the way back up the hero is a plain screen: nothing is held.
+    if (heroUp.on) {
+      held = false
+      return false
+    }
     // Above the pin: carried there.
     if (rest() > SETTLED_PX) {
       held = true
@@ -607,6 +631,7 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
   let touch: Touching | null = null
   const onTouchStart = (e: TouchEvent) => {
     touch = null
+    fingerUntil = Infinity
     if (e.touches.length !== 1) return
     const p = e.touches[0]
     touch = { x: p.clientX, y: p.clientY, at: e.timeStamp, v: 0, mode: null }
@@ -640,11 +665,47 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
   const onTouchEnd = (e: TouchEvent) => {
     const t = touch
     touch = null
+    fingerUntil = performance.now() + FLING_MS
     if (t?.mode !== "arrive") return
     // A finger that stopped before it was lifted throws nothing; one that
     // turned back up leaves the page where it is.
     const v = e.timeStamp - t.at > 80 ? 0 : t.v
     if (v >= 0) glide(v)
+  }
+
+  // The fence (2026-10-26, on mobile). A phone does not always let the page
+  // cancel a touch: a touchmove that comes while the page's script is busy
+  // (the frames being decoded) or while a fling is still running arrives with
+  // `cancelable` false, and the browser scrolls it natively, momentum and all.
+  // Nothing above can hold that. It carried the page from the doors straight
+  // into For Mind's white with Presence never played, or from Presence past
+  // For Mind into For Body while For Mind's row was still rising.
+  //
+  // So while a finger is down, or its fling may still be running, a page
+  // scrolled past the place of the first beat that has not yet played to the
+  // end is put back there, NUDGE_PX past it: where a held scroll would have
+  // left it. That starts the beat if it has not started, and the page waits
+  // while it plays, exactly as with a held scroll. Only ever downward; going
+  // back up is never fenced. The wheel, the keys and the scrollbar are left as
+  // they were: a computer cancels them reliably, and the scrollbar is the
+  // reader's.
+  //
+  // It listens in the capture phase, so the page is put back before the
+  // beats' own scroll listeners read it: a beat further down sees the page
+  // short of its place and does not start.
+  let fingerUntil = 0
+  const fence = () => {
+    if (performance.now() > fingerUntil || heroUp.on) return
+    const x = -rest()
+    if (x <= 0) return
+    let k = 0
+    while (k < beats.length && beats[k].done() >= 1) k++
+    if (k === beats.length) return
+    const limit = beats[k].at() + NUDGE_PX
+    if (x <= limit + 1) return
+    stop()
+    held = true
+    to(window.scrollY + limit - x)
   }
 
   // On the page only while it is short of the last beat's resting place, or
@@ -664,6 +725,7 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
   }
 
   arm()
+  window.addEventListener("scroll", fence, { passive: true, capture: true })
   window.addEventListener("scroll", arm, { passive: true })
   window.addEventListener("resize", arm)
   window.addEventListener("keydown", onKeyDown)
@@ -674,6 +736,7 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
     stop()
     window.removeEventListener("wheel", onWheel)
     window.removeEventListener("touchmove", onTouchMove)
+    window.removeEventListener("scroll", fence, { capture: true })
     window.removeEventListener("scroll", arm)
     window.removeEventListener("resize", arm)
     window.removeEventListener("keydown", onKeyDown)
@@ -732,7 +795,14 @@ export function HeroAnimation() {
     let pos = 0 // where the doors stand, 0 shut → 1 open
     let open = false // where they are going
     let primed = false
-    doorsRef.current = () => (ready ? pos : 1)
+    // While the frames are still on their way the page waits for them, but
+    // only so long (DOORS_WAIT_MS from the scroll that asked for them). On a
+    // phone the frames can take some seconds, and reading 1 meanwhile let the
+    // next scroll go straight on to Presence and For Mind with the doors still
+    // shut, then opened them out of sight (2026-10-26, on mobile).
+    let askedAt = 0
+    doorsRef.current = () =>
+      ready ? pos : askedAt && performance.now() - askedAt > DOORS_WAIT_MS ? 1 : 0
     let raf = 0
     let last = 0
 
@@ -897,16 +967,33 @@ export function HeroAnimation() {
       raf = requestAnimationFrame(tick)
     }
 
+    // Looked at again each frame while the doors wait for Presence to go off.
+    let waiting = 0
     const measure = () => {
       const top = el.getBoundingClientRect().top
       // Past the pin, not at it: the page comes to rest at the pin first (see
       // `holdScroll`), and the doors wait for the next scroll.
-      open = top < -PAST_PIN_PX
+      const want = !heroUp.on && top < -PAST_PIN_PX
+      // Sent shut from inside the hero, they stay open until Presence has
+      // gone off, and then close by their frames (2026-10-28, the author's
+      // asking).
+      const wait = !want && primed && !heroUp.on && pos > 0 && presenceRef.current() > 0
+      open = want || wait
+      if (wait && !waiting) {
+        waiting = requestAnimationFrame(() => {
+          waiting = 0
+          measure()
+        })
+      }
+      if (!want) askedAt = 0
+      else if (!askedAt) askedAt = performance.now()
       if (!primed) {
         // A page that opens part-way down, restored or followed from a link,
         // finds the doors already open rather than opening them out of sight.
         primed = true
         pos = open ? 1 : 0
+        // Nor does it wait on their frames.
+        if (open) askedAt = -Infinity
         paint()
       }
       play()
@@ -977,6 +1064,7 @@ export function HeroAnimation() {
       doorsRef.current = () => 1
       shutDoorsRef.current = () => {}
       cancelAnimationFrame(raf)
+      cancelAnimationFrame(waiting)
       window.clearTimeout(rebuild)
       ro.disconnect()
       window.removeEventListener("scroll", measure)
@@ -1006,7 +1094,7 @@ export function HeroAnimation() {
     // come up, PRESENCE_BEAT_S in all.
     const presence = playBeat(
       PRESENCE_BEAT_S,
-      () => past() > presenceAt(stickyRef.current),
+      () => !heroUp.on && past() > presenceAt(stickyRef.current),
       (t) => {
         const fade = (from: number, length: number) => ease(ramp(t, from, from + length))
         const out = fade(0, TEXT1_OUT_S)
@@ -1035,35 +1123,160 @@ export function HeroAnimation() {
     // start on the same scroll, and its place is the row's (see MindRow).
     const mind = playBeat(
       MIND_BEAT_S,
-      () => past() > mindAt(stickyRef.current),
+      () => !heroUp.on && past() > mindAt(stickyRef.current),
       (t) => {
         const wash = ease(ramp(t, 0, MIND_WASH_S))
         if (washRef.current) washRef.current.style.opacity = String(wash)
         stage.style.setProperty("--exit-lift", `${(-EXIT_LIFT_PX * wash).toFixed(2)}px`)
       },
+      // Its own name as well as For Mind's: on the way back up the wash comes
+      // off while For Mind's row stays in its place.
       "mind",
+      "wash",
     )
 
     // Only the last beat the page has gone back before plays backward: the
     // ones after it go straight back to their start (see `rewind`). Above the
     // pin they all do, the doors with them, so a page scrolled back to the top
-    // finds the handles there at once. Added after the beats' own listeners,
-    // so it has the last word on every scroll.
-    const back = () => {
+    // finds the handles there at once.
+    //
+    // Going up, nothing plays backward (2026-10-27, the author's asking: the
+    // doors opening and Presence coming on are for the way down only, and on
+    // the way up the shut doors scroll down into view like the rest of the
+    // page, in one steady movement, rather than appearing all at once).
+    //
+    // So a scroll up from For Mind lays the hero out as a plain screen
+    // standing directly above For Mind (`heroUp`): its pin room is taken out
+    // and For Mind's section no longer overlaps it, and the page is moved by
+    // exactly what that shifts For Mind by, in the same frame, so nothing on
+    // the screen moves. Every beat of the hero goes to its start at once: the
+    // doors shut, Presence off, the wash off. For Mind's row stays where it
+    // is. From there the page scrolls up through the shut doors as through
+    // any other picture. Once the page is back at the pin, with the doors
+    // filling the screen, the hero is laid out as before, unseen, and the next
+    // scroll down plays everything again in order.
+    //
+    // A scroll up from inside the hero (Presence, or text 1) has no picture
+    // above it to scroll in, so there the page is put at the pin, Presence
+    // goes off quickly (PRESENCE_OFF_S) and the doors then close by their
+    // frames, as they opened (2026-10-28, the author's asking; until then they
+    // were shut at once). The page is not held meanwhile: scrolled on up, it
+    // carries the doors down with it as they close.
+    const section = el.nextElementSibling as HTMLElement | null
+    // What React set, put back as it was.
+    const height = el.style.height
+    const marginTop = section?.style.marginTop ?? ""
+    const setUp = (on: boolean) => {
+      heroUp.on = on
+      el.style.height = on ? "100vh" : height
+      if (section) section.style.marginTop = on ? "0px" : marginTop
+    }
+    let lastY = window.scrollY
+    let lastX = past()
+    // While the doors are closing by their frames after a scroll up from
+    // inside the hero: going above the pin then leaves them to finish.
+    let closing = false
+
+    // The hero as a plain screen above For Mind, the page moved by what that
+    // shifts For Mind by, so nothing on screen moves.
+    const layOutUp = () => {
+      if (!section) return
+      const s = section.getBoundingClientRect().top
+      shutDoorsRef.current()
+      rewind("presence")
+      rewind("wash")
+      setUp(true)
+      const moved = section.getBoundingClientRect().top - s
+      window.scrollTo({ top: window.scrollY + moved, behavior: "instant" })
+      lastY = window.scrollY
+      lastX = past()
+    }
+
+    // The bottom logo, back to the top of the page (2026-10-27: it used to
+    // stop at For Body or at the doors). The browser's smooth scroll is
+    // stopped by any scrollTo made while it runs, and the way up made two. So
+    // the bottom menu says so first (TO_TOP_EVENT), and the hero is laid out
+    // for the way up before the smooth scroll starts: from For Mind or below
+    // as a plain screen of shut doors above For Mind, from inside the hero by
+    // shutting the doors where they are. Either way no beat plays and nothing
+    // is held on the way up, and nothing moves the page until it is at the top.
+    const toTop = () => {
+      if (heroUp.on) return
       const x = past()
-      if (x < 0) {
+      if (x <= 0) return
+      if (x >= mindAt(stickyRef.current) && section) {
+        layOutUp()
+        return
+      }
+      shutDoorsRef.current()
+      rewind("presence")
+      rewind("mind")
+      heroUp.on = true
+    }
+    window.addEventListener(TO_TOP_EVENT, toTop)
+
+    const back = () => {
+      const y = window.scrollY
+      const up = y < lastY
+      const wasX = lastX
+      lastY = y
+      lastX = past()
+      const x = lastX
+
+      if (heroUp.on) {
+        if (x <= 0) {
+          // Nothing here moves the page: a scrollTo would stop a smooth scroll
+          // under way (the bottom logo's, back to the top) at the doors. What
+          // changes is all below the screen, and the hero's top stays put.
+          setUp(false)
+          // For Mind's row is off the screen now: back to its start, unseen.
+          rewind("mind")
+        }
+        return
+      }
+
+      // Only from within a screen of For Mind's place: further down the hero
+      // is out of sight anyway, and the page is left to scroll undisturbed.
+      const screen = stickyRef.current?.offsetHeight || window.innerHeight
+      const atMind = mindAt(stickyRef.current)
+      if (up && wasX >= atMind && wasX < atMind + NUDGE_PX + screen && section) {
+        layOutUp()
+        // Already at the pin or above it (a page scrolled up a long way in
+        // one go): back as it was at once.
+        if (lastX <= 0) back()
+        return
+      }
+
+      if (!up && x > PAST_PIN_PX) closing = false
+      if (closing && doorsRef.current() === 0 && presenceRef.current() === 0) closing = false
+
+      if (x < 0 && !closing) {
         shutDoorsRef.current()
         rewind("presence")
       }
       if (x < presenceAt(stickyRef.current)) rewind("mind")
+
+      if (up && x > PAST_PIN_PX && x < mindAt(stickyRef.current)) {
+        closing = true
+        hurry("presence", PRESENCE_BEAT_S / PRESENCE_OFF_S)
+        rewind("mind")
+        window.scrollTo({ top: y - x, behavior: "instant" })
+        lastY = window.scrollY
+        lastX = past()
+      }
     }
     back()
-    window.addEventListener("scroll", back, { passive: true })
+    // In the capture phase, so that it runs before every beat's own listener
+    // on the same scroll, whichever order they were added in: the beats then
+    // read the page, and heroUp, as back has left them.
+    window.addEventListener("scroll", back, { passive: true, capture: true })
 
     presenceRef.current = presence.done
     mindRef.current = mind.done
     return () => {
-      window.removeEventListener("scroll", back)
+      window.removeEventListener("scroll", back, { capture: true })
+      window.removeEventListener(TO_TOP_EVENT, toTop)
+      if (heroUp.on) setUp(false)
       presence.dispose()
       mind.dispose()
       presenceRef.current = () => 1
@@ -1204,8 +1417,8 @@ export function HeroAnimation() {
                   position: "absolute",
                   top: "50%",
                   left: "50%",
-                  width: `calc(${presenceH} * ${HALO_BOX_W})`,
-                  height: `calc(${presenceH} * ${HALO_BOX_H})`,
+                  width: `calc(${presenceH} * ${HALO_BOX_W} * var(--presence-halo-k, 1))`,
+                  height: `calc(${presenceH} * ${HALO_BOX_H} * var(--presence-halo-k, 1))`,
                   transform: "translate(-50%, -50%)",
                   opacity: 0,
                 }}
@@ -1235,7 +1448,7 @@ export function HeroAnimation() {
                   position: "relative",
                   display: "block",
                   opacity: 0,
-                  height: `calc(${presenceH} * ${PRESENCE_SIZE})`,
+                  height: `calc(${presenceH} * ${PRESENCE_SIZE} * var(--presence-sculpture-k, 1))`,
                   marginTop: `calc(${presenceH} * ${+(1 - PRESENCE_SIZE).toFixed(4)})`,
                   width: "auto",
                   objectFit: "contain",

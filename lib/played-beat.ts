@@ -26,6 +26,22 @@
  */
 export const NUDGE_PX = 40
 
+/**
+ * The way back up (2026-10-27, the author's asking). While `on`, the hero is
+ * laid out as a plain screen standing directly above For Mind, its doors shut,
+ * and the page scrolls through it as through any other: no pin, no beat
+ * plays, nothing is held. It is set by the hero on a scroll up from For Mind
+ * and cleared once the page is back at the pin (`components/hero-animation.tsx`).
+ */
+export const heroUp = { on: false }
+
+/**
+ * Sent on the window by the bottom menu's logo just before it scrolls the page
+ * back to the top, so the hero can be laid out for the way up first (see
+ * `toTop` in `components/hero-animation.tsx`).
+ */
+export const TO_TOP_EVENT = "pandov:to-top"
+
 /** easeInOutCubic. */
 export function ease(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
@@ -68,17 +84,32 @@ export function rewind(name: string): void {
   beats.get(name)?.forEach((snap) => snap())
 }
 
+/** Every beat's way of being hurried, by its name (see `hurry`). */
+const hurries = new Map<string, Set<(k: number) => void>>()
+
+/**
+ * Plays the beats of that name backward `k` times as fast, until they are
+ * back at their start (2026-10-28, the author's asking: a scroll up from
+ * inside the hero takes Presence off quickly, and then the doors close by
+ * their own frames). Going forward is never hurried.
+ */
+export function hurry(name: string, k: number): void {
+  hurries.get(name)?.forEach((set) => set(k))
+}
+
 export function playBeat(
   length: number,
   on: () => boolean,
   paint: (t: number) => void,
-  name?: string,
+  ...names: string[]
 ): PlayedBeat {
   let t = 0
   let going = false
   let primed = false
   let raf = 0
   let last = 0
+  // How fast it plays backward; 1 but while hurried (see `hurry`).
+  let rate = 1
 
   const moving = () => (going ? t < length : t > 0)
 
@@ -88,7 +119,8 @@ export function playBeat(
     // background carries on where it was rather than leaping to the end.
     const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60
     last = now
-    t = going ? Math.min(length, t + dt) : Math.max(0, t - dt)
+    t = going ? Math.min(length, t + dt) : Math.max(0, t - dt * rate)
+    if (going || t === 0) rate = 1
     paint(t)
     if (moving()) raf = requestAnimationFrame(tick)
   }
@@ -115,11 +147,17 @@ export function playBeat(
     cancelAnimationFrame(raf)
     raf = 0
     t = 0
+    rate = 1
     paint(0)
   }
-  if (name) {
+  const quicken = (k: number) => {
+    rate = Math.max(1, k)
+  }
+  for (const name of names) {
     if (!beats.has(name)) beats.set(name, new Set())
     beats.get(name)!.add(snap)
+    if (!hurries.has(name)) hurries.set(name, new Set())
+    hurries.get(name)!.add(quicken)
   }
 
   measure()
@@ -130,7 +168,10 @@ export function playBeat(
     done: () => t / length,
     dispose: () => {
       cancelAnimationFrame(raf)
-      if (name) beats.get(name)?.delete(snap)
+      for (const name of names) {
+        beats.get(name)?.delete(snap)
+        hurries.get(name)?.delete(quicken)
+      }
       window.removeEventListener("scroll", measure)
       window.removeEventListener("resize", measure)
       window.removeEventListener("pageshow", measure)

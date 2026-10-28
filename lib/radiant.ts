@@ -87,12 +87,22 @@ export function splitRadiant(svg: string): Radiant {
     return tag.replace(/^<path\b/, `<path class="${RING_CLASS}" style="${style}"`)
   })
 
-  // The export ships a fixed width and height; drop them so the drawing fills
-  // whatever box the section gives it, and keep the viewBox so it stays vector.
-  html = html
+  return { html: fluidSvg(html), count: tags.length }
+}
+
+/**
+ * The export ships a fixed width and height; drop them so the drawing fills
+ * whatever box it is given, and keep the viewBox so it stays vector.
+ *
+ * Used for the rosette too, which was an `<img>` until 2026-10-23. As an image
+ * its lines could not be told how thick to draw, and they are 0.6 units in a
+ * 358 box shown at about 236px: 0.4px, which a screen of ordinary density
+ * draws as a broken, dotted line. Inlined, the statement's CSS holds them at
+ * one device pixel like the contours around it. See `--sr-line` there.
+ */
+export function fluidSvg(svg: string): string {
+  return svg
     .replace(/<svg([^>]*?)\swidth="[^"]*"/, "<svg$1")
     .replace(/<svg([^>]*?)\sheight="[^"]*"/, "<svg$1")
-    .replace(/<svg /, '<svg style="display:block;width:100%;height:100%" ')
-
-  return { html, count: tags.length }
+    .replace(/<svg /, '<svg style="display:block;width:100%;height:100%;overflow:visible" ')
 }
