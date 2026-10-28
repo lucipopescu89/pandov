@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Julius_Sans_One } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -51,6 +52,11 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         {children}
         <Analytics />
+        {/* The author's atmosphere effects (2026-10-28): gold dust, the O's and
+            Presence on the homepage, Silence on Second Wind, soft entrances.
+            One plain script outside React, so this line is the whole switch:
+            delete it and the site is exactly as it was. See public/pandov-fx.js. */}
+        <Script src="/pandov-fx.js" strategy="afterInteractive" />
       </body>
     </html>
   )

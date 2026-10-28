@@ -171,6 +171,18 @@ Since 2026-10-28 it is laid out in pixels by `CollectionPage` (above), not on a 
   - The author kept this version the same day. The twenty-frame one is tagged `doors-20-frames` in git, with its frames, `public/frames/Handler*.jpg`, which were then removed.
 - Progress is always passed through a local `clamp01` that maps non-finite to 0. `scrolled / total` is `NaN` when the container and viewport measure equal (background tab, bfcache restore, prerender), `Math.max/min` propagate `NaN`, and every `<` against `NaN` is false — an unguarded `NaN` falls through to the last branch and reveals overlays that should be hidden.
 
+### Atmosphere effects, `public/pandov-fx.js` (2026-10-28)
+
+The author tried these live in the browser one change at a time and kept them; they were then saved as one plain script, loaded by a single `<Script src="/pandov-fx.js">` in `app/layout.tsx`. It sits outside React on purpose: **deleting that one line takes all of it out**, and no component was touched. What it does, and what the author turned down along the way (don't bring those back unasked):
+
+- **Every full load:** a fade up from black, the logo and menu rising in, a faint gold hairline (45% strength, 70% of the word's width) easing open under a menu word on hover, a 1px gold scroll-progress line at the top. A short dip to black between Mind, Body, Space and the homepage.
+- **Soft entrances** as things scroll into view: 2px blur, 6px rise, 1.1s. The author had it at 10px / 22px / 1.6s and asked for much less. **Not on the pendant pages' text column** (`.pp-info`): it was too slow there. Anything the site already animates (inline opacity/transform, pinned scenes) is left alone.
+- **Homepage dust.** Calm gold motes in the dark band round the logo and menu from the first frame. Behind the doors, motes only through the opening between them, from text 1 on, never on the wood. The O's of "We Open The Doors Of Perception" are planets: a wide soft pull that *bends* a passing mote's path (median turn about 20°, not a bounce back), then slings it on at constant speed until it leaves; no mote stays in orbit. Presence breathes the dust outward, faster than its own fade-in, starting as the reader scrolls past text 1; motes are reborn just inside the first ellipse, not at the sculpture. Text 1 and Presence's line dim to half one second after they are lit (a `filter: opacity`, because the hero drives their `opacity`).
+- **Second Wind, Silence:** the section's own dotted canvas is hidden and the same dust drifts there, the pendant's head ring as the planet, drawn behind the piece through its silhouette.
+- **Turned down:** menu words widening and glowing on hover, a vignette, a light following the cursor, dust over the whole page, pendants floating/breathing, a gold glow round the pendants on hover, and dust drawn over the doors.
+
+It reads the page rather than being told: the doors' opening from the doors' canvas pixels (14 rows every other frame), the O's from their glyph boxes, Presence's ring from the first `<ellipse>`. That works but costs more than it should; the tidier version takes the doors' frame and the beats from `hero-animation.tsx` itself. `window.__pandovFX`, `__pfxDim` and `__pfxSilence` each have a `remove()` for trying things in the console.
+
 ### Page shape
 
 `app/*/page.tsx` files are thin: export `metadata`, render one section component from `components/`. Put the work in the component.
