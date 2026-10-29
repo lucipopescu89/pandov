@@ -89,7 +89,7 @@ text.pfx-r{translate:none}
     // depended on the ground decoding as exactly #202020: in Chrome and Edge on
     // Windows it did not always, the opening came out empty and the dust behind
     // the doors was clipped away while the header's dust still showed.
-    let clipLayer = null;
+    let clipLayer = null, clipFrac = 0;
     const clipGap = (sticky, cv, cr) => {
       if (!clipLayer || !clipLayer.isConnected || !sticky.contains(clipLayer)) {
         clipLayer = null;
@@ -109,6 +109,12 @@ text.pfx-r{translate:none}
       const k = cv.width / cr.width, off = lr.left - cr.left;
       const le = Math.max(0, (off + L) * k), rs = Math.min(cv.width, (off + lr.width - R) * k);
       const row = [le, Math.max(le, rs)];
+      // how open the doors are, against the frame as drawn (scaled to the
+      // canvas's height and centred, 2667 × 1500): on a screen wider than the
+      // frame the open doors span less than the canvas, and measured against
+      // the canvas they read as not quite open, which let the dust go out and
+      // be reborn between text 1 and Presence
+      clipFrac = (row[1] - row[0]) / Math.min(cv.width, cv.height * 2667 / 1500);
       return Array.from({ length: ROWS }, () => row.slice());
     };
 
@@ -190,7 +196,7 @@ text.pfx-r{translate:none}
       const cg = clipGap(sticky, cv, cr);
       if (cg) gap = cg;
       else if (frameN % 2 === 0) { const g = readGap(cv); if (g) { if (!gap) gap = g.map(p => p.slice()); else gap = gap.map((p, i) => [p[0] + (g[i][0] - p[0]) * .4, p[1] + (g[i][1] - p[1]) * .4]); } }
-      const openFrac = gap ? gap.reduce((s, g) => s + Math.max(0, g[1] - g[0]), 0) / (ROWS * cv.width) : 0;
+      const openFrac = cg ? clipFrac : gap ? gap.reduce((s, g) => s + Math.max(0, g[1] - g[0]), 0) / (ROWS * cv.width) : 0;
       if (!txtEl || !txtEl.isConnected) txtEl = [...sticky.querySelectorAll('span')].find(s => /Doors Of Perception/i.test(s.textContent)) || null;
       let txtOp = 0; if (txtEl) { let e = txtEl; txtOp = 1; while (e && e !== sticky) { txtOp *= parseFloat(getComputedStyle(e).opacity); e = e.parentElement; } }
       if (txtEl && txtOp > .02 && frameN % 6 === 0) wells = findWells(txtEl);
