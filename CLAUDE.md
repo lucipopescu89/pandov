@@ -181,7 +181,7 @@ The author tried these live in the browser one change at a time and kept them; t
 - **Second Wind, Silence:** the section's own dotted canvas is hidden and the same dust drifts there, the pendant's head ring as the planet, drawn behind the piece through its silhouette.
 - **Turned down:** menu words widening and glowing on hover, a vignette, a light following the cursor, dust over the whole page, pendants floating/breathing, a gold glow round the pendants on hover, and dust drawn over the doors.
 
-It reads the page rather than being told: the doors' opening from the doors' canvas pixels (14 rows every other frame), the O's from their glyph boxes, Presence's ring from the first `<ellipse>`. That works but costs more than it should; the tidier version takes the doors' frame and the beats from `hero-animation.tsx` itself. `window.__pandovFX`, `__pfxDim` and `__pfxSilence` each have a `remove()` for trying things in the console.
+It reads the page rather than being told: the doors' opening from text 1's inline `clip-path: inset(...)`, which the hero writes from its `GAP` table every frame (since 2026-10-29; the doors' canvas pixels, 14 rows every other frame, are only the fallback now, because in Chrome and Edge on Windows the ground did not always read back as exactly #202020 and the dust behind the doors vanished; note the browser shortens the inset, e.g. `inset(0px 360px)`), the O's from their glyph boxes, Presence's ring from the first `<ellipse>`. That works but costs more than it should; the tidier version takes the doors' frame and the beats from `hero-animation.tsx` itself. `window.__pandovFX`, `__pfxDim` and `__pfxSilence` each have a `remove()` for trying things in the console.
 
 ### Page shape
 

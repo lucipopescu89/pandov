@@ -81,7 +81,38 @@ text.pfx-r{translate:none}
     const spawnRing = m => { const ang = rnd(0, 6.28), k = rnd(.78, .92); m.x = ring.cx + Math.cos(ang) * ring.rx * k; m.y = ring.cy + Math.sin(ang) * ring.ry * k; const sp = rnd(.05, .18); m.vx = Math.cos(ang) * sp * ring.rx / ring.ry; m.vy = Math.sin(ang) * sp; look(m); };
     const heroOf = img => { let e = img; while (e && e !== document.body) { if (getComputedStyle(e).position === 'sticky') return e; e = e.parentElement; } return null; };
 
-    // The opening between the doors, read off the doors' canvas row by row:
+    // The opening between the doors, as the hero itself draws it (2026-10-29).
+    // hero-animation.tsx clips text 1 to the opening on every frame, from its
+    // measured GAP table, with an inline `clip-path: inset(0 Rpx 0 Lpx)` on the
+    // layer that spans the canvas. Reading that clip gives the exact opening in
+    // every browser. Reading the canvas pixels (below, kept as the fallback)
+    // depended on the ground decoding as exactly #202020: in Chrome and Edge on
+    // Windows it did not always, the opening came out empty and the dust behind
+    // the doors was clipped away while the header's dust still showed.
+    let clipLayer = null;
+    const clipGap = (sticky, cv, cr) => {
+      if (!clipLayer || !clipLayer.isConnected || !sticky.contains(clipLayer)) {
+        clipLayer = null;
+        for (const e of sticky.querySelectorAll('div')) { if (/inset\(/.test(e.style.clipPath || e.style.webkitClipPath || '')) { clipLayer = e; break; } }
+        if (!clipLayer) return null;
+      }
+      const lr = clipLayer.getBoundingClientRect(); if (!lr.width || !cr.width) return null;
+      // the browser shortens it (`inset(0px 360px)` when both sides match), so
+      // read it as CSS does: one to four lengths, top right bottom left
+      const m = (clipLayer.style.clipPath || clipLayer.style.webkitClipPath || '').match(/inset\(([^)]*)\)/);
+      if (!m) return null;
+      const v = m[1].split(/\s+round\s+/)[0].trim().split(/\s+/);
+      if (!v.length || v.length > 4) return null;
+      const px = t => { const n = parseFloat(t); if (!isFinite(n)) return NaN; return /%$/.test(t) ? n / 100 * lr.width : n; };
+      const R = px(v[1] ?? v[0]), L = px(v[3] ?? v[1] ?? v[0]);
+      if (!isFinite(R) || !isFinite(L)) return null;
+      const k = cv.width / cr.width, off = lr.left - cr.left;
+      const le = Math.max(0, (off + L) * k), rs = Math.min(cv.width, (off + lr.width - R) * k);
+      const row = [le, Math.max(le, rs)];
+      return Array.from({ length: ROWS }, () => row.slice());
+    };
+
+    // Fallback: the opening read off the doors' canvas row by row:
     // the right door begins where the wood turns bright; the left door ends at
     // the last pixel that is not the ground (#202020) before it.
     const VOID = 32;
@@ -156,7 +187,9 @@ text.pfx-r{translate:none}
       // --- the door scene ---
       const cv = sticky.querySelector('canvas'); if (!cv) return;
       const cr = cv.getBoundingClientRect();
-      if (frameN % 2 === 0) { const g = readGap(cv); if (g) { if (!gap) gap = g.map(p => p.slice()); else gap = gap.map((p, i) => [p[0] + (g[i][0] - p[0]) * .4, p[1] + (g[i][1] - p[1]) * .4]); } }
+      const cg = clipGap(sticky, cv, cr);
+      if (cg) gap = cg;
+      else if (frameN % 2 === 0) { const g = readGap(cv); if (g) { if (!gap) gap = g.map(p => p.slice()); else gap = gap.map((p, i) => [p[0] + (g[i][0] - p[0]) * .4, p[1] + (g[i][1] - p[1]) * .4]); } }
       const openFrac = gap ? gap.reduce((s, g) => s + Math.max(0, g[1] - g[0]), 0) / (ROWS * cv.width) : 0;
       if (!txtEl || !txtEl.isConnected) txtEl = [...sticky.querySelectorAll('span')].find(s => /Doors Of Perception/i.test(s.textContent)) || null;
       let txtOp = 0; if (txtEl) { let e = txtEl; txtOp = 1; while (e && e !== sticky) { txtOp *= parseFloat(getComputedStyle(e).opacity); e = e.parentElement; } }
