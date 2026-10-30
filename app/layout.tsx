@@ -57,6 +57,10 @@ export default function RootLayout({
             One plain script outside React, so this line is the whole switch:
             delete it and the site is exactly as it was. See public/pandov-fx.js. */}
         <Script src="/pandov-fx.js" strategy="afterInteractive" />
+        {/* Gold motes rising in the crevices of the burnt trunk, in the
+            homepage's Making photograph (2026-10-30, the author's asking).
+            Delete this line and it is gone. See public/pandov-grain.js. */}
+        <Script src="/pandov-grain.js" strategy="afterInteractive" />
       </body>
     </html>
   )
