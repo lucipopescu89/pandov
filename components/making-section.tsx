@@ -20,14 +20,18 @@ const RISE = 29.6 - 8.1
 /**
  * MAKING section — laid out after the author's mock-up of 2026-10-30. The
  * photograph (the white vase in the burnt trunk, on white) runs the page's
- * full width, cut at the trunk's right edge so the trunk meets the page edge.
- * It rises up behind Selected, under that section's heading; its ground is
- * pure white (255), so it meets the page with no edge. The heading and the
+ * full width, whole: the white beyond the trunk's foot on the right shows
+ * too. It rises up behind Selected, under that section's heading; its ground
+ * is pure white (255), so it meets the page with no edge. The heading and the
  * manifesto stand on the left, under Selected's cards.
  *
  * The source is `D:\PANDOV\MARKETING\ELEMENTE WEBSITE\1 HOMEPAGE\Homepage_making.jpg`
- * (7667 × 5652), cropped to 7300 wide and exported 2400 wide, JPEG q86 4:4:4.
- * Read its top-left pixel after a re-export: it must be 255,255,255.
+ * (7667 × 5652), exported whole at 2400 wide (2400 × 1769), JPEG q86 4:4:4.
+ * It was first cut at 7300 wide, at the trunk's right edge, so the trunk met
+ * the page's edge; the author asked for the whole width the same evening.
+ * Read its top-left pixel after a re-export: it must be 255,255,255. The gold
+ * motes in its crevices (`public/pandov-grain.js`) are drawn in this file's
+ * pixels: a recrop moves them too (see CLAUDE.md).
  *
  * The old satori photograph's white washes and the band pinned to the middle
  * of the screen went with it: the new photograph is shown as it is.
@@ -84,7 +88,7 @@ export function MakingSection() {
           pointerEvents: leave < 1 ? "auto" : "none",
         }}
       >
-        <div style={{ position: "relative", width: "100%", aspectRatio: "2400 / 1858" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "2400 / 1769" }}>
           <Image
             src="/images/home/making-sculpture.jpg"
             alt="A white vase in a burnt trunk — the making process"

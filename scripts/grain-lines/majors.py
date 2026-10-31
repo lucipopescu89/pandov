@@ -19,7 +19,7 @@ from skimage.graph import route_through_array
 src, marks, out = sys.argv[1:4]
 im = Image.open(src).convert("RGB")
 G = np.asarray(im.convert("L"), dtype=np.float32) / 255.0
-X0, Y0, X1, Y1 = 1700, 0, 2400, 1800
+X0, Y0, X1, Y1 = 1600, 0, 2400, 1720
 g = G[Y0:Y1, X0:X1]
 g1 = nd.gaussian_filter(g, 1.0)
 rel = nd.gaussian_filter(g, 7) - g1

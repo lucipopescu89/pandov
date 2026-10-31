@@ -25,7 +25,7 @@ src, out = sys.argv[1], sys.argv[2]
 im = Image.open(src).convert("RGB")
 W, H = im.size
 G = np.asarray(im.convert("L"), dtype=np.float32) / 255.0
-X0, Y0, X1, Y1 = 1700, 30, W, 1800
+X0, Y0, X1, Y1 = 1600, 30, W, 1720
 g = G[Y0:Y1, X0:X1]
 h, w = g.shape
 

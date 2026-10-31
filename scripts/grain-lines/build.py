@@ -28,7 +28,7 @@ white = nd.binary_dilation(G > 0.6, iterations=5)
 far_white = nd.binary_dilation(G > 0.6, iterations=11)
 
 # groove score and cost, over the trunk only
-X0 = 1700
+X0 = 1600
 sub = G[:, X0:]
 val = np.zeros_like(G)
 val[:, X0:] = sato(sub, sigmas=[1.5, 2.5, 3.5], black_ridges=True)
