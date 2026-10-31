@@ -1,14 +1,4 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import { FOOTER_STAGE_ID } from "@/components/footer"
-
-/** Clamp to 0..1, treating a non-finite value (a zero-size layout) as 0. */
-function clamp01(v: number): number {
-  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0
-}
 
 /**
  * How far the photograph rises up behind Selected, as % of the page width:
@@ -29,43 +19,27 @@ const RISE = 29.6 - 8.1
  * (7667 × 5652), exported whole at 2400 wide (2400 × 1769), JPEG q86 4:4:4.
  * It was first cut at 7300 wide, at the trunk's right edge, so the trunk met
  * the page's edge; the author asked for the whole width the same evening.
- * Read its top-left pixel after a re-export: it must be 255,255,255. The gold
- * motes in its crevices (`public/pandov-grain.js`) are drawn in this file's
- * pixels: a recrop moves them too (see CLAUDE.md).
+ * Read its top-left pixel after a re-export: it must be 255,255,255. The
+ * export came out with a soft white wash baked in, thinning from the top
+ * down (the wood's deepest shadows read 72 at the top and 21 at the foot);
+ * `scripts/making-ungrade.py` takes it out, and must be run on a fresh
+ * export (2026-10-31, the author's asking). The gold motes in its crevices
+ * (`public/pandov-grain.js`) are drawn in this file's pixels: a recrop moves
+ * them too (see CLAUDE.md).
  *
  * The old satori photograph's white washes and the band pinned to the middle
  * of the screen went with it: the new photograph is shown as it is.
  *
- * The section still dissolves as the footer's hand comes up under it, and is
- * gone by the time the whole hand is on screen, so the hand has the screen
- * to itself (see the finale in `components/footer.tsx`). It is timed off the
- * hand's box itself, found by FOOTER_STAGE_ID: from the box's top edge at the
- * bottom of the screen to its foot there.
+ * Since 2026-10-31, the author's asking, the photograph stays in full view
+ * as the footer's hand comes up under it. It used to dissolve to the white
+ * page by the time the whole hand was on screen, timed off the hand's box.
  *
- * The whole block links to the /making page — except once it has dissolved,
- * when an invisible link over the top of the screen would still take clicks.
+ * And it is no longer a link to /making: a click on it sends the gold motes
+ * up every crevice at once (`public/pandov-grain.js`, which finds the
+ * photograph by its alt text). The /making page itself is unchanged and is
+ * reached from the bottom menu.
  */
 export function MakingSection() {
-  // 0 = the footer's hand not yet on screen, 1 = all of it on screen, this gone
-  const [leave, setLeave] = useState(0)
-
-  useEffect(() => {
-    const onScroll = () => {
-      const hand = document.getElementById(FOOTER_STAGE_ID)
-      if (hand) {
-        const s = hand.getBoundingClientRect()
-        setLeave(clamp01((window.innerHeight - s.top) / s.height))
-      }
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    window.addEventListener("resize", onScroll)
-    onScroll()
-    return () => {
-      window.removeEventListener("scroll", onScroll)
-      window.removeEventListener("resize", onScroll)
-    }
-  }, [])
-
   return (
     <section
       style={{
@@ -76,18 +50,7 @@ export function MakingSection() {
         paddingBottom: "120px",
       }}
     >
-      <Link
-        href="/making"
-        aria-label="Explore the making process"
-        style={{
-          position: "relative",
-          display: "block",
-          width: "100%",
-          textDecoration: "none",
-          opacity: 1 - leave,
-          pointerEvents: leave < 1 ? "auto" : "none",
-        }}
-      >
+      <div style={{ position: "relative", width: "100%" }}>
         <div style={{ position: "relative", width: "100%", aspectRatio: "2400 / 1769" }}>
           <Image
             src="/images/home/making-sculpture.jpg"
@@ -131,7 +94,7 @@ export function MakingSection() {
             material, intuition and technology.
           </p>
         </div>
-      </Link>
+      </div>
     </section>
   )
 }

@@ -36,12 +36,12 @@ const HAND_FADE = `linear-gradient(to bottom, rgba(255,255,255,0) ${40 / VEIL_H}
 /**
  * The footer's finale, read off the scroll and never holding it up.
  *
- * The hand comes up from below with the page while the Making section above
- * it dissolves (`MakingSection` times that off the hand's box — see
- * FOOTER_STAGE_ID), so by the time the whole hand is on screen it has the
- * screen to itself: Making is gone, and the bird below it has not come in
- * yet. From there to the end of the page is the stretch everything else
- * happens in, and the beats are fractions of it:
+ * The hand comes up from below with the page, under the Making photograph,
+ * which stays as it is (until 2026-10-31 it dissolved as the hand came up,
+ * timed off the hand's box; the author asked for it to stay). Once the whole
+ * hand is on screen the bird below it has not come in yet. From there to the
+ * end of the page is the stretch everything else happens in, and the beats
+ * are fractions of it:
  *
  *       clean ─ white rises ─ words ─ bird
  *   ├── the hand slows ───────────────────┤ at rest
@@ -131,9 +131,9 @@ const START_TOP = 0.12
 const WORDS_END = 0.2
 
 /**
- * The hand's box, for `MakingSection`, which dissolves as it comes up. It
- * reads the box's own position rather than a copy of the numbers here, so the
- * two cannot drift apart.
+ * The hand's box. `MakingSection` used to read it to dissolve as the hand
+ * came up (until 2026-10-31); the id stays, for anything that needs to time
+ * itself off the hand without copying the numbers here.
  */
 export const FOOTER_STAGE_ID = "footer-stage"
 
