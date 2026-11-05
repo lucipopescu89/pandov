@@ -154,7 +154,8 @@ const P_LINES = [
   ["Every Pandov object begins with a", "search."],
   ["It can start in nature, among forms", "shaped by time, or in the quiet potential", "of discarded materials."],
   ["It can also begin on a blank sheet of", "paper, where an imagined silhouette", "gradually takes shape."],
-  ["The two paths often converge, as new", "forms build upon discovered ones."],
+  // the last paragraph in three, narrower, clear of Siluet 1's head (the author's asking)
+  ["The two paths often converge,", "as new forms build upon", "discovered ones."],
 ]
 
 /** The lines' face: Assistant, Regular, as the frame has it. */
