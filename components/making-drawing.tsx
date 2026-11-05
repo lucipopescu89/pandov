@@ -49,8 +49,9 @@ import { useRouter } from "next/navigation"
  * whole eyeball, gold ring and all, within the lids, which cut whatever goes
  * under them (`BALL_LAG_S`; more across than up and down); within it the
  * rhombi, more softly, within the gold ring; and the pupil within the empty
- * middle of the rhombi (the limits are measured by the script and written on
- * the eye's <g>). The nearer the pointer, the less they lean
+ * middle of the rhombi, but to the side away from the pointer, like a
+ * reflection (`PUPIL_SIDE`; the limits are measured by the script and
+ * written on the eye's <g>). The nearer the pointer, the less they lean
  * (`LOOK_REACH_PX`); each follows with its own lag (`PUPIL_LAG_S`,
  * `IRIS_LAG_S`), and both go back to the middle when the pointer leaves the
  * page. A touch screen has no pointer to follow, so there it looks ahead.
@@ -137,6 +138,13 @@ const EYE_SHUT_MS = 500
 const LOOK_REACH_PX = 280
 /** …the pupil catching up in about this long, the rhombi more slowly. */
 const PUPIL_LAG_S = 0.18
+/**
+ * The pupil goes the other way (2026-11-05, the author's asking): within the
+ * rhombi's empty middle it stands on the side away from the pointer, as a
+ * glint of light would, reflected, while the eyeball and the rhombi still turn
+ * towards it. 1 sends it with them, as it went at first.
+ */
+const PUPIL_SIDE = -1
 const IRIS_LAG_S = 0.45
 const BALL_LAG_S = 0.3
 
@@ -260,11 +268,11 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     ballEl?.setAttribute("transform", `translate(${bx.toFixed(2)} ${by.toFixed(2)})`)
     ix += (aimX * irisMax - ix) * ki
     iy += (aimY * irisMax - iy) * ki
-    px += (aimX * pupilMax - px) * kp
-    py += (aimY * pupilMax - py) * kp
+    px += (PUPIL_SIDE * aimX * pupilMax - px) * kp
+    py += (PUPIL_SIDE * aimY * pupilMax - py) * kp
     irisEl?.setAttribute("transform", `translate(${ix.toFixed(2)} ${iy.toFixed(2)})`)
     pupilEl?.setAttribute("transform", `translate(${(ix + px).toFixed(2)} ${(iy + py).toFixed(2)})`)
-    const left = Math.abs(aimX * ballMaxX - bx) + Math.abs(aimY * ballMaxY - by) + Math.abs(aimX * irisMax - ix) + Math.abs(aimY * irisMax - iy) + Math.abs(aimX * pupilMax - px) + Math.abs(aimY * pupilMax - py)
+    const left = Math.abs(aimX * ballMaxX - bx) + Math.abs(aimY * ballMaxY - by) + Math.abs(aimX * irisMax - ix) + Math.abs(aimY * irisMax - iy) + Math.abs(PUPIL_SIDE * aimX * pupilMax - px) + Math.abs(PUPIL_SIDE * aimY * pupilMax - py)
     if (left > 0.02) lookRaf = requestAnimationFrame(look)
     else {
       lookRaf = 0
