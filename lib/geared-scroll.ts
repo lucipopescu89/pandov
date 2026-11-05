@@ -77,6 +77,20 @@ export type GearedScroll = {
  * a frame at either mark.
  */
 const NOTCH_HZ = 24
+/**
+ * The site's wheel inertia (`public/pandov-glide.js`, 2026-11-03, the author's
+ * asking) sets a softer spring and a little more distance per notch for every
+ * page. Here they are read from it, so a notch feels the same on the Chess Set
+ * as everywhere else; without that script, the notch is the browser's own
+ * (`NOTCH_HZ`, full length). Only the mouse's notch: a trackpad and the keys
+ * are as they were. The extra distance is given only where the scroll is free,
+ * so the slow stretch by the moon is slowed exactly as before.
+ */
+type GlideFeel = { hz: number; carry: number }
+const glideFeel = (): GlideFeel | undefined => {
+  const f = (window as Window & { __pandovGlideFeel?: GlideFeel }).__pandovGlideFeel
+  return f && f.hz > 0 && f.carry >= 0 ? f : undefined
+}
 /** And a trackpad's step, which is already smooth: about 20ms behind the fingers. */
 const FINE_HZ = 90
 /** A step under this many px is a trackpad's. A mouse's notch is 100, or 80 at 125% zoom. */
@@ -160,12 +174,14 @@ export function gearScroll(gear: Gear): GearedScroll {
   }
 
   /** Takes the page `px` further, down or up, from where it is already being taken. */
-  const carry = (px: number, hz: number) => {
+  const carry = (px: number, hz: number, extra = 0) => {
     if (!raf || theirs()) {
       pos = target = wrote = window.scrollY
       vel = 0
     }
-    const to = px > 0 ? gear.pull(target, px) : target + px
+    let to = px > 0 ? gear.pull(target, px) : target + px
+    // A little further, but only where the gear left the notch whole.
+    if (extra > 0 && Math.abs(to - (target + px)) < 0.5) to = target + px * (1 + extra)
     target = Math.max(0, Math.min(limit(), to))
     omega = hz
     if (!raf && target !== pos) {
@@ -186,7 +202,10 @@ export function gearScroll(gear: Gear): GearedScroll {
     e.preventDefault()
     lastTaken = e.timeStamp
     const px = e.deltaY * (e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? window.innerHeight : 1)
-    if (px) carry(px, Math.abs(px) < FINE_PX ? FINE_HZ : NOTCH_HZ)
+    if (!px) return
+    if (Math.abs(px) < FINE_PX) return carry(px, FINE_HZ)
+    const feel = glideFeel()
+    carry(px, feel ? feel.hz : NOTCH_HZ, feel ? feel.carry : 0)
   }
 
   // The keys that scroll down. The ones that scroll up are the browser's.

@@ -19,7 +19,7 @@ photograph still meets the page with no edge; the wood gets back its black
 evenly from top to bottom. The gold motes' lines are unaffected: the
 geometry is untouched.
 
-Usage:  python3 scripts/making-ungrade.py public/images/home/making-sculpture.jpg [out.jpg]
+Usage:  python3 scripts/making-ungrade.py <in> [out.jpg] [--foot 0.745]
 Writes JPEG q86 4:4:4, as the export, and checks the top-left pixel is 255.
 Run it once on a fresh export; running it on its own output does nothing
 useful (the curve is then flat).
@@ -28,18 +28,28 @@ import sys
 import numpy as np
 from PIL import Image
 
-src = sys.argv[1]
-dst = sys.argv[2] if len(sys.argv) > 2 else src
+# --foot F (a share of the height): where the trunk stands on the ground.
+# The photograph of 2026-11-05 (from the Figma frame "Making") has a band of
+# dark wood under the trunk, from 74.5% of its height down. That band is not
+# trunk and carries no wash: it is left out of the measuring, and every row
+# from the foot down is left exactly as it is.
+args = [a for a in sys.argv[1:]]
+foot = 1.0
+if "--foot" in args:
+    i = args.index("--foot"); foot = float(args[i + 1]); del args[i:i + 2]
+src = args[0]
+dst = args[1] if len(args) > 1 else src
 
 im = Image.open(src).convert("RGB")
 A = np.asarray(im).astype(np.float64)
 H, W, _ = A.shape
+FOOT = int(H * foot)                    # rows from here down are left alone
 lum = A.mean(axis=2)
 trunk = lum < 170
 x0 = W * 13 // 24                       # the trunk stands in the right half
 
 band, ys, lv = 24, [], [[], [], []]
-for y in range(0, H - band, band):
+for y in range(0, FOOT - band, band):
     m = trunk[y:y + band, x0:]
     if m.sum() < 400:
         continue
@@ -52,8 +62,10 @@ out = A.copy()
 yy = np.arange(H) / H
 for c in range(3):
     curve = np.polyval(np.polyfit(ys, lv[c], 2), yy)
-    black = curve[-1]
-    a = np.clip((curve - black) / (255 - black), 0, 0.5)[:, None]
+    black = curve[FOOT - 1]
+    a = np.clip((curve - black) / (255 - black), 0, 0.5)
+    a[FOOT:] = 0                        # the ground under the trunk: untouched
+    a = a[:, None]
     out[:, :, c] = (A[:, :, c] - 255 * a) / (1 - a)
     print(f"channel {c}: white veil {a[int(.04 * H), 0]:.3f} at the top, "
           f"{a[H // 2, 0]:.3f} midway, black {black:.1f}")

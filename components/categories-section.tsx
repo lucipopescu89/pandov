@@ -134,6 +134,28 @@ const MIND_PHONE_ASPECT = 1195 / 1000
 const MIND_FOOT = 0.953
 const MIND_LABEL_H = 72
 const BODY_FOOT = 0.915
+
+/**
+ * On a wide screen For Body stands halfway between For Mind and For Space
+ * (2026-11-03, the author's asking: it sat much nearer For Space). Measured
+ * from the foot of the chess set to the top of the pendant, and from the foot
+ * of the pendant to the top of the room: 335px and 59px at 1440 × 900, 262 and
+ * 47 at 1280 × 720, 364 and 70 at 1920 × 1080. Half the difference is how far
+ * the row is drawn up, and it is given back underneath, so For Space and
+ * everything after it stay exactly where they were.
+ *
+ * The difference has three parts: For Mind's frame is a screen tall with its
+ * photograph (30% of the width tall, the board ending 95% down it) centred in
+ * it, the pendant's photograph is 60vh with white above and below it, and the
+ * room starts at the top of its screen. Worked out, half of it is
+ * 23.12vh − 6.765vw + 27px; measured, within 2px of that at every size above
+ * and at 1536 × 864, 2560 × 1440 and 1280 × 1000. The phone has its own even
+ * spacing (`BODY_PHONE_PULL`) and is left alone.
+ */
+const BODY_LIFT = "calc(23.12vh - 6.765vw + 27px - 40px)"
+// The same day, seen on the page, the author asked for it 80px lower than
+// halfway, then 40px back up: 40px below halfway, hence the − 40px above.
+// For Space still stays where it was.
 const BODY_PHONE_PULL = `calc(${+((1 - BODY_FOOT) * BODY_PHONE_H_VH - 50).toFixed(4)}vh + ${MIND_LABEL_H / 2}px + ${+((0.5 - (1 - MIND_FOOT)) * MIND_PHONE_ASPECT * 100).toFixed(4)}vw)`
 
 /**
@@ -277,12 +299,67 @@ function useScrollFadeIn(ref: React.RefObject<HTMLElement | null>) {
   return progress
 }
 
+/**
+ * For Space washes to white as Making comes up under it (2026-11-05, the
+ * author's asking: "lin și elegant"). A white veil over the whole row, the
+ * room and the words alike, rises from nothing as Making's top enters the
+ * bottom of the screen (the row's foot at 100% of the screen) to full as the
+ * row's foot reaches `SPACE_OUT_END` of the screen, on a smootherstep, so it
+ * starts and settles without a jolt. Making's own ground is white, so by then
+ * the page reads as one white from Space's place down to Making's words. It
+ * is written straight to the veil's style on each frame of scroll, not through
+ * React state, so it follows the page without a render in between. Going back
+ * up it lifts the same way.
+ */
+const SPACE_OUT_END = 0.35
+
+function useWhiteOut(row: React.RefObject<HTMLElement | null>, veil: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const el = row.current
+      const v = veil.current
+      if (!el || !v) return
+      const vh = window.innerHeight
+      const foot = el.getBoundingClientRect().bottom
+      const t = (vh - foot) / (vh * (1 - SPACE_OUT_END))
+      const u = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0
+      v.style.opacity = String(u * u * u * (u * (u * 6 - 15) + 10))
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    update()
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [row, veil])
+}
+
+/** The veil itself: white over the whole row, above the room and the words. */
+const WHITE_VEIL: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background: "#fff",
+  opacity: 0,
+  pointerEvents: "none",
+  zIndex: 5,
+  willChange: "opacity",
+}
+
 // FOR SPACE row — scroll-driven gradient overlays + fade in
 function SpaceRow() {
   const rowRef = useRef<HTMLDivElement>(null)
+  const veilRef = useRef<HTMLDivElement>(null)
   const [gradientOpacity, setGradientOpacity] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
   const fadeProgress = useScrollFadeIn(rowRef as React.RefObject<HTMLElement>)
+  useWhiteOut(rowRef as React.RefObject<HTMLElement>, veilRef as React.RefObject<HTMLElement>)
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -313,6 +390,7 @@ function SpaceRow() {
       <div
         ref={rowRef}
         style={{
+          position: "relative",
           width: "100%",
           paddingTop: "100px",
           background: "#fff",
@@ -349,6 +427,7 @@ function SpaceRow() {
             }}
           />
         </div>
+        <div ref={veilRef} style={WHITE_VEIL} />
       </div>
     )
   }
@@ -427,6 +506,8 @@ function SpaceRow() {
       <div style={onColumn(COLUMN_RIGHT, 60)}>
         <CategoryLabel title="For Space" align="center" dark href="/space" />
       </div>
+
+      <div ref={veilRef} style={WHITE_VEIL} />
     </div>
   )
 }
@@ -580,8 +661,8 @@ function BodyRow() {
       ref={ref}
       style={{
         paddingTop: "100px",
-        paddingBottom: "0",
-        marginTop: isMobile ? BODY_PHONE_PULL : 0,
+        paddingBottom: isMobile ? "0" : BODY_LIFT,
+        marginTop: isMobile ? BODY_PHONE_PULL : `calc(-1 * ${BODY_LIFT})`,
         opacity: fade,
         transform: `translateY(${(1 - fade) * 30}px)`,
         transition: "opacity 0.1s, transform 0.1s",

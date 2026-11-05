@@ -61,6 +61,10 @@ export default function RootLayout({
             homepage's Making photograph (2026-10-30, the author's asking).
             Delete this line and it is gone. See public/pandov-grain.js. */}
         <Script src="/pandov-grain.js" strategy="afterInteractive" />
+        {/* A small, calm glide after each turn of the wheel (2026-11-03, the
+            author's asking). Delete this line and it is gone.
+            See public/pandov-glide.js. */}
+        <Script src="/pandov-glide.js" strategy="afterInteractive" />
       </body>
     </html>
   )

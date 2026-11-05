@@ -451,9 +451,10 @@ export function Footer() {
         width: "100%",
         backgroundColor: "#fff",
         fontFamily: "'Julius Sans One', sans-serif",
-        // The Making photo's visible bottom edge sits 90px above the end of its
-        // section, so the canvas starts right at the photo's edge.
-        marginTop: "-90px",
+        // No overlap any more (2026-11-05, the author's asking). It was -90px,
+        // when the Making photograph stood above the footer and its visible
+        // edge sat 90px above the end of its section; since that day Selected
+        // stands above it, and the hand was laid 90px over Selected's ground.
       }}
     >
       {/* One centred column: the hand wearing the golden ring, GET IN TOUCH

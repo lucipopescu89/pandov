@@ -36,6 +36,17 @@ export const NUDGE_PX = 40
 export const heroUp = { on: false }
 
 /**
+ * Whether the hero's doors are fully shut, with Presence off (2026-11-03, the
+ * author's asking). The homepage's top menu comes down on a scroll up at the
+ * top of the page, but not while the doors are still closing after a scroll
+ * up from text 1 or Presence: first the doors close, and only a scroll up
+ * after that brings the menu (`components/reveal-on-scroll-up.tsx`). Set by
+ * the hero (`components/hero-animation.tsx`); shut by default, as the page
+ * opens.
+ */
+export const heroDoors = { shut: () => true }
+
+/**
  * Sent on the window by the bottom menu's logo just before it scrolls the page
  * back to the top, so the hero can be laid out for the way up first (see
  * `toTop` in `components/hero-animation.tsx`).

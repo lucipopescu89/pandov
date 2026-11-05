@@ -51,7 +51,7 @@ from skimage.morphology import skeletonize
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-PHOTO_W, PHOTO_H = 2400, 1769          # making-sculpture.jpg as served
+PHOTO_W, PHOTO_H = 2400, 2287          # making-sculpture.jpg as served (since 2026-11-05)
 S = 4                                    # mask resolution, x the export's px
 
 
@@ -101,6 +101,14 @@ def subpaths(d, seg=6):
 
 def photo_place(svg):
     """Where the photograph lies in the export: x0, y0, width, height."""
+    # The Figma frame "Making" of 2026-11-05 (public/images/home/Making.svg)
+    # fills a <rect> with the photograph, and making-sculpture.jpg is cut from
+    # it to exactly that rect (the image overhangs it by 16 units on the left),
+    # so there the rect itself is the photograph's place.
+    r = re.search(r'<rect ([^>]*)fill="url\(#pattern[^>]*>', svg)
+    if r:
+        g = lambda k, dflt: float((re.search(r'\b' + k + r'="([\d.]+)"', r.group(1)) or [None, dflt])[1])
+        return g('x', 0), g('y', 0), g('width', 0), g('height', 0)
     m = re.search(r'<use[^>]*transform="matrix\(([^)]+)\)"', svg)
     im = re.search(r'<image[^>]*width="([\d.]+)" height="([\d.]+)"', svg)
     rect = re.search(r'<path d="M0 0H([\d.]+)V([\d.]+)H0V0Z" fill="url\(#pattern', svg)
@@ -114,13 +122,18 @@ def photo_place(svg):
 
 # --- outlined strokes -> centre lines ----------------------------------------
 
-def centre_lines(outline_d, W, H):
-    mask = Image.new('L', (int(W * S), int(H * S)), 0)
-    dr = ImageDraw.Draw(mask)
-    for p in subpaths(outline_d):
-        if len(p) >= 3:
-            dr.polygon([(x * S, y * S) for x, y in p], fill=255)
-    sk = skeletonize(np.asarray(mask) > 0)
+def centre_lines(outline_d, W, H, mask=None):
+    """`mask`, if given, is the outline already drawn at S x (a bool array),
+    and outline_d, W and H are not read: scripts/making-drawing.py draws its
+    own, cropped to each line, with the non-zero rule its rings need."""
+    if mask is None:
+        mask = Image.new('L', (int(W * S), int(H * S)), 0)
+        dr = ImageDraw.Draw(mask)
+        for p in subpaths(outline_d):
+            if len(p) >= 3:
+                dr.polygon([(x * S, y * S) for x, y in p], fill=255)
+        mask = np.asarray(mask) > 0
+    sk = skeletonize(mask)
     K = np.ones((3, 3), int); K[1, 1] = 0
     deg = ndi.convolve(sk.astype(int), K, mode='constant') * sk
     h, w = sk.shape
@@ -238,11 +251,18 @@ def main():
     kx, ky = PHOTO_W / pw, PHOTO_H / ph
     print(f'photograph in the export at {x0:.2f},{y0:.2f}, {pw:.2f} x {ph:.2f}')
 
+    # The frame "Making" of 2026-11-05 carries the whole section: words, line
+    # drawings and the eye beside the crevices. There the crevices are the
+    # paths in the author's crevice colour, #FDA76A, and only those are read.
+    CREVICE = 'fill="#FDA76A"'
+    only_crevices = CREVICE in svg
     raw = []
     for m in re.finditer(r'<path ([^>]*)/?>', svg):
         attrs = m.group(1)
         d = re.search(r'\bd="([^"]+)"', attrs)
         if not d or 'url(#pattern' in attrs or d.group(1).startswith('M0 0H'):
+            continue
+        if only_crevices and CREVICE not in attrs:
             continue
         if 'stroke=' in attrs:                               # strokes: each sub-path is a line
             raw += [p for p in subpaths(d.group(1)) if len(p) >= 2]

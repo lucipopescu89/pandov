@@ -5,7 +5,7 @@ import { preload } from "react-dom"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
 import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
-import { NUDGE_PX, TO_TOP_EVENT, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
+import { NUDGE_PX, TO_TOP_EVENT, heroDoors, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
 
 /**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
@@ -1273,7 +1273,10 @@ export function HeroAnimation() {
 
     presenceRef.current = presence.done
     mindRef.current = mind.done
+    // For the top menu: it waits for the doors to be shut (see heroDoors).
+    heroDoors.shut = () => doorsRef.current() === 0 && presenceRef.current() === 0
     return () => {
+      heroDoors.shut = () => true
       window.removeEventListener("scroll", back, { capture: true })
       window.removeEventListener(TO_TOP_EVENT, toTop)
       if (heroUp.on) setUp(false)

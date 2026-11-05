@@ -1,6 +1,6 @@
 /*
  * PANDOV — gold motes in the crevices of the burnt trunk, in the homepage's
- * MAKING photograph (making-sculpture.jpg, 2400 x 1769).
+ * MAKING photograph (making-sculpture.jpg, 2400 x 2287 since 2026-11-05).
  *
  * The crevices are the author's own lines, drawn in Figma over the
  * photograph (2026-10-31). D.lines holds them in the photograph's pixels,
@@ -23,6 +23,9 @@
  * lower ends, faster than the others. Up to two such waves at a time: a
  * third click fades the oldest wave out and sends a new one. (The photograph
  * is no longer a link to /making: components/making-section.tsx.)
+ * While a wave runs, the trains already rising speed up to the wave's speed
+ * too, easing up to it, and ease back down to the base speed once the last
+ * wave has gone (2026-11-02, the author's asking).
  *
  * Drawing: the motes of a frame are sorted into a few steps of opacity and
  * each step is drawn as one shape (thousands of separate draws per frame were
@@ -35,7 +38,7 @@
   if (window.__pfxGrain) window.__pfxGrain.remove();
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  const D = { w: 2400, h: 1769, lines: __LINES__ };
+  const D = { w: 2400, h: 2287, lines: __LINES__ };
 
   const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -173,6 +176,8 @@
     const step = CFG.speed * dt / 1000 / s;      // image px this frame, at base speed
     const gap = CFG.gap / s, ends = CFG.ends / s;
     const reach2 = CFG.reach * CFG.reach, k = Math.min(1, dt / CFG.ease);
+    // while a wave runs, every train already rising goes at the wave's speed
+    const boost = waves.some(w => !w.dying) ? CFG.burst : 1;
     // move and draw one train; for a wave's train, say whether it is done
     const run = (T, regular, dying) => {
       // is the pointer on this train? (any of its motes within reach)
@@ -184,7 +189,7 @@
         const dx = x * s - px, dy = y * s - py;
         near = dx * dx + dy * dy < reach2;
       }
-      const base = regular ? 1 : T.base;
+      const base = regular ? boost : T.base;
       T.v += ((near ? Math.max(CFG.hover, base) : base) - T.v) * k;
       T.t += step * T.v;
       // never run into the train ahead in the same crevice
