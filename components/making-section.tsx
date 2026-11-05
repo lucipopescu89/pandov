@@ -127,21 +127,35 @@ const PHONE_FOOT = { y: 1611, x: -112 }
 const pw = (v: number) => `${+((v / PW) * 100).toFixed(4)}%`
 const ph = (v: number) => `${+((v / PH) * 100).toFixed(4)}%`
 /**
- * The phone's words: left edge and the column's right edge as the frame has
- * them (Siluet 1 stands from x 468), and the heading's top. The frame has the
- * first line's cap top at 285, with no heading, its type about 10px on a
- * phone. At the site's phone sizes the four paragraphs are a third taller and
- * ran down onto The Creator's head (y 975), so they start higher, under the
- * heading, with the frame's blank line between paragraphs taken in to 1em.
+ * The phone's words, broken into lines where the author broke them (the
+ * frame's own lines, which the author sent again as text on 2026-11-05, so
+ * that no paragraph ends on a word alone). Each line is held whole.
+ *
+ * They stand at the top of the composition, and the section has `P_AIR_PX` of
+ * white over it, so For Space stands further up and the words further from
+ * The Creator's head (the author's asking, the same day: at first they started
+ * 118 units down and their last line was some 25px over his head). Held to
+ * these lines the column is wider than the frame's, up to x 603 on a 360px
+ * phone, and it fits only because the words stand this high: the longest line
+ * (the fourth) is above the trunk, which reaches x 600 from y 300, and the
+ * ninth is above Siluet 1's head (y 607). The type is the other sections'
+ * 12.5px from a 368px phone up, and a little smaller under it (`P_LINE_FIT`),
+ * so the fourth line keeps clear of the trunk on a 360 and stays in the
+ * window on a 320.
  */
 const P_TEXT_X = 56
-const P_HEADING_TOP = 118
-const P_TEXT_RIGHT = 460
+const P_AIR_PX = 56
 const P_HEADING_PX = 11
-const P_LINE_PX = 12.5
+const P_LINE_FIT = "clamp(11px, 3.4vw, 12.5px)"
 const P_LINE_HEIGHT = 1.5
 const P_HEADING_GAP_PX = 14
 const P_PARAGRAPH_GAP_EM = 1
+const P_LINES = [
+  ["Every Pandov object begins with a", "search."],
+  ["It can start in nature, among forms", "shaped by time, or in the quiet potential", "of discarded materials."],
+  ["It can also begin on a blank sheet of", "paper, where an imagined silhouette", "gradually takes shape."],
+  ["The two paths often converge, as new", "forms build upon discovered ones."],
+]
 
 /** The lines' face: Assistant, Regular, as the frame has it. */
 const assistant = Assistant({ weight: "400", subsets: ["latin"], display: "swap" })
@@ -255,8 +269,8 @@ export function MakingSection() {
           style={{
             position: "absolute",
             left: pw(P_TEXT_X),
-            right: pw(PW - P_TEXT_RIGHT),
-            top: ph(P_HEADING_TOP),
+            top: 0,
+            whiteSpace: "nowrap",
             zIndex: 2,
           }}
         >
@@ -277,15 +291,20 @@ export function MakingSection() {
             style={{
               fontFamily: assistant.style.fontFamily,
               fontWeight: 400,
-              fontSize: `${P_LINE_PX}px`,
+              fontSize: P_LINE_FIT,
               lineHeight: P_LINE_HEIGHT,
               color: "#888",
               marginTop: `${P_HEADING_GAP_PX}px`,
             }}
           >
-            {LINES.map((l, i) => (
-              <p key={l} style={{ margin: i ? `${P_PARAGRAPH_GAP_EM}em 0 0` : 0 }}>
-                {l}
+            {P_LINES.map((lines, i) => (
+              <p key={i} style={{ margin: i ? `${P_PARAGRAPH_GAP_EM}em 0 0` : 0 }}>
+                {lines.map((l, j) => (
+                  <span key={j}>
+                    {j > 0 && <br />}
+                    {l}
+                  </span>
+                ))}
               </p>
             ))}
           </div>
@@ -297,7 +316,7 @@ export function MakingSection() {
         .mk-photo { position: absolute; inset: 0; }
         .mk-foot, .mk-words-phone { display: none; }
         @media (max-width: 767px) {
-          .mk-comp { width: 100%; aspect-ratio: ${PW} / ${PH}; }
+          .mk-comp { width: 100%; aspect-ratio: ${PW} / ${PH}; margin-top: ${P_AIR_PX}px; }
           .mk-side, .mk-words-desk { display: none; }
           .mk-words-phone { display: block; }
           .mk-photo {
