@@ -127,9 +127,10 @@ const PHONE_FOOT = { y: 1611, x: -112 }
 const pw = (v: number) => `${+((v / PW) * 100).toFixed(4)}%`
 const ph = (v: number) => `${+((v / PH) * 100).toFixed(4)}%`
 /**
- * The phone's words, broken into lines where the author broke them (the
- * frame's own lines, which the author sent again as text on 2026-11-05, so
- * that no paragraph ends on a word alone). Each line is held whole.
+ * The phone's words, broken into lines where the author broke them: short
+ * lines, each a phrase (the author's second setting, 2026-11-05, which
+ * replaced the frame's own longer lines the same day). Each line is held
+ * whole.
  *
  * They stand at the top of the composition, and the section has `P_AIR_PX` of
  * white over it, so For Space stands further up and the words further from
@@ -151,10 +152,9 @@ const P_LINE_HEIGHT = 1.5
 const P_HEADING_GAP_PX = 14
 const P_PARAGRAPH_GAP_EM = 1
 const P_LINES = [
-  ["Every Pandov object begins with a", "search."],
-  ["It can start in nature, among forms", "shaped by time, or in the quiet potential", "of discarded materials."],
-  ["It can also begin on a blank sheet of", "paper, where an imagined silhouette", "gradually takes shape."],
-  // the last paragraph in three, narrower, clear of Siluet 1's head (the author's asking)
+  ["Every Pandov object", "begins with a search."],
+  ["It can start in nature,", "among forms shaped by time,", "or in the quiet potential", "of discarded materials."],
+  ["It can also begin", "on a blank sheet of paper,", "where an imagined silhouette", "gradually takes shape."],
   ["The two paths often converge,", "as new forms build upon", "discovered ones."],
 ]
 
