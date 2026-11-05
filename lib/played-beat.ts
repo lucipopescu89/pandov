@@ -95,6 +95,20 @@ export function rewind(name: string): void {
   beats.get(name)?.forEach((snap) => snap())
 }
 
+/** Every beat's way of being sent to its end at once, by its name (see `finish`). */
+const ends = new Map<string, Set<() => void>>()
+
+/**
+ * Sends the beats of that name straight to their end, without playing them
+ * (2026-11-05, the author's asking: a click or a tap on the opening skips it,
+ * and For Mind is there at once; see `skip` in `components/hero-animation.tsx`).
+ * Only ever asked of a beat whose place the page is about to be past, or it
+ * would play back on the next scroll.
+ */
+export function finish(name: string): void {
+  ends.get(name)?.forEach((end) => end())
+}
+
 /** Every beat's way of being hurried, by its name (see `hurry`). */
 const hurries = new Map<string, Set<(k: number) => void>>()
 
@@ -164,7 +178,18 @@ export function playBeat(
   const quicken = (k: number) => {
     rate = Math.max(1, k)
   }
+  // To its end at once (see `finish`).
+  const end = () => {
+    cancelAnimationFrame(raf)
+    raf = 0
+    t = length
+    going = true
+    rate = 1
+    paint(length)
+  }
   for (const name of names) {
+    if (!ends.has(name)) ends.set(name, new Set())
+    ends.get(name)!.add(end)
     if (!beats.has(name)) beats.set(name, new Set())
     beats.get(name)!.add(snap)
     if (!hurries.has(name)) hurries.set(name, new Set())
@@ -181,6 +206,7 @@ export function playBeat(
       cancelAnimationFrame(raf)
       for (const name of names) {
         beats.get(name)?.delete(snap)
+        ends.get(name)?.delete(end)
         hurries.get(name)?.delete(quicken)
       }
       window.removeEventListener("scroll", measure)

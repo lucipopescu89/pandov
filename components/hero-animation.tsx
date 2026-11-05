@@ -5,7 +5,7 @@ import { preload } from "react-dom"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
 import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
-import { NUDGE_PX, TO_TOP_EVENT, heroDoors, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
+import { NUDGE_PX, TO_TOP_EVENT, finish, heroDoors, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
 
 /**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
@@ -245,6 +245,15 @@ function easeOut(t: number): number {
  * what the section's vh are, rather than on `innerHeight`: on a phone the two
  * differ by the browser's bars.
  */
+/**
+ * The skip (see `skip` in HeroAnimation): the white comes up over the opening
+ * in SKIP_IN_MS, stands SKIP_HOLD_MS while the page is put at For Mind, and
+ * lifts off For Mind in SKIP_OUT_MS.
+ */
+const SKIP_IN_MS = 380
+const SKIP_HOLD_MS = 80
+const SKIP_OUT_MS = 650
+
 function presenceAt(sticky: HTMLElement | null): number {
   return (PRESENCE_AT_VH * (sticky?.offsetHeight || window.innerHeight)) / 100
 }
@@ -777,6 +786,8 @@ export function HeroAnimation() {
   const mindRef = useRef<() => number>(() => 1)
   // Shuts the doors at once, on frame 0, rather than playing them shut.
   const shutDoorsRef = useRef<() => void>(() => {})
+  // Opens them at once, on their last frame (see `skip`).
+  const openDoorsRef = useRef<() => void>(() => {})
 
   // The doors: loaded, decoded, played and drawn here, outside React. They
   // change every frame for a second and a bit, and nothing else on the page
@@ -961,6 +972,16 @@ export function HeroAnimation() {
       paint()
     }
 
+    // A click or a tap that skips the opening finds them open (see `skip`).
+    openDoorsRef.current = () => {
+      cancelAnimationFrame(raf)
+      raf = 0
+      pos = 1
+      open = true
+      askedAt = -Infinity
+      paint()
+    }
+
     const play = () => {
       if (!ready || raf || !moving()) return
       last = 0
@@ -1063,6 +1084,7 @@ export function HeroAnimation() {
       disposed = true
       doorsRef.current = () => 1
       shutDoorsRef.current = () => {}
+      openDoorsRef.current = () => {}
       cancelAnimationFrame(raf)
       cancelAnimationFrame(waiting)
       window.clearTimeout(rebuild)
@@ -1297,6 +1319,79 @@ export function HeroAnimation() {
       { at: () => presenceAt(stickyRef.current), done: () => presenceRef.current() },
       { at: () => mindAt(stickyRef.current), done: () => mindRef.current() },
     ])
+  }, [])
+
+  // A click or a tap anywhere on the opening skips it (2026-11-05, the
+  // author's asking: some found the opening long, and the author keeps it as
+  // it is for whoever scrolls, but lets anyone step past it). The screen
+  // fades to white, as For Mind's own wash does; under the white the doors
+  // are opened, Presence put on and For Mind's beat sent to its end, and the
+  // page is put where For Mind's beat leaves it (its row filling the screen,
+  // NUDGE_PX past its place). Then the white lifts off For Mind, and from
+  // there the page scrolls as ever. The beats are finished before the page is
+  // moved, so neither the hold nor the fence (see holdScroll) takes the page
+  // back to a beat that has not played. Not once For Mind's beat has begun,
+  // and not on the way back up, where the hero is a plain screen.
+  //
+  // It listens on the window, not on the hero: For Mind's section lies over
+  // the pinned screen (its −100vh overlap), unseen until its beat, and takes
+  // every click there. While the opening is on screen it is the whole screen,
+  // so any click counts, but one on a link or a button (the top menu, when it
+  // is down) is left to do what it does.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
+    let busy = false
+    let veil: HTMLDivElement | null = null
+    const timers: number[] = []
+    const later = (ms: number, f: () => void) => timers.push(window.setTimeout(f, ms))
+
+    const jump = () => {
+      openDoorsRef.current()
+      finish("presence")
+      finish("mind")
+      const at = el.getBoundingClientRect().top + window.scrollY + mindAt(stickyRef.current) + NUDGE_PX
+      window.scrollTo({ top: at, behavior: "instant" })
+    }
+
+    const skip = (e: MouseEvent) => {
+      if (busy || heroUp.on || e.button !== 0) return
+      if (e.target instanceof Element && e.target.closest("a, button, input, textarea, select")) return
+      const past = -el.getBoundingClientRect().top
+      if (past >= mindAt(stickyRef.current) || mindRef.current() > 0) return
+      if (reduce.matches) return jump()
+      busy = true
+      veil = document.createElement("div")
+      veil.setAttribute("aria-hidden", "true")
+      veil.style.cssText =
+        `position:fixed;inset:0;background:#fff;z-index:60;pointer-events:none;opacity:0;` +
+        `transition:opacity ${SKIP_IN_MS}ms cubic-bezier(.45,0,.55,1)`
+      document.body.appendChild(veil)
+      // Once the veil is laid, in the next frame, it fades in.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (veil) veil.style.opacity = "1"
+        }),
+      )
+      later(SKIP_IN_MS + SKIP_HOLD_MS, () => {
+        jump()
+        if (!veil) return
+        veil.style.transition = `opacity ${SKIP_OUT_MS}ms cubic-bezier(.45,0,.55,1)`
+        veil.style.opacity = "0"
+        later(SKIP_OUT_MS + 50, () => {
+          veil?.remove()
+          veil = null
+          busy = false
+        })
+      })
+    }
+    window.addEventListener("click", skip)
+    return () => {
+      window.removeEventListener("click", skip)
+      timers.forEach((t) => window.clearTimeout(t))
+      veil?.remove()
+    }
   }, [])
 
   // The first frame is what the hero shows until the wheel turns, so the page
