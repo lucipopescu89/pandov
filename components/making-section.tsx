@@ -35,6 +35,22 @@ import { MakingDrawing } from "@/components/making-drawing"
  * Until 2026-11-05 the photograph rose up behind Selected (a negative top
  * margin). Since that day the two stand one after the other, Making first
  * (the author's asking): its dark wood runs on into Selected's #202020.
+ *
+ * On a phone (under 768px) it is the author's frame "Making - Mobile" (974 ×
+ * 2046, the same day; `Making - Mobile.svg`): a tall, narrow window onto the
+ * same photograph, which stands 728 units off the frame's left edge and 242
+ * down, so the burnt trunk and the white vase fill its right side; the words
+ * over the figures at the top left; fewer figures (no Siluet 2, no Vector 89,
+ * six of Fum's nine lines), each at its own place, drawn from their own file
+ * (`making-drawing-mobile.svg`). Under the plank's front edge (y 1611) the
+ * author laid the photograph again, 616 units further right (`PHONE_FOOT`),
+ * so the eye lies on the same stretch of dark wood as on the computer. One
+ * photograph box serves both layouts, so the gold motes, which lay their
+ * canvas over the photograph's box, find the trunk where it is on either.
+ * The two layouts' differences are in the stylesheet at the foot, since only
+ * a stylesheet holds a media query. The words follow the other sections'
+ * phone type (the frame's sizes were rough, the author said): Julius 11px
+ * tracked 0.2em, like "Selected" under it, and Assistant 12.5px at 1.5.
  */
 
 /**
@@ -98,6 +114,35 @@ const LINES = [
   "The two paths often converge, as new forms build upon discovered ones.",
 ]
 
+/**
+ * The phone's frame, in its own units. The photograph's box there (the same
+ * box the computer's frame is): 1893 × 1804 from (-728, 242), read from the
+ * export's image fill. Below `FOOT_Y` the author's second copy of the
+ * photograph, whose box stands at (-112, 242).
+ */
+const PW = 974
+const PH = 2046
+const P_PHOTO = { x: -728, y: 242 }
+const PHONE_FOOT = { y: 1611, x: -112 }
+const pw = (v: number) => `${+((v / PW) * 100).toFixed(4)}%`
+const ph = (v: number) => `${+((v / PH) * 100).toFixed(4)}%`
+/**
+ * The phone's words: left edge and the column's right edge as the frame has
+ * them (Siluet 1 stands from x 468), and the heading's top. The frame has the
+ * first line's cap top at 285, with no heading, its type about 10px on a
+ * phone. At the site's phone sizes the four paragraphs are a third taller and
+ * ran down onto The Creator's head (y 975), so they start higher, under the
+ * heading, with the frame's blank line between paragraphs taken in to 1em.
+ */
+const P_TEXT_X = 56
+const P_HEADING_TOP = 118
+const P_TEXT_RIGHT = 460
+const P_HEADING_PX = 11
+const P_LINE_PX = 12.5
+const P_LINE_HEIGHT = 1.5
+const P_HEADING_GAP_PX = 14
+const P_PARAGRAPH_GAP_EM = 1
+
 /** The lines' face: Assistant, Regular, as the frame has it. */
 const assistant = Assistant({ weight: "400", subsets: ["latin"], display: "swap" })
 
@@ -112,10 +157,10 @@ export function MakingSection() {
       }}
     >
       {/* The composition: the page's width up to MAX_ASPECT of the screen's
-          height, in the middle. */}
-      <div style={{ position: "relative", width: BOX_W, margin: "0 auto", aspectRatio: `${FW} / ${FH}` }}>
+          height, in the middle; on a phone the author's narrow frame. */}
+      <div className="mk-comp">
         {/* The photograph mirrored, going on to its left on a wide screen. */}
-        <div aria-hidden style={{ position: "absolute", top: 0, right: "100%", width: "100%", height: "100%" }}>
+        <div aria-hidden className="mk-side" style={{ position: "absolute", top: 0, right: "100%", width: "100%", height: "100%" }}>
           <Image
             src="/images/home/making-sculpture.jpg"
             alt=""
@@ -131,27 +176,48 @@ export function MakingSection() {
           src="/images/home/making-edge.png"
           alt=""
           aria-hidden
+          className="mk-side"
           style={{ position: "absolute", top: 0, left: "100%", width: "100%", height: "100%", objectFit: "fill" }}
         />
 
-        <Image
-          src="/images/home/making-sculpture.jpg"
-          alt="A white vase in a burnt trunk — the making process"
-          fill
-          sizes="100vw"
-          style={{ objectFit: "cover", objectPosition: "center" }}
-        />
+        {/* The photograph's box: the whole composition on a computer, larger
+            than the window and off to its left on a phone. */}
+        <div className="mk-photo">
+          <Image
+            src="/images/home/making-sculpture.jpg"
+            alt="A white vase in a burnt trunk — the making process"
+            fill
+            sizes="(max-width: 767px) 200vw, 100vw"
+            style={{ objectFit: "cover", objectPosition: "center" }}
+          />
 
-        {/* The line drawings and the eye, over the photograph and the motes;
-            Fum and the Siluets are drawn as the reader scrolls, and breathed
-            out of the tulnic by the same click as the motes' wave. */}
-        <MakingDrawing />
+          {/* The phone's foot: the photograph again under the plank's front
+              edge, moved so the eye lies on the computer's stretch of wood. */}
+          <div aria-hidden className="mk-foot">
+            <div
+              style={{
+                position: "absolute",
+                left: `${+(((PHONE_FOOT.x - 0) / PW) * 100).toFixed(4)}%`,
+                top: `${+(((P_PHOTO.y - PHONE_FOOT.y) / (PH - PHONE_FOOT.y)) * 100).toFixed(4)}%`,
+                width: `${+((FW / PW) * 100).toFixed(4)}%`,
+                height: `${+((FH / (PH - PHONE_FOOT.y)) * 100).toFixed(4)}%`,
+              }}
+            >
+              <Image src="/images/home/making-sculpture.jpg" alt="" fill sizes="200vw" style={{ objectFit: "cover", objectPosition: "center" }} />
+            </div>
+          </div>
+
+          {/* The line drawings and the eye, over the photograph and the motes;
+              Fum and the Siluets are drawn as the reader scrolls, and breathed
+              out of the tulnic by the same click as the motes' wave. */}
+          <MakingDrawing />
+        </div>
 
         {/* The words, with the composition: on a wide screen they stay over
             The Creator's head, as in the frame (2026-11-05, the author's
             asking; for a while they kept the page's own left margin and went
             far off to the left of the drawing). */}
-        <div style={{ position: "absolute", left: pctX(TEXT_X), top: pctY(HEADING_TOP), right: "45%", zIndex: 2 }}>
+        <div className="mk-words-desk" style={{ position: "absolute", left: pctX(TEXT_X), top: pctY(HEADING_TOP), right: "45%", zIndex: 2 }}>
           <p
             style={{
               fontFamily: "'Julius Sans One', sans-serif",
@@ -182,7 +248,76 @@ export function MakingSection() {
             ))}
           </div>
         </div>
+
+        {/* The phone's words, the heading over them at Selected's distance. */}
+        <div
+          className="mk-words-phone"
+          style={{
+            position: "absolute",
+            left: pw(P_TEXT_X),
+            right: pw(PW - P_TEXT_RIGHT),
+            top: ph(P_HEADING_TOP),
+            zIndex: 2,
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Julius Sans One', sans-serif",
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+              fontSize: `${P_HEADING_PX}px`,
+              lineHeight: 1,
+              color: "#888",
+              margin: 0,
+            }}
+          >
+            Making
+          </p>
+          <div
+            style={{
+              fontFamily: assistant.style.fontFamily,
+              fontWeight: 400,
+              fontSize: `${P_LINE_PX}px`,
+              lineHeight: P_LINE_HEIGHT,
+              color: "#888",
+              marginTop: `${P_HEADING_GAP_PX}px`,
+            }}
+          >
+            {LINES.map((l, i) => (
+              <p key={l} style={{ margin: i ? `${P_PARAGRAPH_GAP_EM}em 0 0` : 0 }}>
+                {l}
+              </p>
+            ))}
+          </div>
+        </div>
       </div>
+
+      <style>{`
+        .mk-comp { position: relative; width: ${BOX_W}; margin: 0 auto; aspect-ratio: ${FW} / ${FH}; }
+        .mk-photo { position: absolute; inset: 0; }
+        .mk-foot, .mk-words-phone { display: none; }
+        @media (max-width: 767px) {
+          .mk-comp { width: 100%; aspect-ratio: ${PW} / ${PH}; }
+          .mk-side, .mk-words-desk { display: none; }
+          .mk-words-phone { display: block; }
+          .mk-photo {
+            inset: auto;
+            left: ${pw(P_PHOTO.x)};
+            top: ${ph(P_PHOTO.y)};
+            width: ${pw(FW)};
+            height: ${ph(FH)};
+          }
+          .mk-foot {
+            display: block;
+            position: absolute;
+            overflow: hidden;
+            left: ${+(((0 - P_PHOTO.x) / FW) * 100).toFixed(4)}%;
+            top: ${+(((PHONE_FOOT.y - P_PHOTO.y) / FH) * 100).toFixed(4)}%;
+            width: ${+((PW / FW) * 100).toFixed(4)}%;
+            bottom: 0;
+          }
+        }
+      `}</style>
     </section>
   )
 }

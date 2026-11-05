@@ -3,6 +3,17 @@ The line drawings of the homepage's Making section, from the author's Figma
 frame "Making" (2026-11-05). Writes public/images/home/making-drawing.svg.
 
     python3 scripts/making-drawing.py public/images/home/Making.svg [out.svg]
+    python3 scripts/making-drawing.py --mobile "public/images/home/Making - Mobile.svg" public/images/home/Making.svg [out.svg]
+
+The second writes public/images/home/making-drawing-mobile.svg from the
+author's frame "Making - Mobile" (974 x 2046, 2026-11-05), the phone's
+composition: fewer lines (no Siluet2, no Vector 89, six of Fum's nine), each
+figure at its own size, the eye moved. Its export has no shape over the
+eyeball (Vector 49), so that one is taken from the computer's export (the
+second file) and moved with the eye (`MOBILE_EYE_SHIFT`). It is written in the
+phone frame's own units, with a viewBox that is the photograph's box there
+(`VARIANTS`), so the page lays it over the photograph exactly as it lays the
+computer's.
 
 The export is the whole frame: the photograph, the crevices, the words, the
 figures and the eye. This keeps the figures and the eye only, as the frame's
@@ -152,8 +163,17 @@ def lid_edges(d):
     return xs, top, bot
 
 
+# Where the eye stands against the computer's (0, 0 there; the phone's is
+# MOBILE_EYE_SHIFT): COVER_TOP was read off the computer's frame.
+EYE_AT = [0.0, 0.0]
+
+
+def cover_top_pts():
+    return [(x + EYE_AT[0], y + EYE_AT[1]) for x, y in COVER_TOP]
+
+
 def cover_top(x):
-    (ax, ay), (mx, my), (bx, by) = COVER_TOP
+    (ax, ay), (mx, my), (bx, by) = cover_top_pts()
     return ay + (my - ay) * (x - ax) / (mx - ax) if x <= mx else my + (by - my) * (x - mx) / (bx - mx)
 
 
@@ -211,8 +231,8 @@ def eye(els):
 
     lid_open = list(zip(ux, utop)) + list(zip(ux[::-1], ubot[::-1]))[1:-1]
     lid_shut = list(zip(lx, ltop)) + list(zip(lx[::-1], lbot[::-1]))[1:-1]
-    cov_open = [(ux[0], cover_top(ux[0])), COVER_TOP[1], (ux[-1], cover_top(ux[-1]))] + list(zip(ux[::-1], utop[::-1]))
-    cov_shut = [(lx[0], cover_top(lx[0])), COVER_TOP[1], (lx[-1], cover_top(lx[-1]))] + list(zip(lx[::-1], ltop[::-1]))
+    cov_open = [(ux[0], cover_top(ux[0])), cover_top_pts()[1], (ux[-1], cover_top(ux[-1]))] + list(zip(ux[::-1], utop[::-1]))
+    cov_shut = [(lx[0], cover_top(lx[0])), cover_top_pts()[1], (lx[-1], cover_top(lx[-1]))] + list(zip(lx[::-1], ltop[::-1]))
     opening = list(zip(ux, utop)) + list(zip(lx[::-1], ltop[::-1]))
 
     def morph(e, eid, a, b):
@@ -233,14 +253,60 @@ def eye(els):
     return out
 
 
-def main():
-    src = sys.argv[1]
-    dst = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'public', 'images', 'home', 'making-drawing.svg')
-    svg = open(src, encoding='utf-8').read()
+# The two compositions. In each, the box the drawing is laid over is the
+# photograph's (making-sculpture.jpg's): on the computer it is the frame
+# itself, y 2 to 1806; on the phone the photograph stands 728 units to the
+# left of the frame and 242 down (read from the export's image fill), so the
+# phone's viewBox is that box in the phone frame's units.
+VARIANTS = {
+    'desktop': dict(groups=GROUPS, mouth=MOUTH, ground=GROUND_Y, viewbox=(0, 2, 1893, 1804),
+                    out='making-drawing.svg', frame='"Making"'),
+    'mobile': dict(groups=[('siluet-3', 'Siluet 3', 6), ('siluet-1', 'Siluet1', 5),
+                           ('the-creator', 'The Creator', 7), ('fum', 'Fum', 6)],
+                   # the foot of The Creator's long stroke, in the phone frame
+                   mouth=(369.0, 1524.0),
+                   # the plank's front edge: the computer's 1370.2, moved down with the photograph
+                   ground=GROUND_Y + 240,
+                   viewbox=(-728, 242, 1893, 1804),
+                   out='making-drawing-mobile.svg', frame='"Making - Mobile"'),
+}
+# The phone's eye stands this far from the computer's (its Group 59 at 245, 1804
+# against 517, 1582), and the shape over its eyeball is the computer's, moved.
+MOBILE_EYE_SHIFT = (-272.0, 222.0)
+
+
+def elements(path):
+    svg = open(path, encoding='utf-8').read()
     body = svg[svg.index('>') + 1:svg.index('<defs>')]
     els = re.findall(r'<mask[\s\S]*?</mask>|<(?:path|rect|circle)[^>]*/>', body)
-    els = [e for e in els if 'url(#pattern' not in e and 'fill="#FDA76A"' not in e and 'fill="#888888"' not in e]
-    need = sum(n for _, _, n in GROUPS)
+    els = [e for e in els if 'url(#pattern' not in e and 'fill="#FDA76A"' not in e
+           and 'fill="#888888"' not in e and not (e.startswith('<rect') and 'fill="white"' in e)]
+    return svg, els
+
+
+def main():
+    args = sys.argv[1:]
+    variant = 'desktop'
+    if args and args[0] == '--mobile':
+        variant = 'mobile'; args = args[1:]
+    V = VARIANTS[variant]
+    GROUPS_, MOUTH_, GROUND_ = V['groups'], V['mouth'], V['ground']
+    vx, vy, vw, vh = V['viewbox']
+    src = args[0]
+    dst_default = os.path.join(ROOT, 'public', 'images', 'home', V['out'])
+    svg, els = elements(src)
+    if variant == 'mobile':
+        dst = args[2] if len(args) > 2 else dst_default
+        # the computer's shape over the eyeball, moved to the phone's eye
+        _, desk = elements(args[1])
+        eye_desk = desk[sum(n for _, _, n in GROUPS):]       # past the computer's figures
+        cover = next(e for e in eye_desk if 'fill="#202020"' in e)
+        d = re.search(r'\bd="([^"]+)"', cover).group(1)
+        els.insert(len(els) - 1, cover.replace(d, shift(d, -MOBILE_EYE_SHIFT[0], -MOBILE_EYE_SHIFT[1])))
+        EYE_AT[:] = MOBILE_EYE_SHIFT
+    else:
+        dst = args[1] if len(args) > 1 else dst_default
+    need = sum(n for _, _, n in GROUPS_)
     if len(els) < need:
         sys.exit(f'{len(els)} elements in the export, the figures alone are {need}: read the layers again')
     defs = svg[svg.index('<defs>'):svg.index('</defs>') + 7]
@@ -248,7 +314,7 @@ def main():
     defs = re.sub(r'<image[^>]*/>\s*', '', defs)
 
     parts, masks, k = [], [], 0
-    for gid, name, n in GROUPS:
+    for gid, name, n in GROUPS_:
         items = []
         for j in range(n):
             e = re.sub(r'fill="(?:black|#202020)"', f'fill="{INK}"', els[k], count=1); k += 1
@@ -264,15 +330,15 @@ def main():
             cover = Image.new('L', (m.shape[1], m.shape[0]), 0); cd = ImageDraw.Draw(cover)
             for l in lines:
                 p = ff.rdp(ff.smooth(np.asarray(l, float)), 0.4) + (x0, y0)
-                if math.dist(p[0], MOUTH) > math.dist(p[-1], MOUTH): p = p[::-1]
+                if math.dist(p[0], MOUTH_) > math.dist(p[-1], MOUTH_): p = p[::-1]
                 p = extend(p, EXTEND)
                 L = float(np.sum(np.hypot(*np.diff(p, axis=0).T)))
                 pts = ' L'.join(f'{x:.1f} {y:.1f}' for x, y in p)
-                mp.append(f'<path d="M{pts}" pathLength="1" data-len="{L:.0f}" data-from="{math.dist(p[0], MOUTH):.0f}"/>')
+                mp.append(f'<path d="M{pts}" pathLength="1" data-len="{L:.0f}" data-from="{math.dist(p[0], MOUTH_):.0f}"/>')
                 cd.line([((x - x0) * S, (y - y0) * S) for x, y in p], fill=255, width=int(width * S), joint='curve')
             got = (np.asarray(cover) > 0) & m
             print(f'{mid}: {len(lines)} line(s), mask {width:.1f} wide, covers {100 * got.sum() / m.sum():.2f}% of its ink')
-            masks.append(f'<mask id="{mid}" maskUnits="userSpaceOnUse" x="0" y="0" width="1893" height="1806">'
+            masks.append(f'<mask id="{mid}" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000">'
                          f'<g fill="none" stroke="#fff" stroke-width="{width:.1f}" stroke-dasharray="1 2" stroke-dashoffset="1">'
                          + ''.join(mp) + '</g></mask>')
             items.append(e.replace('<path ', f'<path data-line="{mid}" mask="url(#{mid})" ', 1))
@@ -283,11 +349,11 @@ def main():
     parts.append(f'<g id="eye" data-name="the eye (Group 59, Vector 49, Ellipse 8)" data-iris="{c[0]:.2f} {c[1]:.2f}" '
                  f'data-iris-max="{iris_max:.1f}" data-pupil-max="{pupil_max:.1f}" data-ball-max="{BALL_MAX[0]:g} {BALL_MAX[1]:g}">\n'
                  + '\n'.join(eye(els[k:])) + '\n</g>')
-    masks.append(f'<clipPath id="mk-ground" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="1893" height="{GROUND_Y}"/></clipPath>')
+    masks.append(f'<clipPath id="mk-ground" clipPathUnits="userSpaceOnUse"><rect x="-3000" y="-3000" width="8000" height="{GROUND_ + 3000}"/></clipPath>')
     defs = defs.replace('<defs>', '<defs>\n' + '\n'.join(masks), 1)
 
-    out = ('<svg xmlns="http://www.w3.org/2000/svg" width="1893" height="1804" viewBox="0 2 1893 1804" fill="none">\n'
-           '<!-- Written by scripts/making-drawing.py from the Figma frame "Making": the figures and the eye,\n'
+    out = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{vw}" height="{vh}" viewBox="{vx} {vy} {vw} {vh}" fill="none">\n'
+           f'<!-- Written by scripts/making-drawing.py from the Figma frame {V["frame"]}: the figures and the eye,\n'
            '     without the photograph, the words or the crevices. The lines of Fum and the Siluets are\n'
            '     masked shut until components/making-drawing.tsx draws them. -->\n'
            + '\n'.join(parts) + '\n' + defs + '\n</svg>\n')

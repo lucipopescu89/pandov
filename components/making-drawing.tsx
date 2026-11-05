@@ -87,6 +87,16 @@ import { useRouter } from "next/navigation"
  */
 
 const SRC = "/images/home/making-drawing.svg"
+/**
+ * The phone's drawing (2026-11-05, the author's frame "Making - Mobile"): its
+ * own figures, fewer lines and the eye moved, written by the same script with
+ * `--mobile`. Its viewBox is the photograph's box in the phone frame's units,
+ * so the page lays it over the photograph's box exactly as it lays the
+ * computer's. Chosen by the same query as the phone's layout in
+ * `making-section.tsx`, and swapped when the screen crosses it.
+ */
+const SRC_PHONE = "/images/home/making-drawing-mobile.svg"
+const PHONE = "(max-width: 767px)"
 
 /** The figures that are drawn; the rest stand still. */
 const DRAWN = ["fum", "siluet-1", "siluet-2", "siluet-3", "vector-89"]
@@ -225,6 +235,12 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   const ballEl = svg.getElementById("eye-ball")
   const [ballMaxX, ballMaxY] = nums(eyeG ? eyeG.getAttribute("data-ball-max") : null).map((v) => v || 0)
   const [icx, icy] = nums(eyeG ? eyeG.getAttribute("data-iris") : null)
+  // The file's own units to the screen: its viewBox fills the host.
+  const vb = svg.viewBox.baseVal
+  const toScreen = (r: DOMRect, x: number, y: number) => {
+    const k = r.width / (vb.width || 1)
+    return [r.left + (x - vb.x) * k, r.top + (y - vb.y) * k]
+  }
   const irisMax = Number(eyeG?.getAttribute("data-iris-max")) || 0
   const pupilMax = Number(eyeG?.getAttribute("data-pupil-max")) || 0
   let aimX = 0
@@ -258,9 +274,9 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   const aim = () => {
     if (mouse && Number.isFinite(icx)) {
       const r = host.getBoundingClientRect()
-      const k = r.width / 1893
-      const dx = mouse.x - (r.left + icx * k)
-      const dy = mouse.y - (r.top + (icy - 2) * k)
+      const [ex, ey] = toScreen(r, icx, icy)
+      const dx = mouse.x - ex
+      const dy = mouse.y - ey
       const d = Math.hypot(dx, dy)
       const m = d ? (1 - Math.exp(-d / LOOK_REACH_PX)) / d : 0
       aimX = dx * m
@@ -496,7 +512,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     wakeCreator()
     // The eye: open once its middle is up past EYE_OPEN_AT of the screen,
     // shut again once it is below the screen.
-    const eyeY = r.top + r.height * ((1667.5 - 2) / 1804)
+    const eyeY = Number.isFinite(icy) ? toScreen(r, icx, icy)[1] : r.bottom
     if (eyeY < vh * EYE_OPEN_AT) {
       if (!eyeWanted) {
         eyeWanted = true
@@ -626,23 +642,33 @@ export function MakingDrawing() {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    let dead = false
+    const phone = matchMedia(PHONE)
+    let turn = 0 // which load is current: a swap while one is in flight drops it
     let stop = () => {}
-    fetch(SRC)
-      .then((r) => r.text())
-      .then((text) => {
-        if (dead) return
-        host.innerHTML = text // the site's own file
-        const svg = host.querySelector("svg")
-        if (!svg) return
-        svg.setAttribute("width", "100%")
-        svg.setAttribute("height", "100%")
-        svg.style.display = "block"
-        stop = run(host, svg, (href) => routerRef.current?.push(href))
-      })
-      .catch(() => {})
+    const load = () => {
+      const mine = ++turn
+      stop()
+      stop = () => {}
+      host.innerHTML = ""
+      fetch(phone.matches ? SRC_PHONE : SRC)
+        .then((r) => r.text())
+        .then((text) => {
+          if (mine !== turn) return
+          host.innerHTML = text // the site's own file
+          const svg = host.querySelector("svg")
+          if (!svg) return
+          svg.setAttribute("width", "100%")
+          svg.setAttribute("height", "100%")
+          svg.style.display = "block"
+          stop = run(host, svg, (href) => routerRef.current?.push(href))
+        })
+        .catch(() => {})
+    }
+    load()
+    phone.addEventListener("change", load)
     return () => {
-      dead = true
+      turn++
+      phone.removeEventListener("change", load)
       stop()
       host.innerHTML = ""
     }
