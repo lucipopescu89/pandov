@@ -158,6 +158,14 @@ const P_LINES = [
   ["The two paths often converge,", "as new forms build upon", "discovered ones."],
 ]
 
+/**
+ * White over the composition on a computer, so For Space stands further up
+ * and the heading has air above it (the author's asking, 2026-11-05, after the
+ * phone got its own): it was 24px at 950 wide and 50 at 1893, the frame's own
+ * top margin only. Grows with the composition, as the rest of it does.
+ */
+const AIR = 120
+
 /** The lines' face: Assistant, Regular, as the frame has it. */
 const assistant = Assistant({ weight: "400", subsets: ["latin"], display: "swap" })
 
@@ -313,7 +321,7 @@ export function MakingSection() {
       </div>
 
       <style>{`
-        .mk-comp { position: relative; width: ${BOX_W}; margin: 0 auto; aspect-ratio: ${FW} / ${FH}; }
+        .mk-comp { position: relative; width: ${BOX_W}; margin: ${vw(AIR)} auto 0; aspect-ratio: ${FW} / ${FH}; }
         .mk-photo { position: absolute; inset: 0; }
         .mk-foot, .mk-words-phone { display: none; }
         @media (max-width: 767px) {
