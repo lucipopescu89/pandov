@@ -32,40 +32,94 @@ const SHOW_CLOUDS = false
  * The white veil under the moon, in shares of the moon's canvas: where it
  * begins and where it is solid. Under the clouds it rises to meet their
  * shoulders, 66 to 82, and fills the valleys between them with white. Without
- * them it waits for the disc's foot (80.2), on the author's asking of
- * 2026-10-02, so that it covers none of the moon, and is solid by 92. The
- * mandala is cut at 92 (`.chess-mandala`), so its cut is always under white.
+ * them it waited for the disc's foot (80.2), on the author's asking of
+ * 2026-10-02, so that it covered none of the moon, and was solid by 92.
+ *
+ * On 2026-11-07 the author asked for the veil and the poem under it to go
+ * further down, so that more of the mandala shows under the moon. On a
+ * computer it now begins at 104 and is solid by 124, past the canvas's foot:
+ * the ticks and the spokes under the disc (80 to 107 of the mandala's units
+ * from its centre) show, and the rings past them fade into the white by 143. A
+ * phone keeps 80 to 92 (PHONE_VEIL_FROM, PHONE_VEIL_SOLID): there the poem is
+ * set round the moon rather than under it, and its breaths are worked out
+ * from that solid line.
  */
-const VEIL_FROM = SHOW_CLOUDS ? 66 : 80
-const VEIL_SOLID = SHOW_CLOUDS ? 82 : 92
+const VEIL_FROM = SHOW_CLOUDS ? 66 : 104
+const VEIL_SOLID = SHOW_CLOUDS ? 82 : 124
+const PHONE_VEIL_FROM = SHOW_CLOUDS ? 66 : 80
+const PHONE_VEIL_SOLID = SHOW_CLOUDS ? 82 : 92
+/**
+ * Where the mandala is cut, in shares of the moon's canvas: where the veil is
+ * solid without the clouds, so that its cut is always under white (with them
+ * the veil is solid sooner and runs on to the cut). The veil's element runs
+ * down to the cut, past the canvas's foot on a computer.
+ *
+ * The mandala's square starts 67.92% of the canvas above it and is 2.26457
+ * canvases tall (`.chess-mandala`), so a cut is also a share of the square
+ * from its top: MANDALA_VISIBLE, which `components/moon-mandala.tsx` sizes its
+ * canvas by, and the clip's inset from the square's foot.
+ */
+const MANDALA_CUT = 124
+const PHONE_MANDALA_CUT = 92
+const MANDALA_VISIBLE = (MANDALA_CUT + 67.92) / 226.457
+const mandalaInset = (cut: number) => (100 - (100 * (cut + 67.92)) / 226.457).toFixed(2)
+const VEIL_END = Math.max(100, MANDALA_CUT)
 /**
  * The veil's ease, as the clouds' veil had it: strengths at shares of the way
- * from VEIL_FROM to VEIL_SOLID. A straight ramp read as a band. The element
- * runs on to the canvas's foot, so the shares are rescaled to its height.
+ * from where it begins to where it is solid. A straight ramp read as a band.
+ * The element runs on to `end`, so the shares are rescaled to its height.
  */
-const VEIL_GRADIENT = `linear-gradient(to bottom, ${[
-  [0, 0],
-  [10 / 47, 0.15],
-  [20 / 47, 0.38],
-  [30 / 47, 0.65],
-  [40 / 47, 0.88],
-  [1, 1],
-]
-  .map(([at, a]) => `rgba(255, 255, 255, ${a}) ${((100 * at * (VEIL_SOLID - VEIL_FROM)) / (100 - VEIL_FROM)).toFixed(2)}%`)
-  .join(", ")})`
+const veilGradient = (from: number, solid: number, end: number) =>
+  `linear-gradient(to bottom, ${[
+    [0, 0],
+    [10 / 47, 0.15],
+    [20 / 47, 0.38],
+    [30 / 47, 0.65],
+    [40 / 47, 0.88],
+    [1, 1],
+  ]
+    .map(([at, a]) => `rgba(255, 255, 255, ${a}) ${((100 * at * (solid - from)) / (end - from)).toFixed(2)}%`)
+    .join(", ")})`
+const VEIL_GRADIENT = veilGradient(VEIL_FROM, VEIL_SOLID, VEIL_END)
+const PHONE_VEIL_GRADIENT = veilGradient(PHONE_VEIL_FROM, PHONE_VEIL_SOLID, 100)
 /**
  * Where the poem's first line stands on a computer, in shares of the canvas:
  * in the white of the clouds' bodies at 77, or, without them, just under the
- * solid veil, so no line of the mandala runs behind it.
+ * solid veil, so no line of the mandala runs behind it. Since 2026-11-07 that
+ * is 125, below the canvas, so the poem's margin is no longer pulled up into
+ * it but pushes it down.
  */
 const POEM_AT = SHOW_CLOUDS ? 77 : VEIL_SOLID + 1
+/**
+ * Where FALL IN HEAVEN stands on a computer, in shares of the moon's canvas:
+ * the middle of the line, pinned to the mandala (the author's asking,
+ * 2026-11-07), in the one band of it that nothing crosses at rest. Between
+ * the short dashes (147.6 to 150.1 of the mandala's units from its centre)
+ * and the inner chevrons (from 162.6) there is nothing but the studs, small
+ * squares at 154.4 to 155.7 every 10°, with none at the top. The dashes and
+ * the chevrons turn but keep their distance, and no ring that breathes
+ * reaches the band (the dense lines' longest breath ends at 144.8).
+ *
+ * The line's middle is at 156 units: centred in the band at the type's 12px
+ * on a wide screen, where the author marked the place, and still clear of
+ * all three at the type's 10px floor down to 769px wide, where the line is a
+ * larger share of the mandala and its ends pass just over the studs at ±10°.
+ * A unit is 0.54966% of the canvas and the centre is at 45.31%, so
+ * 45.31 − 156 × 0.54966 = −40.44.
+ *
+ * Until then it hung 170px under the seam, so it slid across the rings as
+ * the page's width changed, and dropped 40px into place as it was lit. It
+ * stood at 157 units for an hour, before the author asked for it in the
+ * middle of the free band.
+ */
+const HEAVEN_AT = -40.44
 /**
  * The phone's moon is 0.977 of the page's width tall and its disc begins
  * 10.5% down it: the width from the disc's top to the solid veil, and from
  * there to the frame's foot. 69.9vw and 17.59vw under the clouds.
  */
-const PHONE_MOON_VW = ((VEIL_SOLID - 10.5) * 0.977).toFixed(1)
-const PHONE_BELOW_VW = ((100 - VEIL_SOLID) * 0.977).toFixed(2)
+const PHONE_MOON_VW = ((PHONE_VEIL_SOLID - 10.5) * 0.977).toFixed(1)
+const PHONE_BELOW_VW = ((100 - PHONE_VEIL_SOLID) * 0.977).toFixed(2)
 
 /** The author's four clouds, at the pixel sizes `scripts/chess-clouds.mjs` cuts them to. */
 const CLOUD_PX: Record<number, { w: number; h: number }> = {
@@ -263,17 +317,25 @@ export default async function ChessSetPage() {
            each 50px further out. The lower one is moved on its own (top:
            50px), not by the section's padding, so the moon stays where it
            was and the line comes to sit just over its upper edge.
+
+           On a computer the lower one no longer stands here: since 2026-11-07
+           it is pinned to the mandala (.chess-heaven, below), and this one is
+           the phone's alone.
+
+           RISE IN HELL was #6e6e6e, a grey that sank into the dark ground. The
+           author asked for it more visible and whiter (2026-11-07).
            ---------------------------------------------------------------- */
         .chess-seam-above {
           position: absolute;
           left: 0;
           right: 0;
           bottom: 170px;
-          color: #6e6e6e;
+          color: #dcdcdc;
           line-height: 1;
           z-index: 2;
         }
         .chess-seam-below {
+          display: none;
           position: relative;
           top: 50px;
           color: #999;
@@ -305,8 +367,33 @@ export default async function ChessSetPage() {
              above the moon's canvas, which starts 132px plus this margin
              under the edge. 290px keeps them clear up to about 1600px wide;
              past that the margin grows with the page, so the dots always
-             stop 60px short of the edge. */
-          margin-top: max(290px, calc(24.2vw - 72px));
+             stop 60px short of the edge.
+
+             The 132px counted FALL IN HEAVEN's line, which stood in the flow
+             above. Since it went into the moon's frame (2026-11-07) its height,
+             the type's size at line-height 1, is added here instead, so the
+             moon and the mandala stand exactly where they stood. */
+          margin-top: calc(max(290px, calc(24.2vw - 72px)) + clamp(10px, 0.85vw, 12px));
+        }
+        /* FALL IN HEAVEN on a computer, pinned to the mandala: its middle at
+           HEAVEN_AT of the moon's canvas (see above the page), so it keeps its
+           place among the rings at every width. It is lit as the reader
+           brings it up, as before. It stopped dropping into place on
+           2026-11-07 (moving, it crossed the rings it is pinned among), and
+           drops again since 2026-11-08, at the author's asking, as RISE IN
+           HELL rises: steadily, on its own, ending where it is pinned. It stands over the mandala and
+           the drop that falls through it, as it did. */
+        .chess-moon-frame .chess-line.chess-heaven {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: ${HEAVEN_AT}%;
+          transform: translateY(-50%);
+          /* #999 until 2026-11-08, when the author asked for it darker, to be
+             seen better: the dark of the photograph above. */
+          color: #202020;
+          line-height: 1;
+          z-index: 2;
         }
         /* NASA's full moon, alone, pale and grey as the moon it replaced
            (the author's, with the row of pieces and a dial drawn over it,
@@ -342,11 +429,14 @@ export default async function ChessSetPage() {
 
            Upward it runs until the page cuts it: the section's top edge,
            where the dark photograph ends. Downward the white veil is its
-           limit: it is cut off at 92% of the canvas, where the veil is solid
-           without the clouds (VEIL_SOLID), so its cut is never seen. Under
-           the clouds the veil is solid by 82% and hides the rest. 92% is
-           29.4% of the way up its own box. It was cut at 82% until
-           2026-10-02, when the veil went down to uncover the whole moon.
+           limit: it is cut off where the veil is solid without the clouds
+           (MANDALA_CUT, VEIL_SOLID), so its cut is never seen. Under the
+           clouds the veil is solid by 82% and hides the rest. It was cut at
+           82% until 2026-10-02, when the veil went down to uncover the whole
+           moon, and at 92% (29.4% of the way up its own box) until
+           2026-11-07, when the author asked for more of it under the moon. A
+           computer now cuts it at 124%, below the canvas's foot, 15.25% of
+           the way up its box; a phone keeps 92% (PHONE_MANDALA_CUT).
 
            Its grey lines are as fine as Second Wind's, at every width: the
            author asked for them to match. The white ones on the moon are a
@@ -364,7 +454,7 @@ export default async function ChessSetPage() {
           top: -67.92%;
           width: 100.59%;
           aspect-ratio: 1 / 1;
-          clip-path: inset(0 0 29.4% 0);
+          clip-path: inset(0 0 ${mandalaInset(MANDALA_CUT)}% 0);
           pointer-events: none;
         }
         .chess-mandala-image {
@@ -378,7 +468,7 @@ export default async function ChessSetPage() {
           left: 0;
           top: 0;
           width: 100%;
-          height: 70.6%;
+          height: ${(100 * MANDALA_VISIBLE).toFixed(2)}%;
         }
         /* The strip the dark drop falls down, from the seam to the moon's
            centre; the component sets its top and height, which are measured.
@@ -428,7 +518,12 @@ export default async function ChessSetPage() {
 
            Without the clouds (SHOW_CLOUDS) the veil goes down to the disc's
            foot and leaves the whole moon showing: 80% to 92%, on the same
-           ease (VEIL_FROM, VEIL_SOLID, VEIL_GRADIENT above the page).
+           ease. Since 2026-11-07 a computer has it further down still, 104%
+           to 124%, below the canvas, so that the mandala shows under the
+           moon; a phone keeps 80% to 92%. The figures are above the page
+           (VEIL_FROM, VEIL_SOLID, PHONE_VEIL_FROM, PHONE_VEIL_SOLID). The
+           element runs down to the mandala's cut, past the canvas's foot
+           where the cut is.
 
            The words stay on top of it all. */
         .chess-cloud-bank {
@@ -448,7 +543,7 @@ export default async function ChessSetPage() {
           left: 0;
           right: 0;
           top: ${VEIL_FROM}%;
-          bottom: 0;
+          height: ${VEIL_END - VEIL_FROM}%;
           pointer-events: none;
           background: ${VEIL_GRADIENT};
         }
@@ -467,7 +562,8 @@ export default async function ChessSetPage() {
             animation: none;
           }
         }
-        /* The rest of the poem, after the seam's pair: LIFT AND GRAVITY; THE
+        /* The rest of the poem, after the seam's pair (LIFT AND GRAVITY, its
+           first line, came out on 2026-11-08 at the author's asking): THE
            VIOLENCE OF THE IMPULSE / THE QUIET OF THE COMPOSURE; BETWEEN; A
            QUIET WAITING / FOR THE RIGHT STRIKE. The author's text of
            2026-09-27, which replaced "Between / A quiet equilibrium" here and
@@ -502,7 +598,10 @@ export default async function ChessSetPage() {
         /* Without the clouds (SHOW_CLOUDS) there is no white body under the
            disc for the first line to stand in: at 77% it sat on the moon's
            lower rim. It then starts just under the solid veil (POEM_AT, 93%),
-           so the mandala's lines have faded out before it. */
+           so the mandala's lines have faded out before it. Since 2026-11-07,
+           when the veil went down to show more of the mandala, that is 125%,
+           below the canvas, and the margin pushes the poem down rather than
+           pulling it up. */
         .moon-poem {
           position: relative;
           margin-top: ${(-(100 - POEM_AT) * 0.4442).toFixed(1)}%;
@@ -574,6 +673,26 @@ export default async function ChessSetPage() {
             height: 78svh;
             margin-top: 24px;
           }
+          /* The phone keeps FALL IN HEAVEN where it was, in the flow over the
+             moon's block, where the breaths below are counted from, and still
+             dropping into place as it is lit; the line pinned to the mandala
+             is the computer's (2026-11-07). The veil and the mandala's cut
+             keep their 80% to 92% here too: the poem is set round the moon,
+             not under it. */
+          .chess-seam-below {
+            display: block;
+          }
+          .chess-moon-frame .chess-line.chess-heaven {
+            display: none;
+          }
+          .chess-mandala {
+            clip-path: inset(0 0 ${mandalaInset(PHONE_MANDALA_CUT)}% 0);
+          }
+          .chess-cloud-veil {
+            top: ${PHONE_VEIL_FROM}%;
+            height: ${100 - PHONE_VEIL_FROM}%;
+            background: ${PHONE_VEIL_GRADIENT};
+          }
           /* Blow the moon up and set it at the foot of the block. Held by its
              own middle rather than by a left offset: -60% centres a 220% image
              and nothing else, so every change of scale used to have to be paid
@@ -641,9 +760,11 @@ export default async function ChessSetPage() {
           .moon-poem .chess-line span + span {
             margin-top: 1.5em;
           }
-          .chess-moon-media .moon-lift { top: calc(26px + var(--air)); }
-          .chess-moon-media .moon-impulse { top: calc(26px + 2 * var(--air) + 10px); }
-          .chess-moon-media .moon-between { top: calc(26px + 3 * var(--air) + 45px); }
+          /* LIFT AND GRAVITY came out on 2026-11-08, at the author's asking:
+             the couplet now stands where it stood, and BETWEEN one breath up
+             with it. */
+          .chess-moon-media .moon-impulse { top: calc(26px + var(--air)); }
+          .chess-moon-media .moon-between { top: calc(26px + 2 * var(--air) + 35px); }
           .chess-moon-media .moon-waiting { top: auto; bottom: 0; }
           /* The last stanza ends the moon's block here, so the board's pair
              is given room of its own after it: about two breaths. */
@@ -676,8 +797,16 @@ export default async function ChessSetPage() {
             priority
           />
           {/* The upper half of the seam's pair, 170px over the edge, where the
-              white drops are climbing — and rising into place as they do. */}
-          <ScrollFade className="chess-line chess-seam-above" from="below">
+              white drops are climbing — and rising into place as they do.
+              Since 2026-11-07 it rises from just over the seam, 150px, with
+              the drops (the author's asking: it had come up only 40px), and
+              then stays, and fades as the page goes on, as before. It climbs
+              at its own calm pace, at most 45px a second, as the drops do,
+              rather than as fast as the scroll (the author's asking, the
+              same day). Since 2026-11-08 it sets off as soon as it comes into
+              the window and climbs at that pace all the way, on its own, not
+              stopping with the page (steady). */}
+          <ScrollFade className="chess-line chess-seam-above" from="below" distance={150} pace={45} steady>
             Rise in Hell
           </ScrollFade>
         </div>
@@ -690,8 +819,9 @@ export default async function ChessSetPage() {
 
       {/* ================= Moon ================= */}
       <section className="chess-moon-section">
-        {/* And its lower half, 170px under the edge, where the dark ones are
-            falling — and dropping into place as they do. */}
+        {/* And its lower half, on a phone: 170px under the edge, where the dark
+            ones are falling — and dropping into place as they do. A computer
+            has it pinned to the mandala instead, in the frame below. */}
         <ScrollFade className="chess-line chess-seam-below" from="above">
           Fall in Heaven
         </ScrollFade>
@@ -705,7 +835,7 @@ export default async function ChessSetPage() {
               height={1719}
               className="chess-moon-image"
             />
-            <MoonMandala rings={MOON_RINGS} />
+            <MoonMandala rings={MOON_RINGS} cover={MANDALA_VISIBLE} />
             {SHOW_CLOUDS && (
               <div className="chess-cloud-bank" aria-hidden="true">
                 <div className="chess-cloud-track">
@@ -728,9 +858,16 @@ export default async function ChessSetPage() {
               </div>
             )}
             <div className="chess-cloud-veil" aria-hidden="true" />
+            {/* FALL IN HEAVEN on a computer, pinned among the mandala's rings. */}
+            {/* Since 2026-11-08 it falls into its place on the mandala, the
+                mirror of RISE IN HELL (the author's asking): from the foot of
+                the dark photograph, where the black drops leave the seam, as
+                soon as it is seen, at the same steady pace. */}
+            <ScrollFade className="chess-line chess-heaven" from="above" pace={45} steady startFrom=".chess-hero">
+              Fall in Heaven
+            </ScrollFade>
           </div>
           <div className="moon-poem">
-            <p className="chess-line moon-lift">Lift and gravity</p>
             <p className="chess-line moon-impulse">
               <span>The violence of the impulse</span>
               <span>The quiet of the composure</span>

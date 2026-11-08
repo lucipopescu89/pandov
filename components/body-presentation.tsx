@@ -27,7 +27,7 @@ const GROUND = "#202020"
  * pixels and the tail scales with the page, so the room under it was right at
  * one width only.
  */
-const CANVAS_H = 7610
+const CANVAS_H = 8010 // was 7610; +200 when Presence and Emperor moved down, +200 more for Emperor alone (2026-11-08)
 
 /**
  * The canvas is drawn at its own size, one unit to a pixel, on every screen
@@ -79,8 +79,12 @@ const SECTIONS: Section[] = [
   { file: "mnature.svg", w: 958, left: 481, top: 4440, label: "Mother Nature" },
   // Presence sits 100px above where the export put it, artwork and caption
   // together — the section is placed as one piece, so the halo follows.
-  { file: "presence.svg", w: 886, left: 517, top: 5126, label: "Presence" },
-  { file: "emperor.svg", w: 916, left: 502, top: 6273, label: "Emperor of Nothingness" },
+  // 2026-11-08, the author's asking: moved 200px down (from 5126), so its
+  // ellipses no longer run so far into Mother Nature's radiating dots; Emperor
+  // follows by the same 200 to keep its distance, and the canvas grows with it.
+  { file: "presence.svg", w: 886, left: 517, top: 5326, label: "Presence" },
+  // Emperor, with its caption, moved a further 200px down the same day (6473 → 6673).
+  { file: "emperor.svg", w: 916, left: 502, top: 6673, label: "Emperor of Nothingness" },
 ]
 
 /**

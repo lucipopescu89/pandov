@@ -48,6 +48,9 @@ const OUT_GONE = 0.06
  */
 const TRAVEL = 40
 
+/** With `steady`: how lit a line must be before it sets off, so it is seen going. */
+const STEADY_LIT = 0.3
+
 /** Non-finite to 0: the ratios below are NaN before anything is measured. */
 const clamp01 = (t: number) => (t > 0 ? (t < 1 ? t : 1) : 0)
 const smooth = (t: number) => t * t * (3 - 2 * t)
@@ -62,6 +65,10 @@ export function ScrollFade({
   className,
   style,
   from,
+  distance = TRAVEL,
+  pace,
+  steady = false,
+  startFrom,
   children,
 }: {
   className?: string
@@ -73,6 +80,39 @@ export function ScrollFade({
    * the dark, FALL IN HEAVEN comes down into the white.
    */
   from?: "below" | "above"
+  /**
+   * How far, in px, a line given `from` travels into place: TRAVEL unless
+   * set. RISE IN HELL rises 150 (2026-11-07, the author's asking), from just
+   * over the seam, so it climbs with the white drops coming off it.
+   */
+  distance?: number
+  /**
+   * The most px a second the line may travel, when it should keep its own
+   * time rather than move with the scroll. RISE IN HELL is given 45: the
+   * author found it rising too quickly at the scroll's pace (2026-11-07) and
+   * asked for it to climb calmly, as the white drops off the seam climb (they
+   * leave the line at 18px/s and are held to about 100). Its way up is also
+   * spread over a longer stretch of the window, from coming in at the foot
+   * until it begins to go (`OUT_LIT`), and it follows that stretch with an
+   * ease and at no more than this pace, so a quick turn of the wheel does
+   * not throw it up: it carries on climbing after the page has stopped.
+   */
+  pace?: number
+  /**
+   * With `pace`: the line sets off as soon as it comes into the window and
+   * climbs all the way at that steady pace, on its own, never stopping and no
+   * longer led by the scroll (RISE IN HELL, the author's asking, 2026-11-08:
+   * it had stopped with the page and gone on only as the page went down).
+   * Its light still follows the scroll.
+   */
+  steady?: boolean
+  /**
+   * With `from`: a selector for the element whose bottom edge the line sets
+   * out from, in place of `distance`, measured afresh at every size. FALL IN
+   * HEAVEN sets out from the foot of the dark photograph, where the black
+   * drops leave the seam (the author's asking, 2026-11-08).
+   */
+  startFrom?: string
   children: React.ReactNode
 }) {
   const ref = useRef<HTMLParagraphElement>(null)
@@ -82,7 +122,7 @@ export function ScrollFade({
     const el = ref.current
     if (!el) return
     const inner = travelRef.current
-    const offset = from === "above" ? -TRAVEL : TRAVEL
+    let offset = from === "above" ? -distance : distance
     const Timeline = (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline
     let travel: Animation | null = null
 
@@ -95,12 +135,29 @@ export function ScrollFade({
     let outGone = 0
     let shown = -1
     let raf = 0
+    /** With `pace`: where the line is on its way (px off its place) and where the scroll asks it to be. */
+    const calm = Boolean(inner && from && pace)
+    let liftNow = offset
+    let liftGoal = offset
+    let liftRaf = 0
+    let liftLast = 0
+    /** With `steady`: whether the line has come into the window and set off. */
+    let setOff = false
 
     const measure = () => {
       const r = el.getBoundingClientRect()
       const vh = window.innerHeight
       const maxScroll = document.documentElement.scrollHeight - vh
       middle = (r.top + r.bottom) / 2 + window.scrollY
+      if (startFrom) {
+        const start = document.querySelector(startFrom)
+        if (start) offset = start.getBoundingClientRect().bottom + window.scrollY - middle
+        // Not yet on its way: it waits where it will set out from.
+        if (calm && !setOff && inner) {
+          liftNow = liftGoal = offset
+          inner.style.transform = `translateY(${offset.toFixed(1)}px)`
+        }
+      }
       // A line that already rests above the middle of the window is lit where
       // it stands rather than waiting for a rise it will never make, and one
       // still low in the window at the very bottom of the page is lit by the
@@ -116,7 +173,7 @@ export function ScrollFade({
       // line jumping back and forth against the page (see `footer.tsx`, where
       // that was measured). The inner span is what moves, so the line's own
       // box, which everything here is measured from, stays put.
-      if (inner && from && Timeline && maxScroll > 0) {
+      if (inner && from && !calm && Timeline && maxScroll > 0) {
         const at = (y: number) => Math.min(1, Math.max(0, y / maxScroll))
         const start = at(middle - inGone)
         const end = Math.max(start, at(middle - inLit))
@@ -139,20 +196,59 @@ export function ScrollFade({
       const leaving = clamp01((at - outGone) / (outLit - outGone))
       // Where the browser has no scroll timeline — Safari before 26 — the
       // travel is written from here, a frame late, which is the price there.
-      if (inner && from && !Timeline) {
+      if (inner && from && !calm && !Timeline) {
         inner.style.transform = `translateY(${(offset * (1 - smooth(rising))).toFixed(1)}px)`
       }
       const o = Math.round(smooth(Math.min(rising, leaving)) * 100) / 100
+      if (calm && steady) {
+        // Once in the window where it is drawn (still `offset` off its place)
+        // and lit enough to be seen, it is on its way, whatever the scroll
+        // does after. The light matters for FALL IN HEAVEN, which is drawn
+        // above its place and so comes into the window while still dark.
+        if (!setOff && at + offset < window.innerHeight && o >= STEADY_LIT) setOff = true
+        liftGoal = setOff ? 0 : offset
+        if (!liftRaf && liftGoal !== liftNow) {
+          liftLast = performance.now()
+          liftRaf = requestAnimationFrame(rise)
+        }
+      } else if (calm) {
+        const climb = clamp01((inGone - at) / (inGone - outLit))
+        liftGoal = offset * (1 - smooth(climb))
+        if (!liftRaf && liftGoal !== liftNow) {
+          liftLast = performance.now()
+          liftRaf = requestAnimationFrame(rise)
+        }
+      }
       if (o === shown) return
       shown = o
       el.style.opacity = String(o)
+    }
+
+    /** With `pace`: moves the line toward where the scroll asks, eased, and no faster than `pace`. */
+    const rise = (now: number) => {
+      liftRaf = 0
+      if (!inner || !pace) return
+      const dt = Math.max(0, Math.min(0.1, (now - liftLast) / 1000))
+      liftLast = now
+      const gap = liftGoal - liftNow
+      const most = pace * dt
+      // Steady: the same pace the whole way. Otherwise eased toward the scroll's goal.
+      const step = steady
+        ? Math.max(-most, Math.min(most, gap))
+        : Math.max(-most, Math.min(most, gap * (1 - Math.exp(-dt / 0.5))))
+      liftNow = Math.abs(gap) < 0.2 ? liftGoal : liftNow + step
+      inner.style.transform = `translateY(${liftNow.toFixed(1)}px)`
+      if (liftNow !== liftGoal) liftRaf = requestAnimationFrame(rise)
     }
 
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
     }
 
+    if (calm && inner) inner.style.transform = `translateY(${offset}px)`
     measure()
+    if (calm && !steady) liftNow = liftGoal
+    if (calm && inner) inner.style.transform = `translateY(${liftNow.toFixed(1)}px)`
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     window.addEventListener("resize", measure)
@@ -166,10 +262,12 @@ export function ScrollFade({
       window.removeEventListener("resize", measure)
       window.removeEventListener("scroll", onScroll)
       if (raf) cancelAnimationFrame(raf)
+      if (liftRaf) cancelAnimationFrame(liftRaf)
+      if (calm && inner) inner.style.transform = ""
       travel?.cancel()
       el.style.opacity = ""
     }
-  }, [from])
+  }, [from, distance, pace, steady, startFrom])
 
   // Lit in the markup, not dark: these lines sit far below the fold, so there
   // is nothing to flash, and a reader without JavaScript is left with the page

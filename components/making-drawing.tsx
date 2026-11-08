@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
 
 /**
  * The Making section's line drawings, drawn as if by hand (2026-11-05, the
@@ -57,9 +58,11 @@ import { useRouter } from "next/navigation"
  *
  * Open, it blinks now and then, at random (`BLINK_EVERY_MS`), sometimes twice
  * (`BLINK_TWICE`): quick down, a little slower up, as an eye does. A click
- * on the eye blinks it and takes the reader to /making, the page of the film
- * (the author's asking, the same day); that click is the eye's alone, so it
- * neither breathes the figures out nor sends the motes' wave.
+ * on the eye blinks it and takes the reader to /seen, the hidden page of
+ * every photograph on the site at once (2026-11-08, the author's asking; it
+ * went to /making, the page of the film, until then, and /making is still in
+ * the bottom menu); that click is the eye's alone, so it neither breathes the
+ * figures out nor sends the motes' wave.
  *
  * The Creator levitates as Emperor does on Second Wind (`.bp-float`: 9 units
  * up and down, a breath every 7s; `CREATOR_REACH`, `CREATOR_CYCLE_S`). On the
@@ -147,7 +150,7 @@ const BLINK_UP_MS = 190
 const BLINK_EVERY_MS: [number, number] = [2600, 7500]
 const BLINK_TWICE = 0.18
 /** Where a click on the eye takes the reader, once it has blinked. */
-const EYE_HREF = "/making"
+const EYE_HREF = "/seen"
 
 /** The Creator's levitation: how far up and down (frame units), one breath in seconds. */
 const CREATOR_REACH = 9
@@ -201,7 +204,16 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
 
   // A click on the eye: an unseen disc a little larger than the gold ring.
   // It blinks first (set below), except under reduced motion.
-  let onEye = () => go(EYE_HREF)
+  // Tell /seen the reader came in through the eye, so that its own eyes take
+  // them back here, to this section, rather than to the top of the homepage.
+  const toSeen = () => {
+    try {
+      const top = eyeBox ? eyeBox.getBoundingClientRect().top : 0
+      sessionStorage.setItem(FROM_EYE_KEY, String(Math.round(top)))
+    } catch {}
+    go(EYE_HREF)
+  }
+  let onEye = toSeen
   const eyeBox = svg.getElementById("eye")
   const [hcx, hcy] = nums(eyeBox ? eyeBox.getAttribute("data-iris") : null)
   const hit = document.createElementNS("http://www.w3.org/2000/svg", "circle")
@@ -365,7 +377,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     }, a + Math.random() * (b - a))
   }
   nextBlink()
-  onEye = () => blink(() => go(EYE_HREF))
+  onEye = () => blink(toSeen)
 
   const hide = (l: Line) => {
     l.anims.forEach((a) => a.cancel())
@@ -633,11 +645,99 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   }
 }
 
+/**
+ * Puts the eye `y` px down the screen, as it stood when the reader left
+ * through it, once the homepage has laid itself out, and waits for the
+ * photograph under it to be decoded; then once more, in case anything above
+ * moved meanwhile.
+ */
+async function arrive(host: HTMLElement, svg: SVGSVGElement, y: number) {
+  const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
+  const place = () => {
+    const eye = svg.getElementById("eye")
+    if (!eye) return
+    const top = eye.getBoundingClientRect().top
+    window.scrollTo({ top: window.scrollY + top - y, behavior: "instant" as ScrollBehavior })
+  }
+  await frame()
+  await frame()
+  await new Promise((r) => window.setTimeout(r, 150))
+  place()
+  const img = host.parentElement?.querySelector("img")
+  if (img) {
+    if (!img.complete) {
+      await new Promise<void>((r) => {
+        img.addEventListener("load", () => r(), { once: true })
+        img.addEventListener("error", () => r(), { once: true })
+      })
+    }
+    try {
+      await img.decode()
+    } catch {}
+  }
+  await frame()
+  place()
+  await frame()
+}
+
+/** Coming back from /seen: the longest the veil may wait for the photograph and the drawing. */
+const RETURN_WAIT_MS = 4000
+/** …and how long it takes to lift. */
+const RETURN_FADE_MS = 600
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
+
 export function MakingDrawing() {
   const hostRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const routerRef = useRef(router)
   routerRef.current = router
+  // Coming back from /seen through its eyes (2026-11-08, the author's report):
+  // the page used to land wherever the browser's memory of the scroll put it,
+  // often past the section, and the photograph and the drawing came in
+  // piecemeal before the reader's eyes. Now a veil of the dark wood's own
+  // #202020 covers the page before its first paint; the drawing is loaded,
+  // the eye put back where it stood on the screen (`RETURN_KEY`), the
+  // photograph decoded, and only then the veil lifts.
+  const returning = useRef<{ y: number; veil: HTMLDivElement; reveal: () => void } | null>(null)
+  useIsoLayoutEffect(() => {
+    let y: number | null = null
+    try {
+      // Left in place until the veil lifts: in development React runs this
+      // twice, and the second run must find it again.
+      const v = sessionStorage.getItem(RETURN_KEY)
+      if (v !== null && Number.isFinite(Number(v))) y = Number(v)
+    } catch {}
+    if (y === null) return
+    const veil = document.createElement("div")
+    veil.setAttribute("aria-hidden", "true")
+    Object.assign(veil.style, {
+      position: "fixed",
+      inset: "0",
+      background: "#202020",
+      zIndex: "2147483000",
+      transition: `opacity ${RETURN_FADE_MS}ms ease`,
+      pointerEvents: "none",
+    })
+    document.body.appendChild(veil)
+    let done = false
+    const reveal = () => {
+      if (done) return
+      done = true
+      window.clearTimeout(safety)
+      try {
+        sessionStorage.removeItem(RETURN_KEY)
+      } catch {}
+      veil.style.opacity = "0"
+      window.setTimeout(() => veil.remove(), RETURN_FADE_MS + 50)
+    }
+    const safety = window.setTimeout(reveal, RETURN_WAIT_MS)
+    returning.current = { y, veil, reveal }
+    return () => {
+      window.clearTimeout(safety)
+      veil.remove()
+    }
+  }, [])
 
   useEffect(() => {
     const host = hostRef.current
@@ -661,6 +761,11 @@ export function MakingDrawing() {
           svg.setAttribute("height", "100%")
           svg.style.display = "block"
           stop = run(host, svg, (href) => routerRef.current?.push(href))
+          const back = returning.current
+          if (back) {
+            returning.current = null
+            arrive(host, svg, back.y).then(back.reveal, back.reveal)
+          }
         })
         .catch(() => {})
     }

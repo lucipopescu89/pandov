@@ -423,7 +423,7 @@
 </g>
 <!-- The "let there be light" caption sits 200px below the Figma export. -->
 <g transform="translate(0, 200)">
-<text fill="#888888" style="white-space: pre" xml:space="preserve" font-family="Julius Sans One" font-size="12" letter-spacing="0em"><tspan x="421.891" y="965.31">let there be light</tspan></text>
+<text fill="#888888" style="white-space: pre" xml:space="preserve" font-family="Julius Sans One" font-size="12" letter-spacing="0em"><tspan x="421.891" y="1005.31">let there be light</tspan></text>
 </g>
 <defs>
 <pattern id="pattern0_1612_480" patternContentUnits="objectBoundingBox" width="1" height="1">

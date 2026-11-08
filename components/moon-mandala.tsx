@@ -64,14 +64,6 @@ const SRC = "/images/chess-set/mandala.svg"
 
 /** The moon's radius in the mandala's units. `scripts/chess-mandala.mjs` parts white from grey there. */
 const MOON_RIM = 63.5
-/**
- * How much of the mandala's square the canvas covers, from its top. The page
- * cuts the mandala at 92% of the moon's canvas (the white veil under the moon
- * is solid below that), which is 70.6% of the way down its own box, so there
- * is nothing to draw further down. It was 82% and 66.2% until 2026-10-02,
- * when the veil went down to uncover the whole moon.
- */
-const VISIBLE = 0.706
 const MAX_DPR = 2
 /** The most pixels the canvas may hold. A very large screen draws it a little less finely. */
 const MAX_PIXELS = 6e6
@@ -84,6 +76,21 @@ const BREATH_S = 5
 const BREATH_LIFE = 1.7
 /** Share of a breath's journey spent coming up where it sits before it sets off. */
 const SURFACE = 0.2
+/**
+ * On the moon itself a breath fades in over this share of its journey rather
+ * than over `SURFACE` alone (the author's asking, 2026-11-08: they popped up
+ * too suddenly). The light keeps rising, quickly but by degrees, a little way
+ * into its leaving, which reads as a trance rather than a blink. Its movement
+ * is unchanged.
+ */
+const MOON_FADE_IN = 0.3
+/**
+ * And on the moon a breath sets off at once, fading in as it goes rather than
+ * surfacing in place first (the author's asking, 2026-11-08), at the pace it
+ * had. It gives its light up later on its way (this power rather than 1.6), so
+ * that, rising while it already moves, it still comes up near full.
+ */
+const MOON_LEAVE = 2.2
 
 /* --- The drops ------------------------------------------------------------- */
 
@@ -215,6 +222,23 @@ function falling(t: number, free = Infinity) {
  * moving at their own pace, and only then do they quieten.
  */
 const HUSH = 0.2
+/**
+ * While the rest of the mandala is hushed, the rings on the moon itself go
+ * the other way and quicken (the author's asking, 2026-11-08): the one at the
+ * very centre to `MOON_QUICK_CENTRE` times its pace, the one on the moon's rim
+ * to `MOON_QUICK_RIM` times, those between in proportion — so the rays 3×, the
+ * two rings of rhombi about 2.7× and 2.3×, the teardrops on the rim 2×. They
+ * quicken as the others slow, over the same `HUSH_S`, and wake back with them.
+ */
+const MOON_QUICK_CENTRE = 3
+const MOON_QUICK_RIM = 2
+/**
+ * And as the bow is drawn by the reader's scrolling, they quicken further, by
+ * degrees, in step with it (the author's asking, 2026-11-08): at a full draw
+ * they go `1 + MOON_DRAW_QUICK` times the pace above — the centre 6×, the rim
+ * 4× — and slow again as the page goes back up and the bow gives.
+ */
+const MOON_DRAW_QUICK = 1
 /** Time constants, in seconds, for slowing down and for waking again after the strike. */
 const HUSH_S = 0.9
 const WAKE_S = 1.8
@@ -364,6 +388,24 @@ const PAST_PX = 4
 const FREE_AFTER_S = 0.3
 const FREE_S = 0.9
 
+/* --- The page following the drop ------------------------------------------ */
+
+/**
+ * While the drop falls, the page goes down with it of its own accord, gently,
+ * so the reader sees it land and the mandala fill with black (the author's
+ * asking, 2026-11-08). It keeps the drop about `FOLLOW_KEEP` of the way down
+ * the window, and stops once the moon's centre stands `FOLLOW_STOP` of the way
+ * down: a little below the middle, so the moon is not centred and the reader's
+ * own scrolling still draws the bow and brings it to the middle, as before.
+ * `FOLLOW_TAU` is how softly it eases after the drop, in seconds. It never
+ * moves the page up, and stands aside while the reader is scrolling and for
+ * `FOLLOW_QUIET_MS` after, so it never pulls against a hand.
+ */
+const FOLLOW_KEEP = 0.5
+const FOLLOW_STOP = 0.6
+const FOLLOW_TAU = 0.7
+const FOLLOW_QUIET_MS = 350
+
 /* --- The clouds ------------------------------------------------------------ */
 
 /**
@@ -446,17 +488,20 @@ function groupRings(art: MoonArt, rings: MoonRing[]): Group[] {
     const motion = rings[ring]?.motion ?? {}
     const breathes = Boolean(motion.drift || motion.scale || motion.stretch)
     const period = motion.breath ?? BREATH_S
+    const radius = shapes.reduce((sum, s) => sum + s.r, 0) / shapes.length
+    // On the moon a breath is fully up only at MOON_FADE_IN, so it starts there.
+    const up = radius < MOON_RIM ? MOON_FADE_IN : SURFACE
     return {
       motion,
       breathes,
       period,
-      radius: shapes.reduce((sum, s) => sum + s.r, 0) / shapes.length,
+      radius,
       shapes,
       runs,
       turn: 0,
       // A breathing ring starts at the moment a breath has fully come up where
       // it sits, so the canvas takes over from the still picture unseen.
-      clock: breathes ? SURFACE * BREATH_LIFE * period : 0,
+      clock: breathes ? up * BREATH_LIFE * period : 0,
       kept: [],
       keptAt: "",
     }
@@ -467,11 +512,17 @@ function groupRings(art: MoonArt, rings: MoonRing[]): Group[] {
  * The breaths of a ring now in the air: how far each has come on its journey
  * (0 where the ring sits, 1 at its end) and how much of it is left to see.
  */
-function breaths(clock: number, period: number): { out: number; alpha: number }[] {
+function breaths(clock: number, period: number, fadeIn = SURFACE): { out: number; alpha: number }[] {
   const out: { out: number; alpha: number }[] = []
   for (let age = (clock / period) % 1; age < BREATH_LIFE; age += 1) {
     const u = age / BREATH_LIFE
-    if (u < SURFACE) {
+    if (fadeIn > SURFACE) {
+      // On the moon: moving from the first moment, at the pace of the journey
+      // below, and rising from nothing over `fadeIn` as it goes.
+      const rise = smooth(clamp01(u / fadeIn))
+      const w = Math.min(1, u / (1 - SURFACE))
+      out.push({ out: Math.pow(w, 1.4), alpha: rise * (1 - Math.pow(w, MOON_LEAVE)) })
+    } else if (u < SURFACE) {
       out.push({ out: 0, alpha: smooth(u / SURFACE) })
     } else {
       // It lingers as it leaves and gathers pace. It holds most of its light
@@ -529,7 +580,27 @@ type Drip = {
 
 type Phase = "rest" | "fall" | "ink" | "strike" | "recede"
 
-export function MoonMandala({ rings }: { rings: MoonRing[] }) {
+export function MoonMandala({
+  rings,
+  cover,
+}: {
+  rings: MoonRing[]
+  /**
+   * How much of the mandala's square the canvas covers, from its top: as far
+   * down as the page cuts the mandala, where the white veil under the moon is
+   * solid, so there is nothing to draw further down (`MANDALA_VISIBLE` in the
+   * page, which sets the canvas's height in the CSS to match). It was 0.662
+   * until 2026-10-02 and 0.706 until 2026-11-07, when the veil went down to
+   * show more of the mandala under the moon: now 0.847, a cut at 124% of the
+   * moon's canvas.
+   *
+   * Not called `visible`: the effect below keeps a `visible` of its own,
+   * whether the moon is near the window, and on 2026-11-07 that one shadowed
+   * this. The canvas was sized 0 tall while the moon was away and square once
+   * it came near, and drawn squashed into its 84.75% box.
+   */
+  cover: number
+}) {
   const boxRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -562,6 +633,14 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     let dropH = 0
     let dropR = DROP_LARGE
     let fallReach = REACH
+    /** When the reader last scrolled by hand, and the part of a pixel the follow still owes. */
+    let lastHand = -Infinity
+    let followCarry = 0
+    /** The reader went back up while the page followed the drop: it follows no more, until the next drop. */
+    let followOff = false
+    const onHand = () => {
+      lastHand = performance.now()
+    }
 
     /* The drops at the middle of the seam. */
     const rand = seeded(0x1d20)
@@ -606,7 +685,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       const rect = box.getBoundingClientRect()
       if (!rect.width) return
       const cssW = rect.width
-      const cssH = rect.width * VISIBLE
+      const cssH = rect.width * cover
       dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR, Math.sqrt(MAX_PIXELS / (cssW * cssH)))
       const w = Math.round(cssW * dpr)
       const h = Math.round(cssH * dpr)
@@ -945,6 +1024,27 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
           break
       }
 
+      // The page follows the drop down, gently (see FOLLOW_KEEP). A reader who
+      // scrolls back up meanwhile is let go up, and not brought back down
+      // (2026-11-08, the author's asking): the follow only ever moves the page
+      // down, so any climb is the reader's.
+      if (phase === "rest") followOff = false
+      else if (climbed > 1 && (phase === "fall" || phase === "ink")) followOff = true
+      if (!followOff && (phase === "fall" || phase === "ink") && performance.now() - lastHand > FOLLOW_QUIET_MS) {
+        const sent = phase === "fall" ? drips.find((d) => d.sent) : undefined
+        const dropY = sent ? seam + fallen(sent.t, fallReach) : centre
+        const want = Math.min(dropY - vh * FOLLOW_KEEP, centre - vh * FOLLOW_STOP)
+        if (want > 0.5) {
+          followCarry += want * (1 - Math.exp(-dt / FOLLOW_TAU))
+          const whole = Math.floor(followCarry)
+          if (whole >= 1) {
+            followCarry -= whole
+            window.scrollTo({ top: window.scrollY + whole, behavior: "instant" })
+            lastY = window.scrollY
+          }
+        } else followCarry = 0
+      } else followCarry = 0
+
       // The bow follows its figure smoothly, and never faster than a full draw
       // in DRAW_MIN_S. Landed exactly, so a mandala at rest draws the same
       // shapes frame after frame and its still rings can be kept.
@@ -961,9 +1061,23 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     const draw = (now: number, dt: number) => {
       if (!art) return
       const speed = 1 - (1 - HUSH) * hush
+      // The rings on the moon, innermost to the rim, for MOON_QUICK_CENTRE.
+      let innerMin = Infinity
+      let innerMax = -Infinity
+      for (const g of groups)
+        if (g.radius < MOON_RIM) {
+          innerMin = Math.min(innerMin, g.radius)
+          innerMax = Math.max(innerMax, g.radius)
+        }
       for (const g of groups) {
-        g.turn += ((g.motion.spin ?? 0) * speed * dt * Math.PI) / 180
-        g.clock += speed * dt
+        let pace = speed
+        if (g.radius < MOON_RIM) {
+          const out = innerMax > innerMin ? (g.radius - innerMin) / (innerMax - innerMin) : 0
+          const quick = MOON_QUICK_CENTRE + (MOON_QUICK_RIM - MOON_QUICK_CENTRE) * out
+          pace = (1 + (quick - 1) * hush) * (1 + MOON_DRAW_QUICK * drawn)
+        }
+        g.turn += ((g.motion.spin ?? 0) * pace * dt * Math.PI) / 180
+        g.clock += pace * dt
       }
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -1052,7 +1166,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
         const drift = g.motion.drift ?? 0
         const grow = g.motion.scale ?? 0
         const lengthen = g.motion.stretch ?? 0
-        const air = g.breathes ? breaths(g.clock, g.period) : STILL
+        const air = g.breathes ? breaths(g.clock, g.period, g.radius < MOON_RIM ? MOON_FADE_IN : SURFACE) : STILL
 
         if (strikeAge < 0) {
           // At rest, falling, inking, drawn: every shape in its place, drawn in
@@ -1280,12 +1394,15 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
     // nothing here is being drawn and no frame would see to it.
     window.addEventListener("scroll", govern, { passive: true })
     window.addEventListener("resize", govern)
+    for (const type of ["wheel", "touchstart", "touchmove", "keydown"])
+      window.addEventListener(type, onHand, { passive: true })
 
     return () => {
       disposed = true
       io.disconnect()
       ro.disconnect()
       window.removeEventListener("scroll", govern)
+      for (const type of ["wheel", "touchstart", "touchmove", "keydown"]) window.removeEventListener(type, onHand)
       window.removeEventListener("resize", govern)
       if (raf) cancelAnimationFrame(raf)
       stopRush()
@@ -1293,7 +1410,7 @@ export function MoonMandala({ rings }: { rings: MoonRing[] }) {
       geared.dispose()
       if (imageRef.current) imageRef.current.style.visibility = ""
     }
-  }, [rings])
+  }, [rings, cover])
 
   return (
     <>

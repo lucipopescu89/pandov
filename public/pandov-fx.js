@@ -343,7 +343,7 @@ text.pfx-r{translate:none}
 
   // ======================= SECOND WIND: Silence =======================
   function installSilence() {
-    const cfg = { G: 190, soft: 50, range: 230, boost: 1.7, side: .32, N: 90 };
+    const cfg = { G: 190, soft: 50, range: 230, boost: 1.7, side: .32, N: 50 }; // N was 90 (2026-11-08: fewer, more discreet)
     const cv = document.createElement('canvas'); cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9995'; document.body.appendChild(cv);
     const ctx = cv.getContext('2d'); let W, H; const dpr = Math.min(devicePixelRatio, 2);
     const size = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
@@ -362,9 +362,10 @@ text.pfx-r{translate:none}
         x2.filter = 'blur(3px)'; x2.drawImage(c, 0, 0); x2.filter = 'none'; x2.drawImage(c, 0, 0); mask = c2;
       }).catch(() => {});
     };
-    let sec = null, rectEl = null, canvasEl = null, src = null;
+    let sec = null, rectEl = null, canvasEl = null, src = null, chaosEl = null;
     const find = () => {
       sec = null; const bp = document.querySelector('.bp-canvas'); if (!bp) return;
+      chaosEl = bp.querySelector('[aria-label="Chaos"]');
       for (const s of bp.children) { if ([...s.querySelectorAll('text')].some(t => /^\s*Silence\s*$/i.test(t.textContent))) { sec = s; break; } }
       if (!sec) return;
       canvasEl = sec.querySelector('canvas'); rectEl = sec.querySelector('rect.bp-pendant');
@@ -373,6 +374,13 @@ text.pfx-r{translate:none}
       if (canvasEl) canvasEl.classList.add('pfx-silence-off');
     };
     const HEAD = { fx: .492, fy: .161 }; // the head's ring, measured on silence-pendant.avif
+    // 2026-11-08, the author's asking: the dust lives between the foot of
+    // Chaos's ellipse (never over its two vortices) and just under the Silence
+    // pendant, so the bottom of the section stays empty and never meets Mother
+    // Nature's dots. Fewer motes, and no glow.
+    const CHAOS_FOOT = .96; // the zone's top, share of the Chaos section's height (its ellipse ends about .95)
+    const FOOT = 40;        // the zone ends this far under the Silence pendant's foot, px
+    const FADE = 140;       // soft edge, px, at the top and the foot of the zone
     const motes = []; let alpha = 0, seeded = false, raf, frame = 0;
     const look = m => { m.r = rnd(.3, 1.1); m.a = rnd(.22, .6); m.d = rnd(0, 6.28); m.born = 0; m.inside = 0; m.flung = 0; };
     const spawn = (m, Z) => { m.x = rnd(Z.l, Z.r); m.py = rnd(Z.t, Z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.08, .02); look(m); };
@@ -381,14 +389,17 @@ text.pfx-r{translate:none}
       if (frame % 30 === 1 || !sec || !sec.isConnected) find();
       if (!sec || !rectEl) { alpha = 0; seeded = false; return; }
       const sr = sec.getBoundingClientRect();
-      const Z = { l: Math.max(0, sr.left), r: Math.min(W, sr.right), t: sr.top + scrollY, b: sr.bottom + scrollY };
-      const vis = sr.bottom > 0 && sr.top < H;
+      const pb0 = rectEl.getBoundingClientRect();
+      let top = sr.top + scrollY;
+      if (chaosEl) { const cr = chaosEl.getBoundingClientRect(); top = Math.max(top, cr.top + cr.height * CHAOS_FOOT + scrollY); }
+      const Z = { l: Math.max(0, sr.left), r: Math.min(W, sr.right), t: top, b: pb0.bottom + scrollY + FOOT };
+      const vis = Z.b - scrollY > 0 && Z.t - scrollY < H;
       alpha += ((vis ? 1 : 0) - alpha) * .03;
       if (!vis && alpha < .01) { seeded = false; return; }
       if (!seeded) { motes.length = 0; for (let i = 0; i < cfg.N; i++) { const m = {}; spawn(m, Z); m.born = rnd(0, 1); motes.push(m); } seeded = true; }
       const pb = rectEl.getBoundingClientRect();
       const hx = pb.left + pb.width * HEAD.fx, hy = pb.top + pb.height * HEAD.fy + scrollY;
-      ctx.shadowColor = 'rgba(240,212,155,.6)'; ctx.shadowBlur = 3;
+      ctx.shadowBlur = 0; // no glow (2026-11-08, the author's asking)
       for (const m of motes) {
         if (!m.flung) { m.vx += Math.sin(t / 3200 + m.d) * .0025; m.vy += Math.cos(t / 4100 + m.d * 1.7) * .0015 - .0012; }
         let inField = 0; m.near = 0;
@@ -414,9 +425,14 @@ text.pfx-r{translate:none}
         const tw = m.a * (.65 + .35 * Math.sin(t / 1100 + m.d * 3)) * m.born * alpha * (1 + m.near * .6 + (m.flung ? .4 : 0)); if (tw < .01) continue;
         ctx.beginPath(); ctx.arc(m.x, y, m.r, 0, 7); ctx.fillStyle = 'rgba(240,214,160,' + Math.min(1, tw) + ')'; ctx.fill();
       }
-      // keep the dust inside the section and behind the pendant
+      // keep the dust inside its zone, soft at the top and the foot, and behind the pendant
       ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillRect(0, 0, W, Math.max(0, sr.top)); ctx.fillRect(0, sr.bottom, W, Math.max(0, H - sr.bottom));
+      const zt = Z.t - scrollY, zb = Z.b - scrollY;
+      ctx.fillRect(0, 0, W, Math.max(0, zt)); ctx.fillRect(0, zb, W, Math.max(0, H - zb));
+      let g = ctx.createLinearGradient(0, zt, 0, zt + FADE); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, zt, W, FADE);
+      g = ctx.createLinearGradient(0, zb - FADE, 0, zb); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = g; ctx.fillRect(0, zb - FADE, W, FADE);
       if (mask) ctx.drawImage(mask, pb.left, pb.top, pb.width, pb.height); else ctx.fillRect(pb.left, pb.top, pb.width, pb.height);
       ctx.globalCompositeOperation = 'source-over';
     };

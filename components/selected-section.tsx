@@ -47,7 +47,7 @@ const CARD_Y = 168
 const CARD_W = 504
 const CARD_H = 568
 const PRODUCTS = [
-  { x: 86, src: "/images/home/selected-emperor.avif", alt: "Emperor, a Second Wind pendant", href: "/body/second-wind/emperor" },
+  { x: 86, src: "/images/home/selected-emperor.avif", alt: "Emperor, a Second Wind pendant", href: "/body/second-wind" },
   { x: 660, src: "/images/home/selected-chess-set.avif", alt: "The Chess Set", href: "/mind/chess-set" },
 ]
 

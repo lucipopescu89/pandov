@@ -23,10 +23,13 @@ import { useEffect, useRef } from "react"
  * the bottom it is out until `IN_GONE` and fully lit by `IN_LIT`; carrying on up
  * past the middle it starts to go at `OUT_LIT` and is gone by `OUT_GONE`.
  */
-const IN_GONE = 0.72
-const IN_LIT = 0.56
-const OUT_LIT = 0.44
-const OUT_GONE = 0.28
+// 2026-11-08, the author's asking: the captions came and went too abruptly and
+// stood too short a time. The lit band was 0.56 → 0.44 (12% of the window) with
+// 16% fades; now it is 40% of the window, with 22% fades either side.
+const IN_GONE = 0.92
+const IN_LIT = 0.7
+const OUT_LIT = 0.3
+const OUT_GONE = 0.08
 
 /**
  * Text elements of one artwork closer than this, in the artwork's own units,
