@@ -1,6 +1,6 @@
 import type React from "react"
 import Link from "next/link"
-import { BODY_PIECES } from "@/lib/body-collections"
+import { BODY_PIECES, SATORI_PIECE, type BodyPiece } from "@/lib/body-collections"
 import { BODY_INTRO } from "@/components/collection-intro"
 import {
   CollectionName,
@@ -48,7 +48,7 @@ const PIECE_MAX_H = 320
 const PIECE_MAX_W = 300
 
 /** A piece's drawn size: px per pixel of its file. */
-function sizeOf(piece: (typeof BODY_PIECES)[number]): number {
+function sizeOf(piece: BodyPiece): number {
   const inkW = piece.w - 2 * piece.pad
   const inkH = piece.h - 2 * piece.pad
   const aspect = inkW / inkH
@@ -82,8 +82,38 @@ export function BodyCollections() {
         />
       </Link>
 
+      {/* ── Satori, finished (2026-11-10, the author's asking): above the rule,
+          under a beating diamond of its own, as Second Wind is. It stands as
+          far under Emperor as the list's pieces stand under one another. ── */}
+      <Heart style={{ marginTop: LIST_SPACE.next - EMPEROR_FOOT_INSET }} />
+      <CollectionName theme="dark" href="/body/satori" style={{ marginTop: SPACE.name }}>
+        Satori
+      </CollectionName>
+      {(() => {
+        const k = sizeOf(SATORI_PIECE)
+        const pad = SATORI_PIECE.pad * k
+        return (
+          <Link
+            href="/body/satori"
+            aria-label="Satori collection"
+            className="block transition-opacity hover:opacity-80"
+            style={{ marginTop: SPACE.picture - pad, marginBottom: -pad, flex: "none" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/images/body-collections/${SATORI_PIECE.file}`}
+              alt={`${SATORI_PIECE.name}, a ${SATORI_PIECE.kind}`}
+              width={SATORI_PIECE.w}
+              height={SATORI_PIECE.h}
+              decoding="async"
+              style={{ display: "block", width: SATORI_PIECE.w * k, maxWidth: "none", height: "auto" }}
+            />
+          </Link>
+        )
+      })()}
+
       {/* ── Work in progress ── */}
-      <WorkInProgress theme="dark" style={{ marginTop: LIST_SPACE.note - EMPEROR_FOOT_INSET }} />
+      <WorkInProgress theme="dark" style={{ marginTop: LIST_SPACE.note }} />
 
       {BODY_PIECES.map((piece, i) => {
         const k = sizeOf(piece)

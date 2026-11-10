@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { SeenEyes } from "@/components/seen-eyes"
-import { BODY_PIECES } from "@/lib/body-collections"
+import { BODY_PIECES, SATORI_PIECE } from "@/lib/body-collections"
 import { SECOND_WIND } from "@/lib/second-wind"
 
 /**
@@ -99,7 +99,7 @@ const TILES: Tile[] = [
     { src: p.cutout, alt: p.name, cutout: true },
     ...p.photos.map((ph) => ({ src: ph.phone, alt: ph.alt })),
   ]),
-  ...BODY_PIECES.map((p) => ({ src: `/images/body-collections/${p.file}`, alt: `${p.name}, ${p.kind}`, cutout: true })),
+  ...[SATORI_PIECE, ...BODY_PIECES].map((p) => ({ src: `/images/body-collections/${p.file}`, alt: `${p.name}, ${p.kind}`, cutout: true })),
 ]
 
 /**

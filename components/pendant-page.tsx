@@ -4,7 +4,7 @@ import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { PendantGallery } from "@/components/pendant-gallery"
 import { PendantChoice, PendantMade, PendantOrder } from "@/components/pendant-order"
-import { CORD, MADE, STUDIO_EMAIL, moreFrom, type Pendant } from "@/lib/second-wind"
+import { CORD, MADE, SECOND_WIND, STUDIO_EMAIL, moreFrom, type Pendant } from "@/lib/second-wind"
 import { u } from "@/lib/canvas-length"
 
 /**
@@ -89,7 +89,22 @@ const SLACK = { computer: 42.6, phone: 34.5 }
  * photograph, thumbnails in a row, then the name, the metals, the price and
  * the buttons.
  */
-export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant }) {
+/**
+ * The collection a pendant belongs to: its name for "More from …", where its
+ * pendants' pages live, and all of them, for the two shown at the foot. Second
+ * Wind's by default; Satori's since 2026-11-10 (`lib/satori.ts`).
+ */
+export type PendantCollection = { name: string; path: string; pendants: Record<string, Pendant> }
+
+export function PendantPage({
+  slug,
+  pendant,
+  collection = { name: "Second Wind", path: "/body/second-wind", pendants: SECOND_WIND },
+}: {
+  slug: string
+  pendant: Pendant
+  collection?: PendantCollection
+}) {
   const { name, statement, line, height, model, cutout, photos, materials } = pendant
   const last = statement.length - 1
   return (
@@ -103,14 +118,20 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
             A phone tracks it at 0.06em, as before: at the menu's 0.2em,
             Silence's and Mother Nature's longer lines broke in two on a 390px
             screen, and at 0.06em every line of all seven holds. */}
-        <p className="pp-statement">
-          {statement.map((words, i) => (
-            <span key={i}>
-              {i === 0 && "“"}
-              {words}
-              {i === last ? "”" : " "}
-            </span>
-          ))}
+        {/* A pendant whose statement is still to come (Satori's, 2026-11-10)
+            keeps the room of a line, so the photograph stands where it would. */}
+        <p className="pp-statement" aria-hidden={statement.length ? undefined : true}>
+          {statement.length ? (
+            statement.map((words, i) => (
+              <span key={i}>
+                {i === 0 && "“"}
+                {words}
+                {i === last ? "”" : " "}
+              </span>
+            ))
+          ) : (
+            <span>&nbsp;</span>
+          )}
         </p>
 
         {/* The metal chosen beside the photograph is the one the model wears. */}
@@ -119,7 +140,7 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
             <PendantGallery name={name} model={model} cutout={cutout} photos={photos} />
             <section className="pp-info">
               <h1 className="pp-name">{name}</h1>
-              <p className="pp-line">{line}</p>
+              {line ? <p className="pp-line">{line}</p> : <div className="pp-line" aria-hidden="true" />}
               <PendantOrder name={name} materials={materials} email={STUDIO_EMAIL} />
               <dl className="pp-details">
                 <div>
@@ -142,10 +163,10 @@ export function PendantPage({ slug, pendant }: { slug: string; pendant: Pendant 
         </PendantChoice>
 
         <section className="pp-more">
-          <h2>More from Second Wind</h2>
+          <h2>More from {collection.name}</h2>
           <div className="pp-more-list">
-            {moreFrom(slug).map(({ slug: other, pendant: p }) => (
-              <Link key={other} href={`/body/second-wind/${other}`} className="pp-more-item">
+            {moreFrom(slug, collection.pendants).map(({ slug: other, pendant: p }) => (
+              <Link key={other} href={`${collection.path}/${other}`} className="pp-more-item">
                 <img src={p.cutout} alt="" loading="lazy" decoding="async" />
                 <span>{p.name}</span>
               </Link>

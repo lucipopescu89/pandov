@@ -257,11 +257,14 @@ export const SECOND_WIND: Record<string, Pendant> = {
  * the author's design shows on Icarus — Presence and Emperor of Nothingness —
  * and it shows every pendant on exactly two other pages.
  */
-export function moreFrom(slug: string): { slug: string; pendant: Pendant }[] {
-  const slugs = Object.keys(SECOND_WIND)
+export function moreFrom(
+  slug: string,
+  collection: Record<string, Pendant> = SECOND_WIND,
+): { slug: string; pendant: Pendant }[] {
+  const slugs = Object.keys(collection)
   const i = slugs.indexOf(slug)
   return [2, 1].map((back) => {
     const s = slugs[(i - back + slugs.length) % slugs.length]
-    return { slug: s, pendant: SECOND_WIND[s] }
+    return { slug: s, pendant: collection[s] }
   })
 }

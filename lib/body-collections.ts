@@ -3,8 +3,8 @@
  * them. Each has its own mark, name and photograph, one under the next, as the
  * author asked on 2026-09-26 (over grouping them by collection).
  *
- * The first three are the author's Figma frame "Body" (node 4269-2) in its own
- * order; the rest follow alphabetically, which keeps each collection's two
+ * The first two are the author's Figma frame "Body" (node 4269-2) in its own
+ * order (Satori, its first, is finished now: `SATORI_PIECE`); the rest follow alphabetically, which keeps each collection's two
  * pieces together. The order is this list's: move an entry to move a piece.
  *
  * The photographs are the author's, from `D:\PANDOV\2_BODY\BODY THUMBNAILS
@@ -42,8 +42,14 @@ export type BodyPiece = {
  * on 2026-09-26. Each percentage the author gave is the size the piece ends at:
  * "110%" is 1.1, "60%" is 0.6.
  */
+/**
+ * Satori, finished on 2026-11-10 (the author's asking): no longer in the list
+ * below, it stands above the rule under a beating diamond of its own, as
+ * Second Wind does, and leads to /body/satori. Its photograph is the same.
+ */
+export const SATORI_PIECE: BodyPiece = { name: "Satori", kind: "sunburst pendant", file: "satori.avif", w: 558, h: 668, pad: 56 }
+
 export const BODY_PIECES: BodyPiece[] = [
-  { name: "Satori", kind: "sunburst pendant", file: "satori.avif", w: 558, h: 668, pad: 56 },
   { name: "Seeds", kind: "earrings", file: "seeds.avif", w: 557, h: 840, pad: 70 },
   // The Figma draws Protection a fifth smaller than the rule would.
   { name: "Protection", kind: "pendant", file: "protection.avif", w: 476, h: 841, pad: 70.5, scale: 0.8 },

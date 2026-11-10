@@ -145,15 +145,18 @@ export function CollectionPage({
   )
 }
 
-/** The beating diamond, with the gap above it. */
-export function Heart() {
+/**
+ * The beating diamond, with the gap above it. A second collection that is
+ * finished (Satori on /body, 2026-11-10) gives its own gap in `style`.
+ */
+export function Heart({ style }: { style?: CSSProperties } = {}) {
   return (
     <svg
       className="cp-heart"
       aria-hidden="true"
       viewBox={`0 0 ${MARK_FILLED.box} ${MARK_FILLED.box}`}
       fill="none"
-      style={{ marginTop: SPACE.heart, width: MARK_FILLED.box, height: MARK_FILLED.box, flex: "none" }}
+      style={{ marginTop: SPACE.heart, width: MARK_FILLED.box, height: MARK_FILLED.box, flex: "none", ...style }}
     >
       <path d={MARK_FILLED.d} fill={GOLD} stroke={GOLD} strokeOpacity={0.51} opacity={HEART_INK} />
     </svg>

@@ -41,7 +41,13 @@ for (const line of text.split(/\r?\n/)) {
 // quarter round X, (x, y, z) -> (x, z, -y), which is the same turn 3ds Max
 // makes when it is asked for a Y-up export.
 {
-  const ext = (k) => Math.max(...V.map((p) => p[k])) - Math.min(...V.map((p) => p[k]))
+  // A loop, not Math.max(...list): spread past ~120,000 points (Satori's
+  // larger exports, 2026-11-10) overflows the call stack.
+  const ext = (k) => {
+    let lo = Infinity, hi = -Infinity
+    for (const p of V) { if (p[k] < lo) lo = p[k]; if (p[k] > hi) hi = p[k] }
+    return hi - lo
+  }
   if (ext(2) > ext(1)) {
     for (const a of [V, N]) for (const p of a) [p[1], p[2]] = [p[2], -p[1]]
     console.error("Z-up export: turned upright")

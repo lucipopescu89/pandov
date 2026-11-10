@@ -93,7 +93,8 @@ export function PendantGallery({
   const [shown, setShown] = useState(0)
   const [wanted, setWanted] = useState(0)
   const wantedRef = useRef(0)
-  const [fetched, setFetched] = useState(() => new Set([0, 1 % MODEL]))
+  // A pendant with no photographs yet (Satori's, 2026-11-10) opens on the model.
+  const [fetched, setFetched] = useState(() => new Set(MODEL ? [0, 1 % MODEL] : []))
   const loaded = useRef(new Set<number>())
 
   const request = (i: number) => {
