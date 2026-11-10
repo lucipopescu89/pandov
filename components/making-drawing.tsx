@@ -115,6 +115,24 @@ const LOOP_EVERY_MS = 650
 /** …while fewer than this many are in play. */
 const LOOP_MAX = 5
 
+/**
+ * Before the click, the upper part of the Siluets is busier (2026-11-10, the
+ * author's asking): besides the strokes above, which go anywhere, more
+ * travelling strokes run on the Siluet lines that start in the upper half of
+ * the Siluets' height (`UPPER_SHARE`), coming down them from their upper end,
+ * so that the figures up there seem to be being drawn. A new one starts every
+ * `UPPER_EVERY_MS` while fewer than `UPPER_MAX` are in play there, and
+ * scrolling down starts one at once (at most every `UPPER_SCROLL_MS`), so they
+ * seem drawn as the reader comes down the page. Nothing of them stays: like
+ * the others, each comes in and goes out. (A first try the same day drew the
+ * upper part and left it standing; the author wanted movement, not lines.)
+ */
+const UPPER_GROUPS = ["siluet-1", "siluet-2", "siluet-3"]
+const UPPER_SHARE = 0.5
+const UPPER_EVERY_MS = 420
+const UPPER_MAX = 5
+const UPPER_SCROLL_MS = 260
+
 /** Click: how long what is drawn takes to fade before the birth. */
 const CLEAR_MS = 450
 /** Click: how fast the start of the drawing travels out from the mouth, units a second. */
@@ -478,13 +496,14 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
    * LOOP_SEGMENT the dash ends where the line starts, at -1 it begins where
    * the line ends.
    */
-  const cycle = (l: Line) => {
+  const cycle = (l: Line, fromTop = false) => {
     hide(l)
     l.state = 1
     l.anims = l.strokes.map((s) => {
       s.el.style.strokeDasharray = `${LOOP_SEGMENT} 2`
       const d = Math.min(LOOP_MAX_MS, Math.max(LOOP_MIN_MS, ((s.len * (1 + LOOP_SEGMENT)) / LOOP_SPEED) * 1000))
-      return s.el.animate([{ strokeDashoffset: String(LOOP_SEGMENT) }, { strokeDashoffset: "-1" }], {
+      const along = [{ strokeDashoffset: String(LOOP_SEGMENT) }, { strokeDashoffset: "-1" }]
+      return s.el.animate(fromTop && goesUp.get(s.el) ? along.reverse() : along, {
         duration: d,
         easing: EASE_LOOP,
         fill: "both",
@@ -504,6 +523,55 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     const free = lines.filter((l) => l.state === 0)
     if (lines.length - free.length >= LOOP_MAX || !free.length) return
     cycle(free[Math.floor(Math.random() * free.length)])
+  }
+
+  // The upper Siluet lines: which they are, and whether each stroke's path
+  // runs upwards (so a stroke there travels it backwards, from its top down).
+  const startY = new Map<SVGPathElement, number>()
+  const goesUp = new Map<SVGPathElement, boolean>()
+  let silTop = Infinity
+  let silBottom = -Infinity
+  const silLines = lines.filter((l) => UPPER_GROUPS.includes(l.group))
+  silLines.forEach((l) =>
+    l.strokes.forEach((s) => {
+      const p = nums(s.el.getAttribute("d")?.replace(/[A-Za-z]/g, " ") || null)
+      if (p.length < 4) return
+      goesUp.set(s.el, p[1] > p[p.length - 1])
+      const top = Math.min(p[1], p[p.length - 1])
+      startY.set(s.el, top)
+      for (let i = 1; i < p.length; i += 2) {
+        silTop = Math.min(silTop, p[i])
+        silBottom = Math.max(silBottom, p[i])
+      }
+    }),
+  )
+  const upperFloor = silTop + UPPER_SHARE * (silBottom - silTop)
+  const upper = new Set(
+    silLines.filter((l) => l.strokes.some((s) => (startY.get(s.el) ?? Infinity) < upperFloor)),
+  )
+  const startUpper = () => {
+    if (mode !== "loop" || !onScreen) return
+    const busy = [...upper].filter((l) => l.state !== 0).length
+    const free = [...upper].filter((l) => l.state === 0)
+    if (busy >= UPPER_MAX || !free.length) return
+    cycle(free[Math.floor(Math.random() * free.length)], true)
+  }
+  let upperTimer = 0
+  const upperTick = () => {
+    upperTimer = window.setTimeout(upperTick, UPPER_EVERY_MS * (0.7 + Math.random() * 0.6))
+    startUpper()
+  }
+  let lastY = window.scrollY
+  let lastScrollStart = 0
+  const onScrollDown = () => {
+    const y = window.scrollY
+    const down = y > lastY
+    lastY = y
+    const now = performance.now()
+    if (down && now - lastScrollStart > UPPER_SCROLL_MS) {
+      lastScrollStart = now
+      startUpper()
+    }
   }
 
   const reset = () => {
@@ -536,6 +604,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
       moveEye(1, EYE_SHUT_MS, null, IN_OUT)
     }
     if (mouse && onScreen) aim() // the page moved under a still pointer
+    onScrollDown()
     // Back up above the section: whatever the click drew goes, and the
     // drawing and erasing begins again.
     if (r.top > vh && mode !== "loop") reset()
@@ -624,9 +693,11 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   window.addEventListener("resize", onScrollRaf)
   onScroll()
   tick()
+  upperTick()
 
   return () => {
     if (creatorRaf) cancelAnimationFrame(creatorRaf)
+    window.clearTimeout(upperTimer)
     window.clearTimeout(blinkTimer)
     hit.removeEventListener("click", onEyeClick)
     if (eyeRaf) cancelAnimationFrame(eyeRaf)

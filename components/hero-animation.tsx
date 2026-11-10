@@ -100,6 +100,70 @@ const DOORS_S = 1.6
 const DOORS_WAIT_MS = 3500
 
 /**
+ * The doors follow the scroll (2026-11-10, the author's asking: the opening
+ * tied to the scroll, a little more with each turn, and closing a little with
+ * each turn back up, so that it feels in the reader's hand). At the pin, with
+ * the doors not yet fully open, a scroll down no longer moves the page: it
+ * opens the doors by its own length, `OPEN_WHEEL_PX` of wheel for the whole
+ * way (about five notches of a mouse wheel, ~0.2 each), `OPEN_TOUCH_PX` of a
+ * finger's drag, `OPEN_KEY` a key press; a scroll up closes them by as much.
+ * Once they are fully open, the page goes on past their place and the rest
+ * plays as before (text 1 is lit by the frames, then Presence on the next
+ * scroll).
+ *
+ * The first time they were tied to the scroll (until 2026-09-29) they
+ * stuttered, because each turn of the wheel jumped three or four frames at
+ * once. Now the scroll only moves where they are going (`target`); the doors
+ * follow it smoothly (`STEP_LAG_S`, never faster than the whole way in
+ * `STEP_FASTEST_S`, never slower than `STEP_SLOWEST_FPS`), with each frame
+ * faded into the next as ever, and stop on a whole frame.
+ *
+ * Scrolled back up from text 1 or Presence, the doors close one step
+ * (`RETURN_STEP`) once Presence is off and wait there, ajar, for the next
+ * turn up or down. Only once the frames are decoded; until then, and under
+ * reduced motion, the doors play as they did, at their own pace.
+ */
+const OPEN_WHEEL_PX = 500
+const OPEN_TOUCH_PX = 380
+const OPEN_KEY = 0.2
+const STEP_LAG_S = 0.12
+const STEP_FASTEST_S = 0.9
+/**
+ * …and never slower than this many frames a second, so their last stretch
+ * does not crawl (2026-11-10, the author's asking: the long slowing at the
+ * end let the frames be seen one by one). They always come to rest on a whole
+ * frame, never between two, where the two would show over each other (the
+ * same day, the author's report).
+ */
+const STEP_SLOWEST_FPS = 16
+const RETURN_STEP = 0.2
+
+/** What the scroll's hold needs of the doors, for the scroll to open them. */
+type DoorsStep = {
+  /** Whether they can follow the scroll now (frames decoded). */
+  active: () => boolean
+  /** Where they are going, 0 shut → 1 open. */
+  target: () => number
+  /** Move where they are going by `d`; true once that is fully open. */
+  nudge: (d: number) => boolean
+}
+
+/**
+ * The doors' breath, the scroll hint's second part (2026-11-10, the author's
+ * asking; played from `ScrollHint`): the frames are run up to
+ * `BREATH_FRAMES`, where the handles have turned and the seam has just begun
+ * to open (`GAP`, from frame 7), held while the scroll hint's light runs down
+ * it and run back, the doors left ajar a moment (the author's asking, the
+ * same day: first to frame 8, the handles alone; then 14, "a little more";
+ * then 10). Kept apart from `pos`, so the scroll's
+ * hold and the top menu still find the doors shut.
+ */
+const BREATH_FRAMES = 10
+const BREATH_UP_S = 1.4
+const BREATH_HOLD_S = 0.35 // unless the caller asks for longer (the light's run)
+const BREATH_DOWN_S = 1.7
+
+/**
  * The section is a few pictures, and the scroll moves from one to the next:
  *
  *   doors shut ─(doors)→ text 1 lit ─(presence)→ the composition ─(mind)→ For Mind
@@ -497,7 +561,7 @@ type Beat = {
  * Holds the first scroll down at the pin, and every scroll down while a beat
  * plays. `beats` are in the order they come. Returns its undoing.
  */
-function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
+function holdScroll(el: HTMLElement, beats: Beat[], doors?: DoorsStep): () => void {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
   // How far the page still has to go: the section's own top on the screen.
   const rest = () => el.getBoundingClientRect().top
@@ -606,12 +670,51 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
     return true
   }
 
+  /**
+   * The doors following the scroll (see OPEN_WHEEL_PX). `d` is a share of the
+   * whole opening, + down, − up; `same` whether it is the rest of a hand
+   * already at it. True if the doors took it, and the page is not to move.
+   */
+  let stepHand = false // the current hand is opening or closing the doors
+  const atPin = () => {
+    if (gliding && rest() <= SETTLED_PX) land()
+    return !gliding && rest() <= SETTLED_PX && -rest() <= beats[0].at()
+  }
+  const canStep = (d: number, same: boolean) => {
+    if (!doors || heroUp.on || reduce.matches || !doors.active()) return false
+    if (!same) stepHand = false
+    // The rest of a hand held for something else (bringing the page in): the
+    // hold below absorbs it.
+    if (held && same && !stepHand) return false
+    if (!atPin()) return false
+    return d > 0 || doors.target() > 0 || (stepHand && same)
+  }
+  const stepBy = (d: number, same: boolean): boolean => {
+    if (!doors || !canStep(d, same)) return false
+    stepHand = true
+    held = true
+    if (doors.nudge(d) && d > 0) {
+      // Fully open: on past their place, as a held scroll would have taken
+      // the page, and the rest of this hand is absorbed while they finish.
+      to(window.scrollY + beats[0].at() + NUDGE_PX + rest())
+      stepHand = false
+    }
+    return true
+  }
+
   // The wheel, and a trackpad, which the browser sends as one.
   let lastWheel = -Infinity
   const onWheel = (e: WheelEvent) => {
     if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
     const gap = e.timeStamp - lastWheel
     lastWheel = e.timeStamp
+    if (e.cancelable && e.deltaY !== 0) {
+      const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1)
+      if (stepBy(px / OPEN_WHEEL_PX, gap < GESTURE_GAP_MS)) {
+        e.preventDefault()
+        return
+      }
+    }
     if (e.deltaY < 0) {
       stop()
       held = false
@@ -624,10 +727,16 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
   // The keys that scroll down. One held down repeats as the same hand.
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
-    if (!(e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey))) return
+    const down = e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)
+    const up = e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey)
+    if (!down && !up) return
     const t = e.target
     if (t instanceof HTMLElement && (t.isContentEditable || t.closest("input, textarea, select, button"))) return
-    if (take(e.repeat)) e.preventDefault()
+    if (stepBy(down ? OPEN_KEY : -OPEN_KEY, e.repeat)) {
+      e.preventDefault()
+      return
+    }
+    if (down && take(e.repeat)) e.preventDefault()
   }
 
   // A finger. What the touch is is settled on its first move, the only one
@@ -636,7 +745,7 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
   // and once it is lifted glides on from the finger's speed. Going down where
   // it starts a beat, or while one plays, it is held whole. Anything else is the
   // browser's.
-  type Touching = { x: number; y: number; at: number; v: number; mode: "arrive" | "hold" | "native" | null }
+  type Touching = { x: number; y: number; at: number; v: number; mode: "arrive" | "hold" | "step" | "native" | null }
   let touch: Touching | null = null
   const onTouchStart = (e: TouchEvent) => {
     touch = null
@@ -653,6 +762,24 @@ function holdScroll(el: HTMLElement, beats: Beat[]): () => void {
     }
     const p = e.touches[0]
     const dy = touch.y - p.clientY
+    let first = false
+    if (touch.mode === null) {
+      // A finger at the pin opens or closes the doors as it drags.
+      if (e.cancelable && Math.abs(dy) >= Math.abs(p.clientX - touch.x) && canStep(dy, false)) {
+        touch.mode = "step"
+        first = true
+      }
+    }
+    if (touch.mode === "step") {
+      e.preventDefault()
+      stepBy(dy / OPEN_TOUCH_PX, !first)
+      // Fully open: the page has gone on, and the rest of the drag is held.
+      if (-rest() > beats[0].at()) touch.mode = "hold"
+      touch.x = p.clientX
+      touch.y = p.clientY
+      touch.at = e.timeStamp
+      return
+    }
     if (touch.mode === null) {
       // A tap leaves a glide running. A drag takes the page from it.
       stop()
@@ -788,6 +915,9 @@ export function HeroAnimation() {
   const shutDoorsRef = useRef<() => void>(() => {})
   // Opens them at once, on their last frame (see `skip`).
   const openDoorsRef = useRef<() => void>(() => {})
+  // The doors following the scroll at the pin (see OPEN_WHEEL_PX), for the
+  // scroll's hold.
+  const stepRef = useRef<DoorsStep | null>(null)
 
   // The doors: loaded, decoded, played and drawn here, outside React. They
   // change every frame for a second and a bit, and nothing else on the page
@@ -816,6 +946,10 @@ export function HeroAnimation() {
       ready ? pos : askedAt && performance.now() - askedAt > DOORS_WAIT_MS ? 1 : 0
     let raf = 0
     let last = 0
+    let breath = 0 // frames the handles have turned in a breath (BREATH_FRAMES)
+    let aim = 0 // where the scroll wants them, while the page is at the pin (OPEN_WHEEL_PX)…
+    let target = 0 // …to the nearest whole frame, where they come to rest
+    let breathRaf = 0
 
     // The canvas's layout size, which text 1's clip is given in.
     let cssW = 0
@@ -905,7 +1039,9 @@ export function HeroAnimation() {
     }
 
     const paint = () => {
-      const f = pos * (FRAME_COUNT - 1)
+      // Once the doors themselves come past the breath, it is theirs.
+      if (breath > 0 && pos * (FRAME_COUNT - 1) >= breath) breath = 0
+      const f = Math.max(pos * (FRAME_COUNT - 1), breath)
 
       // Text 1 lights up from 5% at frame 20 to full at frame 32. It is
       // clipped to the opening, so it also gets *wider* as the doors slide
@@ -949,7 +1085,7 @@ export function HeroAnimation() {
       }
     }
 
-    const moving = () => (open ? pos < 1 : pos > 0)
+    const moving = () => (open ? pos < 1 : pos !== target)
 
     const tick = (now: number) => {
       raf = 0
@@ -957,7 +1093,16 @@ export function HeroAnimation() {
       // background carries on where it was rather than leaping to the end.
       const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60
       last = now
-      pos = open ? Math.min(1, pos + dt / DOORS_S) : Math.max(0, pos - dt / DOORS_S)
+      if (open) pos = Math.min(1, pos + dt / DOORS_S)
+      else {
+        // Following the scroll: eased toward where it wants them, never
+        // faster than STEP_FASTEST_S for the whole way.
+        const most = dt / STEP_FASTEST_S
+        const least = (dt * STEP_SLOWEST_FPS) / (FRAME_COUNT - 1)
+        const gap = target - pos
+        const move = Math.min(most, Math.max(least, Math.abs(gap) * (1 - Math.exp(-dt / STEP_LAG_S))))
+        pos = Math.abs(gap) <= move ? target : pos + Math.sign(gap) * move
+      }
       paint()
       if (moving()) raf = requestAnimationFrame(tick)
     }
@@ -965,7 +1110,11 @@ export function HeroAnimation() {
     // A page scrolled back up above the pin finds them shut, the handles
     // there at once (see `rewind` in lib/played-beat.ts).
     shutDoorsRef.current = () => {
-      if (pos === 0 && !raf) return
+      if (pos === 0 && !raf && !breath) return
+      cancelAnimationFrame(breathRaf)
+      breathRaf = 0
+      breath = 0
+      target = aim = 0
       cancelAnimationFrame(raf)
       raf = 0
       pos = 0
@@ -977,9 +1126,51 @@ export function HeroAnimation() {
       cancelAnimationFrame(raf)
       raf = 0
       pos = 1
+      target = aim = 1
       open = true
       askedAt = -Infinity
       paint()
+    }
+
+    stepRef.current = {
+      active: () => ready && !disposed,
+      target: () => target,
+      nudge: (d: number) => {
+        aim = clamp01(Math.min(aim, target + 0.5 / (FRAME_COUNT - 1)) + d)
+        target = Math.round(aim * (FRAME_COUNT - 1)) / (FRAME_COUNT - 1)
+        if (!open && !raf && pos !== target) {
+          last = 0
+          raf = requestAnimationFrame(tick)
+        }
+        return target >= 1
+      },
+    }
+
+    heroDoors.breathe = (holdS = BREATH_HOLD_S) => {
+      if (!ready || breathRaf || raf || open || pos > 0 || target > 0) return false
+      const t0 = performance.now()
+      const all = BREATH_UP_S + holdS + BREATH_DOWN_S
+      const step = (now: number) => {
+        breathRaf = 0
+        // The doors started: the breath stops where it is and they carry on
+        // from it (see `paint`).
+        if (open || pos > 0 || target > 0) return
+        const t = (now - t0) / 1000
+        breath =
+          t < BREATH_UP_S
+            ? BREATH_FRAMES * ease(t / BREATH_UP_S)
+            : t < BREATH_UP_S + holdS
+              ? BREATH_FRAMES
+              : BREATH_FRAMES * (1 - ease(Math.min(1, (t - BREATH_UP_S - holdS) / BREATH_DOWN_S)))
+        paint()
+        if (t < all) breathRaf = requestAnimationFrame(step)
+        else {
+          breath = 0
+          paint()
+        }
+      }
+      breathRaf = requestAnimationFrame(step)
+      return true
     }
 
     const play = () => {
@@ -999,7 +1190,16 @@ export function HeroAnimation() {
       // gone off, and then close by their frames (2026-10-28, the author's
       // asking).
       const wait = !want && primed && !heroUp.on && pos > 0 && presenceRef.current() > 0
+      const was = open
       open = want || wait
+      if (open) target = aim = 1
+      // Back from text 1 or Presence: one step shut, and they wait there, ajar.
+      else if (was && primed) {
+        aim = Math.max(0, Math.min(target, pos - RETURN_STEP))
+        target = Math.round(aim * (FRAME_COUNT - 1)) / (FRAME_COUNT - 1)
+      }
+      // Above the pin they go shut, as they always have.
+      if (!open && top > SETTLED_PX) target = aim = 0
       if (wait && !waiting) {
         waiting = requestAnimationFrame(() => {
           waiting = 0
@@ -1082,6 +1282,9 @@ export function HeroAnimation() {
     window.addEventListener("pageshow", measure)
     return () => {
       disposed = true
+      heroDoors.breathe = () => false
+      stepRef.current = null
+      cancelAnimationFrame(breathRaf)
       doorsRef.current = () => 1
       shutDoorsRef.current = () => {}
       openDoorsRef.current = () => {}
@@ -1318,7 +1521,11 @@ export function HeroAnimation() {
       { at: () => PAST_PIN_PX, done: () => doorsRef.current() },
       { at: () => presenceAt(stickyRef.current), done: () => presenceRef.current() },
       { at: () => mindAt(stickyRef.current), done: () => mindRef.current() },
-    ])
+    ], {
+      active: () => !!stepRef.current?.active(),
+      target: () => stepRef.current?.target() ?? 0,
+      nudge: (d) => stepRef.current?.nudge(d) ?? false,
+    })
   }, [])
 
   // A click or a tap anywhere on the opening skips it (2026-11-05, the

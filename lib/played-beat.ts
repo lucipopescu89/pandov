@@ -44,7 +44,18 @@ export const heroUp = { on: false }
  * the hero (`components/hero-animation.tsx`); shut by default, as the page
  * opens.
  */
-export const heroDoors = { shut: () => true }
+export const heroDoors = {
+  shut: () => true,
+  /**
+   * The doors come ajar and close again, held ajar `holdS` seconds
+   * (2026-11-10, the author's asking: a hint to scroll without words, played
+   * by `ScrollHint`). Only while the doors are shut and still; it never moves
+   * the doors' own state, so nothing that waits on them sees it. Set by the
+   * hero; until then, and when it cannot play, it does nothing and says so
+   * (false).
+   */
+  breathe: (_holdS?: number): boolean => false,
+}
 
 /**
  * Sent on the window by the bottom menu's logo just before it scrolls the page

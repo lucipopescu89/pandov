@@ -1,6 +1,7 @@
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { HeroAnimation } from "@/components/hero-animation"
+import { ScrollHint } from "@/components/scroll-hint"
 import { CategoriesSection } from "@/components/categories-section"
 import { SelectedSection } from "@/components/selected-section"
 import { MakingSection } from "@/components/making-section"
@@ -28,6 +29,15 @@ export default function Home() {
       <SelectedSection />
 
       <Footer />
+
+      {/* The hint to scroll: the doors come ajar and a line of light runs
+          down their seam (2026-11-10; the words "Scroll down" of 2026-11-09
+          now only under reduced motion). See `ScrollHint`. It is fixed, so where it stands in
+          the page does not matter, but it must NOT go between the hero and
+          For Mind's section: the hero takes its next sibling to be For Mind's
+          section (`section` in `HeroAnimation`), and with the hint there For
+          Mind's chess board came up over the handles on the way back up. */}
+      <ScrollHint />
     </>
   )
 }
