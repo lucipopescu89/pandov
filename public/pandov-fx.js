@@ -7,7 +7,10 @@
  * <Script src="/pandov-fx.js"> in the layout and the site is exactly as before.
  *
  * What it does:
- *   - every full load: a short fade up from black, the logo and menu rising in,
+ *   - every full load: a short fade up from black, the logo and menu rising in
+ *     (the computer's row only: the phone's list under the three lines is made
+ *     anew on every tap, and caught by this rise its words stayed hidden 1.2s
+ *     and settled 3s after the tap; 2026-11-10, the author's report),
  *     a faint gold hairline under a menu word on hover (the words themselves
  *     do not widen or glow: the author took that out), and a 1px gold
  *     scroll-progress line at the top of the screen;
@@ -44,12 +47,12 @@
 @keyframes pfx-veil{0%{opacity:1}100%{opacity:0;visibility:hidden}}
 @keyframes pfx-rise-h{0%{opacity:0;translate:0 14px}100%{opacity:1;translate:0 0}}
 .pfx-veil{position:fixed;inset:0;background:#0d0d0d;z-index:99998;pointer-events:none;animation:pfx-veil 1.8s cubic-bezier(.6,0,.2,1) .2s forwards}
-header img,header nav a{opacity:0;animation:pfx-rise-h 1.6s ${E} forwards}
+header img,header nav>div:first-child a{opacity:0;animation:pfx-rise-h 1.6s ${E} forwards}
 header a img:first-child{animation-delay:.5s}
 header a img:nth-child(2){animation-delay:.85s}
-header nav a:nth-child(1){animation-delay:1.2s}
-header nav a:nth-child(2){animation-delay:1.35s}
-header nav a:nth-child(3){animation-delay:1.5s}
+header nav>div:first-child a:nth-child(1){animation-delay:1.2s}
+header nav>div:first-child a:nth-child(2){animation-delay:1.35s}
+header nav>div:first-child a:nth-child(3){animation-delay:1.5s}
 header nav a{position:relative}
 header nav a::after{content:'';position:absolute;left:50%;bottom:-7px;width:0;height:1px;background:linear-gradient(90deg,transparent,rgba(214,178,110,.45),transparent);transform:scaleY(.6);transition:width .9s ${E},left .9s ${E}}
 header nav a:hover::after{width:70%;left:15%}

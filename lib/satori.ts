@@ -9,8 +9,14 @@ import type { Material, Pendant } from "@/lib/second-wind"
  * Two forms, each in two sizes, from the author's 3ds Max exports in
  * D:\PANDOV\2_BODY\2_SATORI\Export OBJ (Satori1–4.obj), made into
  * public/models/satori-<n>.glb with scripts/obj-to-glb.mjs: a ring (1, 3) and
- * a sun of rays (2, 4), each with the bird at its foot. The heights are the
- * models' own, as the script measured them.
+ * a sun of rays (2, 4), each with the bird at its foot, the two small ones
+ * first. The heights are the models' own, as the script measured them.
+ *
+ * The order is the author's (2026-11-11): the exports were renamed so that the
+ * small ring is 1 and the large one 3 (they were the other way round on
+ * 2026-11-10), and re-exported, Satori 2 redrawn symmetric. The number is
+ * also the page's slug, the model's and the pictures' names, so all of them
+ * follow the export: Satori1.obj is satori-1 everywhere.
  *
  * For now a page has the model alone: no photographs, so the gallery opens on
  * the model and its "3D" mark is the only one. The author will retouch the
@@ -83,11 +89,11 @@ export const SATORI: Record<string, Pendant> = {
     name: "Satori I",
     statement: [],
     line: "",
-    height: "56 mm",
+    height: "23 mm",
     model: "/models/satori-1.glb",
     cutout: "/images/body/satori-1-pendant.avif",
     photos: [],
-    materials: pricesFor(1114.0), // mm³
+    materials: pricesFor(200.7), // mm³
   },
   "satori-2": {
     name: "Satori II",
@@ -97,17 +103,17 @@ export const SATORI: Record<string, Pendant> = {
     model: "/models/satori-2.glb",
     cutout: "/images/body/satori-2-pendant.avif",
     photos: [],
-    materials: pricesFor(337.2), // mm³
+    materials: pricesFor(273.0), // mm³ (337.2 before the author redrew it symmetric, 2026-11-11)
   },
   "satori-3": {
     name: "Satori III",
     statement: [],
     line: "",
-    height: "23 mm",
+    height: "56 mm",
     model: "/models/satori-3.glb",
     cutout: "/images/body/satori-3-pendant.avif",
     photos: [],
-    materials: pricesFor(200.7), // mm³
+    materials: pricesFor(1039.9), // mm³ (1114 before the author reworked the nape, 2026-11-10)
   },
   "satori-4": {
     name: "Satori IV",
