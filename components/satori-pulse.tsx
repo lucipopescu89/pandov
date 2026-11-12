@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
-import { comets, samplePath, type LightCfg, type Pts } from "@/lib/satori-lights"
+import { samplePath } from "@/lib/satori-lights"
 
 /**
  * Satori 2, "a pulse of sparks / at the edge of mind" (2026-11-12, the
@@ -115,19 +115,6 @@ const TRACK_ALPHA = 0.2 // 0.3 until the author asked for it fainter, 2026-11-12
 const TRACK_BEAT_LIGHT = 0.08 // 0.25, then 0.12, the same day: the author asked for a gentler beat, in light and in height
 const TRACK_BEAT_AMP = 0.22 // 0.45 until then
 const TRACK_LAG_S = 0.25
-/**
- * On a hover the line of pulses is traced by lights, as the other drawings
- * are (2026-11-12, the author's asking: the contour line, with the circles
- * radiating as they do): two leave its top, mirrored, run round it with its
- * beat and meet at its foot, and go on round (`lib/satori-lights.ts`). They
- * come with the hover (over `TRACK_LAG_S`, with the line) and go with it.
- */
-const TRACE: LightCfg = { trail: 420, front: 30, piece: 12, speed: 140 }
-const TRACE_PEAK = 0.85
-const TRACE_PX = 1.2
-/** The lights fade towards the edge as the drawing does, but over the line of pulses' reach (it lies outside the circles' fade). */
-const PULSE_FADE_R = 640
-
 /** The wave's half-width in circles: one either side at rest (three seen), four on a hover (nine; five until 2026-11-12, the author's asking). */
 const NARROW = 1
 const WIDE = 4
@@ -299,7 +286,6 @@ export function SatoriPulse() {
     let onPendant = false
     const enterPendant = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return
-      if (!onPendant && shown < 0.003) traceT = 0
       onPendant = true
     }
     const leavePendant = () => {
@@ -309,22 +295,6 @@ export function SatoriPulse() {
     photo?.addEventListener("pointerleave", leavePendant)
 
     const beaten = new Float32Array(n * 2)
-    // the line from its top, for the lights: the point nearest the axis above the middle
-    let top = 0
-    for (let i = 0, best = Infinity; i < n; i++) {
-      const dx = Math.abs(pts[2 * i] - PULSE.cx)
-      if (pts[2 * i + 1] < PULSE.cy && dx < best) {
-        best = dx
-        top = i
-      }
-    }
-    const traced = new Float32Array(n * 2)
-    const tracedLine: Pts = { pts: traced, n, closed: true, total }
-    const traceFade = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, PULSE_FADE_R)
-    traceFade.addColorStop(0, `rgba(${LIGHT}, ${TRACE_PEAK})`)
-    traceFade.addColorStop(0.75, `rgba(${LIGHT}, ${TRACE_PEAK})`)
-    traceFade.addColorStop(1, `rgba(${LIGHT}, 0)`)
-    let traceT = 0
 
     /** The line of pulses itself, while the pendant is hovered: still, beating. */
     const drawTrack = (t: number, dt: number) => {
@@ -345,16 +315,6 @@ export function SatoriPulse() {
       for (let i = 0; i < n; i++) ctx[i ? "lineTo" : "moveTo"](beaten[2 * i], beaten[2 * i + 1])
       ctx.closePath()
       ctx.stroke()
-      // the lights tracing it, from its top
-      for (let i = 0; i < n; i++) {
-        const j = (i + top) % n
-        traced[2 * i] = beaten[2 * j]
-        traced[2 * i + 1] = beaten[2 * j + 1]
-      }
-      ctx.strokeStyle = traceFade
-      ctx.lineWidth = (TRACE_PX * dpr) / scale
-      comets(ctx, tracedLine, "both", (traceT * TRACE.speed) / STEP, shown, TRACE, STEP)
-      ctx.lineWidth = dpr / scale
       ctx.globalAlpha = 1
     }
 
@@ -397,7 +357,6 @@ export function SatoriPulse() {
     const tick = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000)
       t += dt
-      traceT += dt
       last = now
       draw(t, dt)
       raf = requestAnimationFrame(tick)
