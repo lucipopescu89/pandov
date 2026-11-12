@@ -12,10 +12,12 @@ import {
   flush,
   isLite,
   lights,
+  skipFrame,
   lightWay,
   samplePath,
   span,
   stretch,
+  type Gate,
   type LightCfg,
   type Mode,
   type Pts,
@@ -260,7 +262,12 @@ export function SatoriCore({ slug }: { slug: Slug }) {
     let raf = 0
     let last = 0
     let drawn = false // something is drawn, or being drawn back
+    const gate: Gate = { at: 0 }
     const tick = (now: number) => {
+      if (skipFrame(gate, now)) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
       let any = false

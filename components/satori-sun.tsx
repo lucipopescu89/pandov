@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import SUN from "@/lib/satori-sun-4.json"
-import { canvasDpr, comets, flush, isLite, lights, type LightCfg, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, comets, flush, isLite, lights, skipFrame, type Gate, type LightCfg, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 4's sun, breathing like the sun's own atmosphere (2026-11-11, the
@@ -499,7 +499,12 @@ export function SatoriSun({ className }: { className?: string }) {
     let on = false
     let last = performance.now()
     let t = TRAVEL_S * FADE_OUT // start full: the lines already under way
+    const gate: Gate = { at: 0 }
     const tick = (now: number) => {
+      if (skipFrame(gate, now)) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
       const k = 1 - Math.exp(-dt / (hovered ? HOVER_LAG_S : RETURN_LAG_S))

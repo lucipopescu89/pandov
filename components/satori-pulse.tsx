@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
-import { canvasDpr, flush, level, lights, samplePath } from "@/lib/satori-lights"
+import { canvasDpr, flush, level, lights, samplePath, skipFrame, type Gate } from "@/lib/satori-lights"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
@@ -358,7 +358,12 @@ export function SatoriPulse() {
     let t = 0
     let raf = 0
     let last = 0
+    const gate: Gate = { at: 0 }
     const tick = (now: number) => {
+      if (skipFrame(gate, now)) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
       const dt = Math.min(0.1, (now - last) / 1000)
       t += dt
       last = now

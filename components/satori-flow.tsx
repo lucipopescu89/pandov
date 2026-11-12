@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import FLOW from "@/lib/satori-flow-3.json"
 import { PLAY_EVENT, UNDRAWN_EVENT, startsHover } from "@/components/satori-sun"
-import { canvasDpr } from "@/lib/satori-lights"
+import { canvasDpr, isLite, skipFrame, type Gate } from "@/lib/satori-lights"
 
 /**
  * Satori 3, "the one who sits / expands inside" (2026-11-12, the author's
@@ -96,6 +96,7 @@ export function SatoriFlow() {
     const ox = FLOW.cx - SIDE / 2
     const oy = FLOW.cy - SIDE / 2
 
+    const pstep = isLite() ? 4 : 2
     /** The circle `e` of the way in (0 leaving, 1 at the pendant): between the two level lines round it. */
     const circle = (e: number) => {
       const level = FLOW.start + (LEVELS[0] - FLOW.start) * e
@@ -105,7 +106,8 @@ export function SatoriFlow() {
       const a = k * N * 2
       const b = a + N * 2
       ctx.beginPath()
-      for (let i = 0; i < N * 2; i += 2) {
+      // every other point on a phone: 240 still round the closest circle smoothly at a phone's size
+      for (let i = 0; i < N * 2; i += pstep) {
         const x = LINES[a + i] + (LINES[b + i] - LINES[a + i]) * f
         const y = LINES[a + i + 1] + (LINES[b + i + 1] - LINES[a + i + 1]) * f
         if (i === 0) ctx.moveTo(x, y)
@@ -172,7 +174,12 @@ export function SatoriFlow() {
 
     let raf = 0
     let last = 0
+    const gate: Gate = { at: 0 }
     const tick = (now: number) => {
+      if (skipFrame(gate, now)) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
       const dt = Math.min(0.1, (now - last) / 1000)
       t += dt
       last = now

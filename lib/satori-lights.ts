@@ -218,6 +218,34 @@ export function lightWay(mode: Mode, l: Pts, p: number, after: number, cfg: Ligh
  * than `LITE_DPR` device pixels to a CSS pixel there, and fewer lights run.
  */
 export const LITE_DPR = 1.5
-export const isLite = () => typeof window !== "undefined" && window.matchMedia("(hover: none)").matches
+let liteMq: MediaQueryList | null = null
+export const isLite = () => {
+  if (typeof window === "undefined") return false
+  liteMq ??= window.matchMedia("(hover: none)")
+  return liteMq.matches
+}
+
+/**
+ * While a phone scrolls, Satori's canvases draw one frame in three
+ * (2026-11-12: the author's iPhone 8 played a tap smoothly, but scrolling past
+ * Satori 3 and 4, where the most lines move, stuttered). The scroll is the
+ * phone's own and needs the frames; the circles and rays move slowly enough
+ * that 20 a second does not show while the page is moving under the eye.
+ * Their time runs on as ever, so nothing jumps; at rest, and on a computer,
+ * every frame is drawn.
+ */
+const SCROLL_QUIET_MS = 180 // the scroll counts as over this long after its last event
+const SCROLL_FRAME_MS = 45 // while it lasts, a frame at most this often: one in three at 60 a second
+let scrollingUntil = 0
+if (typeof window !== "undefined") {
+  window.addEventListener("scroll", () => (scrollingUntil = performance.now() + SCROLL_QUIET_MS), { passive: true, capture: true })
+}
+export type Gate = { at: number }
+/** Whether a canvas should skip this frame: only on a phone, only while the page scrolls. Its tick returns before taking its dt, so the time skipped is counted in the next one. */
+export function skipFrame(gate: Gate, now: number): boolean {
+  if (now < scrollingUntil && isLite() && now - gate.at < SCROLL_FRAME_MS) return true
+  gate.at = now
+  return false
+}
 /** Device pixels per CSS pixel for Satori's canvases: the screen's, at most 2, at most `LITE_DPR` on a phone. */
 export const canvasDpr = () => Math.min(window.devicePixelRatio || 1, isLite() ? LITE_DPR : 2)

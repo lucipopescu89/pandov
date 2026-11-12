@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import DATA from "@/lib/satori-breath-1.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
-import { canvasDpr, comets, drawnStretches, flush, lights, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, comets, drawnStretches, flush, lights, skipFrame, type Gate, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 1, "the one who sits / is complete" (2026-11-12, the author's brief).
@@ -405,7 +405,12 @@ export function SatoriBreath() {
     let on = false
     let raf = 0
     const t0 = performance.now()
+    const gate: Gate = { at: 0 }
     const tick = (now: number) => {
+      if (skipFrame(gate, now)) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
       frame((now - t0) / 1000, dt, now)
