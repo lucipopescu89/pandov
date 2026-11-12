@@ -45,8 +45,8 @@ import { SatoriBreath } from "@/components/satori-breath"
  * the same day), and its circles, seen only round the pendant's foot, are
  * seen whole three at a time as a wave radiates outward through them.
  * Satori 1 is its figure alone, breathing, its heart beating
- * (`components/satori-breath.tsx`, the same day), its frame's empty top cut
- * off (`CROP`) so it stands nearer its verse.
+ * (`components/satori-breath.tsx`, the same day). The frames are drawn
+ * closer together than Figma's squares (`DRAWING`, `layout`).
  *
  * Until 2026-11-11 this page was the four renders of the models
  * (`satori-<n>.avif`, still on disk and in `lib/satori.ts`), until these
@@ -97,13 +97,50 @@ const PULSE_SLUG = "satori-2"
 const BREATH_SLUG = "satori-1"
 
 /**
- * Empty frame cut off a frame's top, in its units, so its drawing and pendant
- * stand nearer its verse (2026-11-12, the author's asking: there was a gap
- * between the first verse and the first pendant). Satori 1's drawing is the
- * smallest, its great circle (seen on a hover) beginning 512 down; 300 off
- * leaves it about 80 under the verse. The verse keeps its place.
+ * The frames are drawn closer together than Figma's squares, each verse a set
+ * distance over its drawing and a set distance under the drawing before it
+ * (2026-11-12, the author's asking: the space between Satori 1 and the next
+ * verse, and between Satori 2 and its verse, was huge; the same space between
+ * every drawing and its text, a little tighter). Each frame keeps its own
+ * units; it is pulled up over the empty foot of the one before (`margin`),
+ * and its verse moved down to its drawing. Frames overlap only where they are
+ * empty, and only the photograph takes the pointer (`.sp-photo`), so a frame
+ * laid over the foot of the one before does not steal its hover.
+ *
+ * `top` and `bottom` are each drawing's extent in its frame, with what shows
+ * on a hover: Satori 1's great circle (511 to 1013); Satori 2's circles from
+ * 417 and its foot to 1108, its line of pulses (221 to 1226) a little below
+ * that (1180, so the next verse clears its troughs); Satori 3's closing
+ * circles as they come into sight (200) and its drawing's foot, with room for
+ * the circles' faint start (1150); Satori 4's rays. `verse` overrides where a
+ * verse's foot stands: Satori 2's sits inside its line of pulses, under the
+ * troughs that dip to 323 near its top and over its circles, since above the
+ * line it would stand far from everything seen at rest.
  */
-const CROP: Record<string, number> = { "satori-1": 300 }
+const GAP_TO_DRAWING = 80
+const GAP_TO_VERSE = 160
+/** Where the first verse stands under the menu, as before (frame units from the frame's top). */
+const FIRST_VERSE_TOP = 88
+const DRAWING: Record<string, { top: number; bottom: number; verse?: number }> = {
+  "satori-1": { top: 511, bottom: 1013 },
+  "satori-2": { top: 417, bottom: 1180, verse: 395 },
+  "satori-3": { top: 200, bottom: 1150 },
+  "satori-4": { top: 133, bottom: FRAME_H },
+}
+/** A verse's height, frame units at full size: three lines of 14px, or one. */
+const verseH = (text: string) => text.split("\n").length * 14
+/** Each frame's verse foot, and how far it is pulled up (frame units). */
+function layout(slugs: string[]) {
+  let prevBottom = 0
+  return slugs.map((slug, i) => {
+    const d = DRAWING[slug]
+    const vh = verseH(VERSES[slug].text)
+    const verse = d.verse ?? d.top - GAP_TO_DRAWING
+    const margin = i === 0 ? FIRST_VERSE_TOP + vh - verse : prevBottom + GAP_TO_VERSE + vh - FRAME_H - verse
+    prevBottom = d.bottom
+    return { verse, margin }
+  })
+}
 
 const VERSES: Record<string, { text: string; top: number }> = {
   "satori-1": { text: "the one who sits\n\nis complete", top: 88 },
@@ -114,20 +151,20 @@ const VERSES: Record<string, { text: string; top: number }> = {
 
 export function SatoriPresentation() {
   const pendants = Object.entries(SATORI)
+  const place = layout(pendants.map(([slug]) => slug))
   return (
     <main className="w-full overflow-x-hidden min-h-screen" style={{ backgroundColor: GROUND }}>
       <Navigation bgColor={GROUND} />
       <div className="sp">
         {pendants.map(([slug, p], i) => {
           const verse = VERSES[slug]
-          const crop = CROP[slug] ?? 0
-          const link = (
+          return (
             <Link
               key={slug}
               href={`/body/satori/${slug}`}
               className="sp-frame"
               aria-label={p.name}
-              style={crop ? { position: "absolute", left: 0, width: "100%", top: `${(-crop / (FRAME_H - crop)) * 100}%` } : undefined}
+              style={{ marginTop: `calc(min(${FRAME_W}px, ${(FRAME_W / WIDEST) * 100}%) * ${(place[i].margin / FRAME_W).toFixed(5)})` }}
             >
               {slug === FLOW_SLUG && <SatoriFlow />}
               {slug === SUN_SLUG || slug === FLOW_SLUG ? (
@@ -162,31 +199,24 @@ export function SatoriPresentation() {
                 />
               )}
               {verse && (
-                <p className="sp-verse" style={{ top: `${((verse.top + crop) / FRAME_H) * 100}%` } as React.CSSProperties}>
+                <p className="sp-verse" style={{ top: `${(place[i].verse / FRAME_H) * 100}%` } as React.CSSProperties}>
                   {verse.text}
                 </p>
               )}
             </Link>
-          )
-          return crop ? (
-            <div key={slug} className="sp-crop" style={{ aspectRatio: `${FRAME_W} / ${FRAME_H - crop}` }}>
-              {link}
-            </div>
-          ) : (
-            link
           )
         })}
       </div>
       <BodyFooter activeLabel="body" />
       <style>{`
         .sp { display: flex; flex-direction: column; align-items: center; padding: 24px 0 160px; overflow: hidden; }
-        .sp-frame, .sp-crop { position: relative; display: block; flex: none; width: min(${FRAME_W}px, ${(FRAME_W / WIDEST) * 100}%); aspect-ratio: ${FRAME_W} / ${FRAME_H};
-          text-decoration: none; }
-        .sp-crop { overflow: hidden; }
+        .sp-frame { position: relative; display: block; flex: none; width: min(${FRAME_W}px, ${(FRAME_W / WIDEST) * 100}%); aspect-ratio: ${FRAME_W} / ${FRAME_H};
+          text-decoration: none; pointer-events: none; }
+        .sp-frame > .sp-photo { pointer-events: auto; }
         .sp-frame > img { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 200ms; }
         .sp-frame > img.sp-photo { inset: auto; }
         .sp-frame:hover > img { opacity: 0.8; }
-        .sp-verse { position: absolute; left: 0; right: 0; pointer-events: none; margin: 0; text-align: center; white-space: pre-line;
+        .sp-verse { position: absolute; left: 0; right: 0; pointer-events: none; margin: 0; text-align: center; white-space: pre-line; transform: translateY(-100%);
           font-family: "Julius Sans One", var(--font-heading); font-size: 12px; line-height: 14px; color: #888888; }
         @media (max-width: 600px) { .sp-verse { font-size: 10px; line-height: 12px; } }
       `}</style>
