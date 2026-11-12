@@ -138,8 +138,39 @@ export function stretch(ctx: CanvasRenderingContext2D, l: Pts, a: number, b: num
  */
 export type LightCfg = { trail: number; front: number; piece: number; speed: number }
 
-/** The lights of one line, `d` points along their way from where they began. */
-export function comets(ctx: CanvasRenderingContext2D, l: Pts, mode: Mode, d: number, alpha: number, cfg: LightCfg, step: number) {
+/**
+ * The lights are drawn in pieces, each a little fainter than the one before
+ * it, so one stroke a piece was hundreds of strokes a frame: Satori 3's
+ * drawing traced by its lights cost 973, and on the author's iPhone 8 a tap
+ * stuttered (2026-11-12). A `Lights` gathers the pieces of every light on a
+ * canvas into `LEVELS` paths by strength and strokes each once: at most 32
+ * strokes a frame, whatever the number of lights. The strength steps by 1/32,
+ * finer than the eye follows down a fading trail.
+ */
+export const LEVELS = 32
+export type Lights = { peak: number; paths: (Path2D | null)[] }
+/** A gathering for lights whose strength goes up to `peak`: its 32 steps are shares of that. */
+export const lights = (peak = 1): Lights => ({ peak, paths: new Array(LEVELS + 1).fill(null) })
+/** Stroke what `b` gathered, in the canvas's current stroke style, and empty it. */
+export function flush(ctx: CanvasRenderingContext2D, b: Lights) {
+  for (let k = 1; k <= LEVELS; k++) {
+    const p = b.paths[k]
+    if (!p) continue
+    ctx.globalAlpha = (k / LEVELS) * b.peak
+    ctx.stroke(p)
+    b.paths[k] = null
+  }
+  ctx.globalAlpha = 1
+}
+/** The path for strength `a` (0 → 1) in `b`, or null when it is too faint to draw. */
+export function level(b: Lights, a: number): Path2D | null {
+  const k = Math.min(LEVELS, Math.round((a / b.peak) * LEVELS))
+  if (k <= 0) return null
+  return (b.paths[k] ??= new Path2D())
+}
+
+/** The lights of one line, `d` points along their way from where they began, gathered into `b` (see `flush`). */
+export function comets(b: Lights, l: Pts, mode: Mode, d: number, alpha: number, cfg: LightCfg, step: number) {
   const m = span(l)
   const seeds: [number, 1 | -1, number][] =
     mode === "both" ? [[0, 1, m], [m, -1, m]]
@@ -160,20 +191,18 @@ export function comets(ctx: CanvasRenderingContext2D, l: Pts, mode: Mode, d: num
       const g = Math.min(1, mid / front)
       const a0 = head - dir * k
       if (!closed && (a0 < 0 || a0 > m)) continue
-      ctx.globalAlpha = alpha * f * f * g * g * (3 - 2 * g)
-      ctx.beginPath()
+      const path = level(b, alpha * f * f * g * g * (3 - 2 * g))
+      if (!path) continue
       const i0 = ((a0 % n) + n) % n
-      ctx.moveTo(pts[2 * i0], pts[2 * i0 + 1])
+      path.moveTo(pts[2 * i0], pts[2 * i0 + 1])
       for (let j = 1; j <= piece && k + j <= len; j++) {
-        const b = a0 - dir * j
-        if (!closed && (b < 0 || b > m)) break
-        const q = ((b % n) + n) % n
-        ctx.lineTo(pts[2 * q], pts[2 * q + 1])
+        const bb = a0 - dir * j
+        if (!closed && (bb < 0 || bb > m)) break
+        const q = ((bb % n) + n) % n
+        path.lineTo(pts[2 * q], pts[2 * q + 1])
       }
-      ctx.stroke()
     }
   }
-  ctx.globalAlpha = 1
 }
 
 /** How far a line's lights have come, in points: `p` (0 → 1) of its drawing, then on at `speed` for `after` seconds. */

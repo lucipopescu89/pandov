@@ -9,7 +9,9 @@ import {
   comets,
   drawnStretches,
   ease,
+  flush,
   isLite,
+  lights,
   lightWay,
   samplePath,
   span,
@@ -215,6 +217,7 @@ export function SatoriCore({ slug }: { slug: Slug }) {
     let hovered = false
     let shown = 0 // the lights, 0 → 1
 
+    const gather = lights()
     const draw = (all = false) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -235,9 +238,9 @@ export function SatoriCore({ slug }: { slug: Slug }) {
       ctx.strokeStyle = lightFade
       lines.forEach((l, i) => {
         if (!lit[i] || ps[i] <= 0) return
-        comets(ctx, l, PLAN[i].mode as Mode, lightWay(PLAN[i].mode as Mode, l, ps[i], whole[i], LIGHT_CFG, STEP), shown, LIGHT_CFG, STEP)
+        comets(gather, l, PLAN[i].mode as Mode, lightWay(PLAN[i].mode as Mode, l, ps[i], whole[i], LIGHT_CFG, STEP), shown, LIGHT_CFG, STEP)
       })
-      ctx.globalAlpha = 1
+      flush(ctx, gather)
     }
 
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {

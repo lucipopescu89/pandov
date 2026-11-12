@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import SUN from "@/lib/satori-sun-4.json"
-import { canvasDpr, comets, isLite, type LightCfg, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, comets, flush, isLite, lights, type LightCfg, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 4's sun, breathing like the sun's own atmosphere (2026-11-11, the
@@ -384,6 +384,7 @@ export function SatoriSun({ className }: { className?: string }) {
     const lpts = new Float32Array(N * 2)
     const line: Pts = { pts: lpts, n: N, closed: true, total: 0 }
     const alphas: number[] = []
+    const gather = lights()
     let lightsA = 0
     let lightT = 0
     let photoOn = false
@@ -483,9 +484,9 @@ export function SatoriSun({ className }: { className?: string }) {
             if (k) len += Math.hypot(lpts[2 * k] - lpts[2 * k - 2], lpts[2 * k + 1] - lpts[2 * k - 1])
           }
           const step = len / (N - 1)
-          comets(ctx, line, "both", (lightT * LIGHT_CFG.speed) / step, lightsA * alphas[j], LIGHT_CFG, step)
+          comets(gather, line, "both", (lightT * LIGHT_CFG.speed) / step, lightsA * alphas[j], LIGHT_CFG, step)
         }
-        ctx.globalAlpha = 1
+        flush(ctx, gather)
       }
     }
 

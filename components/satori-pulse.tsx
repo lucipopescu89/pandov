@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
-import { canvasDpr, samplePath } from "@/lib/satori-lights"
+import { canvasDpr, flush, level, lights, samplePath } from "@/lib/satori-lights"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
@@ -323,27 +323,29 @@ export function SatoriPulse() {
     const trail = Math.floor((TRAIL * total) / STEP)
     const front = Math.max(1, Math.floor((FRONT * total) / STEP))
     const piece = Math.max(1, Math.round(PIECE / STEP))
+    const gather = lights(TRAIL_ALPHA)
     /** The light running round the track. */
     const light = (t: number) => {
       const head = Math.floor(((t / LAP_S) % 1) * n)
       ctx.strokeStyle = `rgb(${LIGHT})`
       // From the head back: it fades in over the front, then out over the
       // trail, each piece a little fainter: the light lingers on the pulses it has passed.
+      // gathered into at most 32 strokes by strength (`flush`): a stroke a
+      // piece was some 240 a frame, too many for an older phone
       for (let k = 0; k < trail; k += piece) {
         const mid = k + piece / 2
         const f = 1 - mid / trail
         const g = Math.min(1, mid / front)
-        ctx.globalAlpha = TRAIL_ALPHA * f * f * g * g * (3 - 2 * g)
-        ctx.beginPath()
+        const path = level(gather, TRAIL_ALPHA * f * f * g * g * (3 - 2 * g))
+        if (!path) continue
         const a = at(head - k)
-        ctx.moveTo(pts[2 * a], pts[2 * a + 1])
+        path.moveTo(pts[2 * a], pts[2 * a + 1])
         for (let j = 1; j <= piece; j++) {
           const b = at(head - k - j)
-          ctx.lineTo(pts[2 * b], pts[2 * b + 1])
+          path.lineTo(pts[2 * b], pts[2 * b + 1])
         }
-        ctx.stroke()
       }
-      ctx.globalAlpha = 1
+      flush(ctx, gather)
     }
     const draw = (t: number, dt: number) => {
       begin()

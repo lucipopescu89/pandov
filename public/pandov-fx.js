@@ -161,12 +161,16 @@ text.pfx-r{translate:none}
     const topZone = sticky => { const hd = document.querySelector('header'); if (!hd) return null; return { a: hd.getBoundingClientRect().top + scrollY, b: sticky.getBoundingClientRect().top + scrollY }; };
     const spawnTop = (m, z) => { m.x = rnd(0, W); m.py = rnd(z.a, z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.06, .02); m.r = rnd(.3, 1.1); m.a = rnd(.22, .6); m.d = rnd(0, 6.28); m.born = 0; };
 
-    let txtEl = null;
+    let txtEl = null, dirty = true;
     const tick = t => {
       raf = requestAnimationFrame(tick); frameN++;
-      ctx.clearRect(0, 0, W, H);
+      // Cleared only when something was drawn on it: a full-screen canvas
+      // cleared every frame on every page is a full-screen layer the phone
+      // repaints for nothing (2026-11-12, an iPhone 8 stuttering on /body/satori).
+      if (dirty) { ctx.clearRect(0, 0, W, H); dirty = false; }
       const img = location.pathname === '/' ? document.querySelector('.presence-img') : null;
       const sticky = img && heroOf(img);
+      if (sticky) dirty = true;
       if (!sticky) { alpha = 0; seeded = false; gap = null; latched = false; txtPeak = false; topSeeded = false; topAlpha = 0; txtEl = null; return; }
       ctx.shadowColor = 'rgba(240,212,155,.6)'; ctx.shadowBlur = 3;
 
@@ -384,11 +388,12 @@ text.pfx-r{translate:none}
     const CHAOS_FOOT = .96; // the zone's top, share of the Chaos section's height (its ellipse ends about .95)
     const FOOT = 40;        // the zone ends this far under the Silence pendant's foot, px
     const FADE = 140;       // soft edge, px, at the top and the foot of the zone
-    const motes = []; let alpha = 0, seeded = false, raf, frame = 0;
+    const motes = []; let alpha = 0, seeded = false, raf, frame = 0, dirty = true;
     const look = m => { m.r = rnd(.3, 1.1); m.a = rnd(.22, .6); m.d = rnd(0, 6.28); m.born = 0; m.inside = 0; m.flung = 0; };
     const spawn = (m, Z) => { m.x = rnd(Z.l, Z.r); m.py = rnd(Z.t, Z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.08, .02); look(m); };
     const tick = t => {
-      raf = requestAnimationFrame(tick); frame++; ctx.clearRect(0, 0, W, H);
+      raf = requestAnimationFrame(tick); frame++;
+      if (dirty) { ctx.clearRect(0, 0, W, H); dirty = false; } // only when drawn on: see the dust's tick
       if (frame % 30 === 1 || !sec || !sec.isConnected) find();
       if (!sec || !rectEl) { alpha = 0; seeded = false; return; }
       const sr = sec.getBoundingClientRect();
@@ -399,6 +404,7 @@ text.pfx-r{translate:none}
       const vis = Z.b - scrollY > 0 && Z.t - scrollY < H;
       alpha += ((vis ? 1 : 0) - alpha) * .03;
       if (!vis && alpha < .01) { seeded = false; return; }
+      dirty = true;
       if (!seeded) { motes.length = 0; for (let i = 0; i < cfg.N; i++) { const m = {}; spawn(m, Z); m.born = rnd(0, 1); motes.push(m); } seeded = true; }
       const pb = rectEl.getBoundingClientRect();
       const hx = pb.left + pb.width * HEAD.fx, hy = pb.top + pb.height * HEAD.fy + scrollY;

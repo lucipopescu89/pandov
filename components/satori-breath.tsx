@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import DATA from "@/lib/satori-breath-1.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
-import { canvasDpr, comets, drawnStretches, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, comets, drawnStretches, flush, lights, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 1, "the one who sits / is complete" (2026-11-12, the author's brief).
@@ -316,6 +316,7 @@ export function SatoriBreath() {
      * `lightsA`.
      */
     const doneAt = LINES.map(() => -1)
+    const gather = lights()
     const paintHand = (b: number, ht: number, lightsA: number, now: number) => {
       hctx.setTransform(1, 0, 0, 1, 0, 0)
       hctx.clearRect(0, 0, hand.width, hand.height)
@@ -324,6 +325,10 @@ export function SatoriBreath() {
       hctx.lineWidth = dpr / hscale
       hctx.lineJoin = "round"
       hctx.lineCap = "round"
+      // every line in one stroke and every light in at most 32 (see `flush`):
+      // a stroke each was some 500 a frame, too many for an older phone
+      hctx.strokeStyle = dimFade
+      hctx.beginPath()
       for (const { l, i } of HAND) {
         const plan = PLAN[i]
         const local = ht - plan.delay
@@ -334,19 +339,18 @@ export function SatoriBreath() {
         breathe(l, b, true, hbufs[i])
         const lp = handPts[i]
         const p = ease(local / plan.duration)
-        hctx.strokeStyle = dimFade
-        hctx.beginPath()
         for (const [a0, a1] of drawnStretches(plan.mode as Mode, span(lp), p)) stretch(hctx, lp, a0, a1)
-        hctx.stroke()
         if (lightsA <= 0.003) continue
         let after = 0
         if (local >= plan.duration) {
           if (doneAt[i] < 0) doneAt[i] = now
           after = (now - doneAt[i]) / 1000
         } else doneAt[i] = -1
-        hctx.strokeStyle = lightFade
-        comets(hctx, lp, plan.mode as Mode, lightWay(plan.mode as Mode, lp, p, after, LIGHT_CFG, STEP), lightsA, LIGHT_CFG, STEP)
+        comets(gather, lp, plan.mode as Mode, lightWay(plan.mode as Mode, lp, p, after, LIGHT_CFG, STEP), lightsA, LIGHT_CFG, STEP)
       }
+      hctx.stroke()
+      hctx.strokeStyle = lightFade
+      flush(hctx, gather)
     }
 
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
