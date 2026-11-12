@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import SUN from "@/lib/satori-sun-4.json"
+import { comets, type LightCfg, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 4's sun, breathing like the sun's own atmosphere (2026-11-11, the
@@ -73,14 +74,17 @@ const TRAVEL_S = 16
  * noise shakes their rays and their whole line (`STORM_CHAOS`,
  * `STORM_JITTER`), more the further out the line is (`STORM_FROM`, `STORM_TO`,
  * in phases: 1 is the drawing's outermost line). The inner lines stay as they
- * are. It still quickens a little (`HOVER_SPEED`), and the hover drawing
+ * are. They no longer quicken (`HOVER_SPEED` 1, the same afternoon: the
+ * author found the outer lines far too fast, and asked for them only to grow
+ * and then to move as slowly as before the hover; the storm's own noise was
+ * slowed with it, `STORM_SPEED`), and the hover drawing
  * inside (`SatoriCore`) is as it was. It eases in (`HOVER_LAG_S`) and, off
  * the pendant, waits for the hover drawing to be drawn back (`UNDRAWN_EVENT`
  * from `SatoriCore`) and calms more slowly (`RETURN_LAG_S`).
  * A touch screen, with no hover, keeps it at rest; under reduced motion it is
  * drawn still and whole.
  */
-const HOVER_SPEED = 1.45
+const HOVER_SPEED = 1 // 1.45 until the author found the hover too fast, 2026-11-12
 const HOVER_LAG_S = 0.4
 const RETURN_LAG_S = 1.1
 const STORM_FROM = 0.3
@@ -88,12 +92,26 @@ const STORM_TO = 1.2
 /** How much longer the outer lines' rays are, at full storm (a share of their height). */
 const STORM_RISE = 0.5
 /** How much larger the outer lines are, whole, at full storm. */
-const STORM_SCALE = 0.3
+const STORM_SCALE = 0.5 // 0.3, then more on the author's asking
 /** The storm's own noise: its strength on the rays, its push on the whole line (frame units), how fine and how fast. */
 const STORM_CHAOS = 0.75
 const STORM_JITTER = 9
 const STORM_ROUND = 13
-const STORM_SPEED = 1.1
+const STORM_SPEED = 0.35 // 1.1 at first: it flickered, and read as speed
+
+/**
+ * On a hover the crown's lines are traced by lights too, as Satori 3's
+ * drawing is (2026-11-12, the author's asking): on every line two lights leave
+ * its top, mirrored, run round it and meet at its foot, and go on round
+ * (`lib/satori-lights.ts`), brighter than the lines (`LIGHT_PEAK`, faded
+ * towards the edge as they are) and as strong as each line is. They come with
+ * the hover and go as it ends (`LIGHTS_IN_S`, `LIGHTS_OUT_S`).
+ */
+const LIGHT = "214, 172, 106"
+const LIGHT_PEAK = 0.85
+const LIGHT_CFG: LightCfg = { trail: 320, front: 30, piece: 12, speed: 140 }
+const LIGHTS_IN_S = 0.6
+const LIGHTS_OUT_S = 0.4
 
 /**
  * The circles radiating from the pendant at rest, inside the rays (they were
@@ -156,6 +174,8 @@ const GAP = 2.5 // 3 and 6 in the 1530 frame, the same on the drawing
 const SOFT = 5
 
 const N = SUN.rise.length
+/** The index of a line's top: the angle 3/4 of a turn round (y is down). */
+const TOP = Math.round((3 * N) / 4)
 const RISE = Float32Array.from(SUN.rise)
 const MAX_RISE = Math.max(...SUN.rise)
 const COS = new Float32Array(N)
@@ -328,6 +348,19 @@ export function SatoriSun({ className }: { className?: string }) {
       ctx.stroke()
     }
 
+    const lightStyle = () => {
+      const g = ctx.createRadialGradient(SUN.fade.cx - ox, SUN.fade.cy - oy, 0, SUN.fade.cx - ox, SUN.fade.cy - oy, SUN.fade.r)
+      g.addColorStop(0, `rgba(${LIGHT}, ${LIGHT_PEAK})`)
+      g.addColorStop(1, `rgba(${LIGHT}, 0)`)
+      return g
+    }
+    const lpts = new Float32Array(N * 2)
+    const line: Pts = { pts: lpts, n: N, closed: true, total: 0 }
+    const alphas: number[] = []
+    let lightsA = 0
+    let lightT = 0
+    let photoOn = false
+
     const circle = new Float32Array(N).fill(SUN.r0)
     const pool: Float32Array[] = []
     const buf = (i: number) => (pool[i] ??= new Float32Array(N))
@@ -400,9 +433,31 @@ export function SatoriSun({ className }: { className?: string }) {
         radii(r, phase, t - CARRY * TRAVEL_S * phase, t)
         if (!crossing) nest(r, inner)
         stroke(r, alpha)
+        alphas[i - 1] = alpha
         inner = r
       }
       ctx.globalAlpha = 1
+      // the lights round the lines, on a hover
+      if (lightsA > 0.003) {
+        ctx.strokeStyle = lightStyle()
+        ctx.lineCap = "round"
+        const cx = SUN.cx - ox
+        const cy = SUN.cy - oy
+        for (let j = 0; j < i; j++) {
+          const r = pool[j]
+          // its points from its top (a quarter turn back: y is down), clockwise
+          let len = 0
+          for (let k = 0; k < N; k++) {
+            const kk = (k + TOP) % N
+            lpts[2 * k] = cx + r[kk] * COS[kk]
+            lpts[2 * k + 1] = cy + r[kk] * SIN[kk]
+            if (k) len += Math.hypot(lpts[2 * k] - lpts[2 * k - 2], lpts[2 * k + 1] - lpts[2 * k - 1])
+          }
+          const step = len / (N - 1)
+          comets(ctx, line, "both", (lightT * LIGHT_CFG.speed) / step, lightsA * alphas[j], LIGHT_CFG, step)
+        }
+        ctx.globalAlpha = 1
+      }
     }
 
     if (still) {
@@ -422,6 +477,8 @@ export function SatoriSun({ className }: { className?: string }) {
       rate += ((hovered ? HOVER_SPEED : 1) - rate) * k
       t += dt * rate
       ringT += dt
+      lightT += dt
+      lightsA = photoOn ? Math.min(1, lightsA + dt / LIGHTS_IN_S) : Math.max(0, lightsA - dt / LIGHTS_OUT_S)
       if (ringsBackAt >= 0 && now >= ringsBackAt) {
         ringsTarget = 1
         ringsBackAt = -1
@@ -442,9 +499,12 @@ export function SatoriSun({ className }: { className?: string }) {
       hovered = true
       ringsTarget = 0
       ringsBackAt = -1
+      if (!photoOn && lightsA <= 0) lightT = 0
+      photoOn = true
     }
     const leavePhoto = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return
+      photoOn = false
       ringsBackAt = performance.now() + RINGS_BACK_DELAY_S * 1000
     }
     const leave = () => {

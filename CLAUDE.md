@@ -116,6 +116,14 @@ The second collection on `/body` to be finished, on the author's asking: it stan
   - **Satori 1's frame is cut 300 at its top** (`CROP` in `satori-presentation.tsx`; the author found a gap between the first verse and the first pendant): a wrapper `.sp-crop` of the shorter proportion, overflow hidden, the frame inside moved up; the verse keeps its place.
   - **Why the page was slow:** two SVGs (Satori 1's figure, Satori 2's circles) changed every frame under masks with a Gaussian blur, which the browser blurred anew every frame; Presence's rings were an SVG the size of the frame repainted every frame; the sun's canvas was over 3300 pixels a side on a 2× screen. All four are now canvases drawing only what moves (60 frames a second in the app's browser, at rest and on every hover). Don't put moving lines back under an SVG blur mask.
 
+- **2026-11-12, later (the author's second list):**
+  - **The 8-second freeze on the way in from /body was Satori 2 measuring its line of pulses with `getPointAtLength`**, a point a unit: about 1ms a call on that path, 7,000 calls. Paths are now measured from their d by `samplePath` in `lib/satori-lights.ts` (6ms). Don't call `getPointAtLength` in a loop on these paths.
+  - **Satori 4:** the storm's outer lines are larger by a share (`STORM_SCALE` 0.3, their rays `STORM_RISE` 0.5) instead of growing faster the further they go (`STORM_GROW` raced them outward: the author found them far too fast); the noise stays. Its hover drawing is dimmed and traced by lights as Satori 3's (`dim` 0.45, `lights`).
+  - **Satori 3:** the circles inside the ring on a hover are gone (they drew the eye from the drawing); the drawing is at 0.45. **The lights now ride each line's drawing as it appears** (read from its animation), then run on: `comets`, `lightWay` in `lib/satori-lights.ts`, shared by Satori 1, 3 and 4.
+  - **Satori 2:** on a hover the nine circles fade one way only, the one leading the wave out strongest, down to `TAIL` 0.1 at the ninth (`leading`); the line of pulses is fainter on a hover (`TRACK_ALPHA` 0.2, `TRACK_BEAT_LIGHT` 0.08).
+  - **Satori 1:** its hover drawing is a canvas too, its own clock running on with the hover and back 1.6× faster off it, each line drawn as a stretch of its bent points (`drawnStretches`, `stretch`): drawn through SVG dashes, the second circle from the outside still broke as it breathed. Dimmed and traced by lights as Satori 3's (`DIM`, `LIGHT_*`).
+  - **/body:** the pieces under the rule at 35% (`WIP_PIECE_OPACITY`).
+
 ### `components/body-presentation.tsx`
 
 The whole `/body/second-wind` page in one ~650-line server component, and the most involved thing here. Two conventions govern it:
@@ -246,7 +254,7 @@ Tried and taken out the same day: one screen of small fields, a click that re-sh
 
 `components/navigation.tsx`: under each word its collections (`menuItems`): Mind the Chess Set, Body Second Wind and Satori, Space none yet. With a mouse a hover opens them in a submenu under the word, over the page on its own ground; on a touch screen (`(hover: none)`) the first tap on a word with collections opens them, a second goes to its page, a tap elsewhere closes them. **The phone shows the same row as the computer** (the author's asking; the three lines and the list under them are gone), 48px apart under 768. `pandov-fx.js` finds the words by `.nv-word` (its rise on load). A new collection goes into `menuItems`.
 
-**On `/body` the pieces under the rule are at half strength** (`WIP_PIECE_OPACITY` in `body-collections.tsx`, the author's asking: as if not yet active), as their names already were.
+**On `/body` the pieces under the rule are at 35%** (`WIP_PIECE_OPACITY` in `body-collections.tsx`, the author's asking: as if not yet active; 50% at first), as their names are faint too.
 
 ### Page shape
 
