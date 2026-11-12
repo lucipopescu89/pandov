@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { preload } from "react-dom"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
 import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
@@ -27,6 +26,34 @@ const FRAME_URLS = Array.from(
 )
 
 /**
+ * The phone's frames (2026-11-12, the author's report from an iPhone 8: the
+ * doors often stood still while the page was held, then the page jumped far
+ * down; or it scrolled up under a finger scrolling down). A portrait phone
+ * shows only the middle quarter of a frame, but it had to fetch and decode
+ * all of it: 38 AVIFs of 2667 × 1500, which an iPhone 8 decodes in software,
+ * the page's script busy for seconds while they were cut to bitmaps. A busy
+ * page cannot hold a touch, so the browser scrolled natively and the fence
+ * put the page back up.
+ *
+ * So a screen no wider than 3:5 takes `public/frames/doors-phone/`: the middle
+ * 900px of each frame, at 780 × 1300, as JPEG (the first at 92 and 4:4:4, the
+ * rest at 78), made by `scripts/hero-doors-phone.py` from the same render.
+ * 1.6MB against 2.7, a third of the pixels to decode, and JPEG, which every
+ * phone decodes quickly. Side by side with the AVIFs they cannot be told
+ * apart, and the ground stays exactly 32. They are drawn where the middle of a
+ * whole frame would be, so GAP, text 1's clip and FRAME_ASPECT hold for them
+ * unchanged.
+ */
+const PHONE_FRAME_URLS = Array.from(
+  { length: FRAME_COUNT },
+  (_, i) => `/frames/doors-phone/door-${String(i).padStart(2, "0")}.jpg`,
+)
+/** The share of a whole frame's width a phone frame is: 900 of its 2667. */
+const PHONE_CROP_SHARE = 900 / 2667
+/** A screen this narrow or narrower is wholly covered by the phone's frames. */
+const PHONE_MEDIA = "(max-aspect-ratio: 3/5)"
+
+/**
  * How many pixels of decoded frames the page will hold: 64 million, 256MB.
  * Decoded, a frame is its whole size in memory whatever its file weighs, and
  * 39 of them cut to a 1440 × 900 screen come to 212MB, on a phone 152MB; on a
@@ -37,6 +64,13 @@ const FRAME_URLS = Array.from(
  * is always kept whole.
  */
 const BITMAP_BUDGET_PX = 64e6
+/**
+ * A phone's budget: 20 million pixels, 80MB (2026-11-12). Under 64 million an
+ * iPhone 8, with 2GB in all, held some 170MB of whole bitmaps. Under this one
+ * the frames in motion there are kept at about 0.8 of their size and enlarged
+ * as they are drawn; the first is still whole.
+ */
+const PHONE_BITMAP_BUDGET_PX = 20e6
 
 /**
  * Clamp to 0..1, treating a non-finite value as 0. `scrolled / total` yields
@@ -95,9 +129,13 @@ const DOORS_S = 1.6
 /**
  * How long the page waits at the doors for frames still loading, ms, before it
  * lets the reader on without them. Measured from the scroll that asks them to
- * open.
+ * open. Then the opening is skipped, as a tap skips it (see `skip`): the
+ * screen goes to white and lifts off For Mind, and the page scrolls on as
+ * ever (2026-11-12, the author's asking: on an iPhone 8 the page was held on
+ * shut doors, scroll after scroll, and then jumped far down). It was 3.5s and
+ * let the page go on to Presence with the doors still shut.
  */
-const DOORS_WAIT_MS = 3500
+const DOORS_WAIT_MS = 2000
 
 /**
  * The doors follow the scroll (2026-11-10, the author's asking: the opening
@@ -915,6 +953,10 @@ export function HeroAnimation() {
   const shutDoorsRef = useRef<() => void>(() => {})
   // Opens them at once, on their last frame (see `skip`).
   const openDoorsRef = useRef<() => void>(() => {})
+  // Skips the opening, as a tap does (see `skip`), for frames that never come.
+  const skipRef = useRef<() => void>(() => {})
+  // A phone once turned wider than its frames cover (see PHONE_FRAME_URLS).
+  const [wide, setWide] = useState(false)
   // The doors following the scroll at the pin (see OPEN_WHEEL_PX), for the
   // scroll's hold.
   const stepRef = useRef<DoorsStep | null>(null)
@@ -928,9 +970,20 @@ export function HeroAnimation() {
     const ctx = canvas?.getContext("2d")
     if (!el || !canvas || !ctx) return
 
+    // A narrow screen takes the phone's frames (see PHONE_FRAME_URLS), unless
+    // it has once been turned wider than they cover.
+    const phone = !wide && window.matchMedia(PHONE_MEDIA).matches
+    const urls = phone ? PHONE_FRAME_URLS : FRAME_URLS
+    const budget = phone ? PHONE_BITMAP_BUDGET_PX : BITMAP_BUDGET_PX
+    // A frame's whole width, in its own file's pixels, and where the file
+    // starts in it: a phone frame is the middle of a whole one.
+    const wholeW = (img: HTMLImageElement) => img.naturalWidth / (phone ? PHONE_CROP_SHARE : 1)
+    const offsetX = (img: HTMLImageElement) => (wholeW(img) - img.naturalWidth) / 2
+
     const imgs: HTMLImageElement[] = []
     let loadedCount = 0
     let ready = false // every frame has arrived, and been decoded if it can be
+    let broken = false // a frame did not arrive: the doors cannot be played
     let disposed = false
 
     let pos = 0 // where the doors stand, 0 shut → 1 open
@@ -944,6 +997,16 @@ export function HeroAnimation() {
     let askedAt = 0
     doorsRef.current = () =>
       ready ? pos : askedAt && performance.now() - askedAt > DOORS_WAIT_MS ? 1 : 0
+    // Past the wait, or at once for frames that failed, the opening is
+    // skipped rather than let the page go on over shut doors (2026-11-12, see
+    // DOORS_WAIT_MS).
+    let giveUpTimer = 0
+    const giveUp = () => {
+      window.clearTimeout(giveUpTimer)
+      giveUpTimer = 0
+      if (disposed || ready || askedAt <= 0 || heroUp.on) return
+      skipRef.current()
+    }
     let raf = 0
     let last = 0
     let breath = 0 // frames the handles have turned in a breath (BREATH_FRAMES)
@@ -982,8 +1045,12 @@ export function HeroAnimation() {
       const gen = ++generation
       const nw = known.naturalWidth
       const nh = known.naturalHeight
+      // The canvas shows the middle of a whole frame; a phone's file is the
+      // middle of one already, `off` in from its left edge.
+      const whole = wholeW(known)
+      const off = offsetX(known)
       const scale = H / nh
-      const sx = Math.floor(Math.max(0, (nw * scale - W) / 2) / scale)
+      const sx = Math.floor(Math.max(0, (whole * scale - W) / 2 / scale - off))
       const sw = nw - 2 * sx
       // Never enlarged here: a canvas taller than the frame scales it up as
       // it draws, as it did before.
@@ -991,22 +1058,28 @@ export function HeroAnimation() {
       // The first frame, the one that stands still, is kept whole; the ones
       // in motion share what the budget leaves.
       const px = sw * k * nh * k
-      const m = Math.min(
-        1,
-        Math.max(0.3, Math.sqrt((BITMAP_BUDGET_PX - px) / (FRAME_COUNT - 1) / px) || 0),
-      )
+      const m = Math.min(1, Math.max(0.3, Math.sqrt((budget - px) / (FRAME_COUNT - 1) / px) || 0))
+      const cut = (img: HTMLImageElement, i: number) =>
+        img.naturalWidth > 0
+          ? createImageBitmap(img, sx, 0, sw, nh, {
+              resizeWidth: Math.round(sw * k * (i === 0 ? 1 : m)),
+              resizeHeight: Math.round(nh * k * (i === 0 ? 1 : m)),
+              resizeQuality: "high",
+            })
+          : Promise.resolve(null)
       try {
-        const made = await Promise.all(
-          imgs.map((img, i) =>
-            img.naturalWidth > 0
-              ? createImageBitmap(img, sx, 0, sw, nh, {
-                  resizeWidth: Math.round(sw * k * (i === 0 ? 1 : m)),
-                  resizeHeight: Math.round(nh * k * (i === 0 ? 1 : m)),
-                  resizeQuality: "high",
-                })
-              : null,
-          ),
-        )
+        // On a phone one at a time, so that a touch can still be answered
+        // between two of them (see PHONE_FRAME_URLS) and the memory rises
+        // gradually rather than all at once.
+        let made: (ImageBitmap | null)[] = []
+        if (phone) {
+          for (let i = 0; i < imgs.length; i++) {
+            if (disposed || gen !== generation) break
+            made.push(await cut(imgs[i], i))
+          }
+        } else {
+          made = await Promise.all(imgs.map(cut))
+        }
         if (disposed || gen !== generation) {
           made.forEach((b) => b?.close())
           return
@@ -1015,7 +1088,7 @@ export function HeroAnimation() {
         bitmaps = made
         fitW = W
         fitH = H
-        fitX = (W - sw * scale) / 2
+        fitX = (W - whole * scale) / 2 + (off + sx) * scale
         fitDW = sw * scale
         paint()
       } catch {
@@ -1034,8 +1107,8 @@ export function HeroAnimation() {
         return
       }
       const img = imgs[i]
-      const dw = (img.naturalWidth * H) / img.naturalHeight
-      ctx.drawImage(img, (W - dw) / 2, 0, dw, H)
+      const s = H / img.naturalHeight
+      ctx.drawImage(img, (W - wholeW(img) * s) / 2 + offsetX(img) * s, 0, img.naturalWidth * s, H)
     }
 
     const paint = () => {
@@ -1206,8 +1279,16 @@ export function HeroAnimation() {
           measure()
         })
       }
-      if (!want) askedAt = 0
-      else if (!askedAt) askedAt = performance.now()
+      if (!want) {
+        askedAt = 0
+        window.clearTimeout(giveUpTimer)
+        giveUpTimer = 0
+      } else if (!askedAt) {
+        askedAt = performance.now()
+        // Asked for before the frames could play: they have DOORS_WAIT_MS to
+        // be ready, or none at all if they have failed.
+        if (!ready) giveUpTimer = window.setTimeout(giveUp, broken ? 0 : DOORS_WAIT_MS)
+      }
       if (!primed) {
         // A page that opens part-way down, restored or followed from a link,
         // finds the doors already open rather than opening them out of sight.
@@ -1233,22 +1314,35 @@ export function HeroAnimation() {
         canvas.width = W
         canvas.height = H
       }
+      // A phone turned wider than its frames cover (to landscape) takes the
+      // whole frames, loaded afresh: this effect runs again with `wide`.
+      if (phone && cssH > 0 && cssW > cssH * FRAME_ASPECT * PHONE_CROP_SHARE + 1) {
+        setWide(true)
+        return
+      }
       paint()
       window.clearTimeout(rebuild)
       rebuild = window.setTimeout(decode, 200)
     }
 
+    let failed = 0
     const load = (i: number, then?: () => void) => {
       const img = new window.Image()
       // A frame that fails is counted all the same, and skipped when drawn,
-      // so one missing file cannot keep the doors shut.
-      const settle = () => {
+      // so one missing file cannot keep the doors shut. More than two missing
+      // (a browser that cannot read the files at all) and the doors are not
+      // played: the opening is skipped (see `giveUp`).
+      const settle = (ok: boolean) => {
         if (disposed) return
+        if (!ok && ++failed > 2 && !broken) {
+          broken = true
+          if (askedAt > 0) giveUp()
+        }
         // Whatever frame the doors stand at is drawn as soon as it arrives,
         // without waiting on the rest.
         paint()
         then?.()
-        if (++loadedCount === FRAME_COUNT) {
+        if (++loadedCount === FRAME_COUNT && !broken) {
           // They play once they are decoded, or from the images where that
           // cannot be done: a first play that stutters is the one everyone
           // sees. The scroll takes some turns to reach the pin, and decoding
@@ -1261,14 +1355,14 @@ export function HeroAnimation() {
           })
         }
       }
-      img.onload = settle
-      img.onerror = settle
-      img.src = FRAME_URLS[i]
+      img.onload = () => settle(true)
+      img.onerror = () => settle(false)
+      img.src = urls[i]
       imgs[i] = img
     }
     // The first frame first, alone: it is the one on screen, and it would
     // otherwise share the connection with the 38 behind it. The page asks for
-    // it early too (see `preload` below).
+    // it early too (see the <link>s in the markup below).
     load(0, () => {
       for (let i = 1; i < FRAME_COUNT; i++) load(i)
     })
@@ -1291,6 +1385,7 @@ export function HeroAnimation() {
       cancelAnimationFrame(raf)
       cancelAnimationFrame(waiting)
       window.clearTimeout(rebuild)
+      window.clearTimeout(giveUpTimer)
       ro.disconnect()
       window.removeEventListener("scroll", measure)
       window.removeEventListener("resize", measure)
@@ -1301,7 +1396,7 @@ export function HeroAnimation() {
       })
       bitmaps.forEach((b) => b?.close())
     }
-  }, [])
+  }, [wide])
 
   // Presence's beat, and the wash that opens For Mind's: played here, outside
   // React, as the doors are (see `lib/played-beat.ts`). Each starts with the
@@ -1562,9 +1657,8 @@ export function HeroAnimation() {
       window.scrollTo({ top: at, behavior: "instant" })
     }
 
-    const skip = (e: MouseEvent) => {
-      if (busy || heroUp.on || e.button !== 0) return
-      if (e.target instanceof Element && e.target.closest("a, button, input, textarea, select")) return
+    const run = () => {
+      if (busy || heroUp.on) return
       const past = -el.getBoundingClientRect().top
       if (past >= mindAt(stickyRef.current) || mindRef.current() > 0) return
       if (reduce.matches) return jump()
@@ -1593,8 +1687,17 @@ export function HeroAnimation() {
         })
       })
     }
+    const skip = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      if (e.target instanceof Element && e.target.closest("a, button, input, textarea, select")) return
+      run()
+    }
+    // The doors' player skips the same way when their frames do not come
+    // (see `giveUp`).
+    skipRef.current = run
     window.addEventListener("click", skip)
     return () => {
+      skipRef.current = () => {}
       window.removeEventListener("click", skip)
       timers.forEach((t) => window.clearTimeout(t))
       veil?.remove()
@@ -1602,8 +1705,9 @@ export function HeroAnimation() {
   }, [])
 
   // The first frame is what the hero shows until the wheel turns, so the page
-  // asks for it with the document rather than once the script has run.
-  preload(FRAME_URLS[0], { as: "image", fetchPriority: "high" })
+  // asks for it with the document rather than once the script has run: the
+  // phone's on a narrow screen, the whole one on any other (the two <link>s
+  // rendered below, hoisted into the head by React, each with its `media`).
 
   // The one thing still driven by the scroll: the settle into the pin.
   useEffect(() => {
@@ -1652,6 +1756,14 @@ export function HeroAnimation() {
       ref={containerRef}
       style={{ height: `calc(${100 + SCROLL_VH}vh + ${SCROLL_PX}px)`, position: "relative" }}
     >
+      <link rel="preload" as="image" href={PHONE_FRAME_URLS[0]} media={PHONE_MEDIA} fetchPriority="high" />
+      <link
+        rel="preload"
+        as="image"
+        href={FRAME_URLS[0]}
+        media={`not all and ${PHONE_MEDIA}`}
+        fetchPriority="high"
+      />
       {/* Sticky viewport */}
       <div
         ref={stickyRef}

@@ -10,6 +10,13 @@ drawing at `BOX` (frame units, the 1530 × 1635 frames of
 scripts/satori-drawings.py), centred on the frame's middle; `PHOTO_BOX` in
 components/satori-presentation.tsx holds the top, width and height it prints.
 
+Since 2026-11-12 the frames are 1275 × 1380 (125% of Figma's, not 150%). `BOX`
+stays in the 1530 frame it was measured in, and the script prints the place
+in the 1275 one (`K`: the square's foot stays the frame's foot, the 105 over
+it the verse's). The photographs on disk were made at the 1530 frame's
+DENSITY, which is 2.4 pixels to a unit of the smaller frame; run again, it
+makes them at 2 to the unit of the 1275 frame.
+
 Where and how large (2026-11-11): from four screenshots of 3ds Max the author
 sent, each pendant's model standing in its drawing as the author drew them
 round it. Each screenshot's gold lines were fitted onto the drawing, scale
@@ -48,6 +55,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+# The 1530 frame, where BOX was measured, carried to the 1275 one.
+K = 1275 / 1530
 AXIS_X = 765
 # Frame units: the pendant's top and foot.
 BOX = {1: (836.8, 1004.7), 2: (791.0, 1005.9), 3: (694.4, 1148.4), 4: (724.5, 1070.4)}
@@ -113,11 +122,13 @@ def main(src, out):
         cx = axis(b[..., 3])
         half = max(cx - xs.min(), xs.max() + 1 - cx)
         crop = big.crop((round(cx - half), ys.min(), round(cx + half), ys.max() + 1))
-        h = foot - top
+        # Measured in the 1530 frame, placed in the 1275 one.
+        h = (foot - top) * K
         w = h * crop.width / crop.height
+        top = 105 + (top - 105) * K
         crop = crop.resize((round(w * DENSITY), round(h * DENSITY)), Image.Resampling.LANCZOS)
         crop.save(out / f"photo-{n}.avif", quality=80)
-        print(f"photo-{n}.avif {crop.size}: turned {ang:+.2f}°, left {AXIS_X - w / 2:.1f}, top {top}, width {w:.1f}, height {h:.1f}")
+        print(f"photo-{n}.avif {crop.size}: turned {ang:+.2f}°, left {AXIS_X * K - w / 2:.1f}, top {top:.1f}, width {w:.1f}, height {h:.1f}")
 
 
 if __name__ == "__main__":

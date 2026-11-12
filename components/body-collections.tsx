@@ -43,6 +43,9 @@ const EMPEROR_FOOT_INSET = 20
  * bracelet and neither looks the heavier. Within `PIECE_MAX_H` × `PIECE_MAX_W`.
  * `scale` in `BODY_PIECES` is the author's knob for one that reads wrong.
  */
+/** The pieces under the rule, work in progress, are drawn faint, as if not yet active (2026-11-12, the author's asking: 50%, then 35%). */
+const WIP_PIECE_OPACITY = 0.35
+
 const PIECE_AREA = 235
 const PIECE_MAX_H = 320
 const PIECE_MAX_W = 300
@@ -139,6 +142,8 @@ export function BodyCollections() {
               className={fit ? "cp-fit" : undefined}
               style={{
                 ...(fit ? ({ "--fit": fit.toFixed(4) } as React.CSSProperties) : {}),
+                // as if not yet active, like their names (2026-11-12, the author's asking)
+                opacity: WIP_PIECE_OPACITY,
                 display: "block",
                 width: piece.w * k,
                 maxWidth: "none",

@@ -107,6 +107,12 @@ type Props = {
    */
   growth?: number
   /**
+   * Seconds a ring takes from the outline to its reach (default `CYCLE`, 18).
+   * With `rings` it sets the pace: a new ring leaves every `cycle / rings`.
+   * Satori 4's field takes 14, to go out at the pace of its sun's rays.
+   */
+  cycle?: number
+  /**
    * Held still while the field is out of sight. A ripple nobody can see still
    * costs a frame, and a paused animation resumes exactly where it stopped, so
    * the field is still spread out when it comes back.
@@ -125,6 +131,7 @@ export function RadiantRings({
   peak = 0.22,
   reach = DEFAULT_REACH,
   growth = 1,
+  cycle = CYCLE,
   paused,
 }: Props) {
   // Named after the curve, so two fields that travel differently can't each
@@ -166,12 +173,12 @@ export function RadiantRings({
               // and one of them later goes away, and `paused` does exactly
               // that when the field comes and goes.
               animationName: ripple,
-              animationDuration: `${CYCLE}s`,
+              animationDuration: `${cycle}s`,
               animationTimingFunction: "linear",
               animationIterationCount: "infinite",
               // Negative, so the field is already spread out on arrival
               // instead of building up ring by ring.
-              animationDelay: `${+((-i * CYCLE) / rings).toFixed(3)}s`,
+              animationDelay: `${+((-i * cycle) / rings).toFixed(3)}s`,
               animationPlayState: paused ? "paused" : "running",
               willChange: "transform, opacity",
             }}

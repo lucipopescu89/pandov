@@ -38,17 +38,85 @@ import SUN from "@/lib/satori-sun-4.json"
  */
 
 const GOLD = "198, 155, 92" // #C69B5C
-const FRAME_W = 1530
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+/** The frame, as scripts/satori-drawings.py writes it (125% of Figma's, since 2026-11-12). */
+const FRAME_W = 1275
+const FRAME_H = 1380
 /**
  * The canvas: a square on the sun's centre, wider than the frame, so a line
  * that has grown past the drawing can go on growing until it has faded out;
  * it runs over the frames' edges, faint by then (the page crops it at the
- * window's sides).
+ * window's sides). 2100 since the solar storm (below), whose outer lines go
+ * further (1667 before).
  */
-const SIDE = 2000
+const SIDE = 2100
+/**
+ * The canvas's pixels are capped at this many a side: at twice the screen's
+ * pixels the 2100 square would be over 4000 a side, cleared and drawn every
+ * frame (the page was slow, 2026-11-12). The lines stay one screen pixel.
+ */
+const MAX_PX = 2800
 
 const TRAVEL_S = 16
-const LINES = SUN.lines - 1 // the circle is drawn on its own
+
+/**
+ * **The sun keeps its size, and a hover over the pendant is a solar storm**
+ * (2026-11-12, the author's asking; until then the sun rested at 85% and grew
+ * to its place on a hover). On a hover the outer lines, the last rows of the
+ * rays, are larger (`STORM_SCALE`, and their rays longer, `STORM_RISE`) and
+ * move out at their own pace (the same afternoon, the author's asking: at
+ * first they grew faster the further they went, and raced; `STORM_GROW` was
+ * 0.85), and they turn chaotic: a second, finer and faster
+ * noise shakes their rays and their whole line (`STORM_CHAOS`,
+ * `STORM_JITTER`), more the further out the line is (`STORM_FROM`, `STORM_TO`,
+ * in phases: 1 is the drawing's outermost line). The inner lines stay as they
+ * are. It still quickens a little (`HOVER_SPEED`), and the hover drawing
+ * inside (`SatoriCore`) is as it was. It eases in (`HOVER_LAG_S`) and, off
+ * the pendant, waits for the hover drawing to be drawn back (`UNDRAWN_EVENT`
+ * from `SatoriCore`) and calms more slowly (`RETURN_LAG_S`).
+ * A touch screen, with no hover, keeps it at rest; under reduced motion it is
+ * drawn still and whole.
+ */
+const HOVER_SPEED = 1.45
+const HOVER_LAG_S = 0.4
+const RETURN_LAG_S = 1.1
+const STORM_FROM = 0.3
+const STORM_TO = 1.2
+/** How much longer the outer lines' rays are, at full storm (a share of their height). */
+const STORM_RISE = 0.5
+/** How much larger the outer lines are, whole, at full storm. */
+const STORM_SCALE = 0.3
+/** The storm's own noise: its strength on the rays, its push on the whole line (frame units), how fine and how fast. */
+const STORM_CHAOS = 0.75
+const STORM_JITTER = 9
+const STORM_ROUND = 13
+const STORM_SPEED = 1.1
+
+/**
+ * The circles radiating from the pendant at rest, inside the rays (they were
+ * Presence's `RadiantRings` in `SatoriCore`, an SVG repainted every frame;
+ * drawn here since 2026-11-12, on the canvas that is drawn anyway). Each
+ * leaves `RING_FROM` from the sun's centre, about 60px clear of the pendant,
+ * and fades out as it reaches the circle the rays rise from (`SUN.r0`); one
+ * leaves every 2s (`RING_CYCLE_S` / `RINGS`), fading in over the first 14% of
+ * its way, at `RING_PEAK`, gold at its top and 45% of that at its foot, its
+ * hairline (`RING_STROKE`) growing with it. On a hover over the pendant they
+ * fade out (`RINGS_OUT_S`), and come back after it (`RINGS_BACK_S`).
+ */
+const RING_FROM = 180
+const RING_CYCLE_S = 14
+const RINGS = 7
+const RING_PEAK = 0.25
+const RING_STROKE = 0.75
+const RINGS_OUT_S = 0.7
+const RINGS_BACK_S = 1.4
+const RINGS_BACK_DELAY_S = 0.3
+/** Sent on the frame by `SatoriCore` once its drawing has been drawn back. */
+export const UNDRAWN_EVENT = "satori-undrawn"
+const LINES = SUN.lines - 1 // the circle is not drawn: the lines are born on it unseen
 const SPACING = 1 / LINES
 /** How far past the drawing's outermost line a line goes before it has faded away (1 = the outermost line). */
 const FADE_OUT = 1.75
@@ -84,8 +152,8 @@ const CARRY = 0.8
  * apart, the push eased over `SOFT` so it bends rather than kinks. The first
  * version let them cross; `?sun=cross` on the page shows it again.
  */
-const GAP = 3
-const SOFT = 6
+const GAP = 2.5 // 3 and 6 in the 1530 frame, the same on the drawing
+const SOFT = 5
 
 const N = SUN.rise.length
 const RISE = Float32Array.from(SUN.rise)
@@ -173,13 +241,15 @@ export function SatoriSun({ className }: { className?: string }) {
     const size = () => {
       const cssW = canvas.getBoundingClientRect().width
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const px = Math.max(1, Math.round(cssW * dpr))
+      const px = Math.max(1, Math.min(MAX_PX, Math.round(cssW * dpr)))
       if (canvas.width !== px) {
         canvas.width = px
         canvas.height = px
       }
       scale = px / SIDE
-      return dpr
+      // device pixels per CSS pixel, as the canvas is drawn (less than the
+      // screen's when capped), so a line of `dpr / scale` is one CSS pixel
+      return cssW > 0 ? px / cssW : dpr
     }
     let dpr = size()
 
@@ -188,24 +258,31 @@ export function SatoriSun({ className }: { className?: string }) {
     const oy = SUN.cy - SIDE / 2
     const tip = new Float32Array(NOISE_N)
     const swell = new Float32Array(NOISE_N)
+    const chaos = new Float32Array(NOISE_N)
+    let storm = 0 // 0 at rest → 1 on a hover over the pendant
 
     const strokeStyle = () => {
       const g = ctx.createRadialGradient(SUN.fade.cx - ox, SUN.fade.cy - oy, 0, SUN.fade.cx - ox, SUN.fade.cy - oy, SUN.fade.r)
-      g.addColorStop(0, `rgba(${GOLD}, 1)`)
+      g.addColorStop(0, `rgba(${GOLD}, ${SUN.fade.peak})`) // as strong as the drawings' (INTENSITY in the script)
       g.addColorStop(1, `rgba(${GOLD}, 0)`)
       return g
     }
 
-    /** A line's radius at every angle, into `out`. */
-    const radii = (out: Float32Array, phase: number, noiseAt: number | null) => {
-      const grow = 1 + GROW * Math.max(0, phase - 1)
-      const rise = Math.min(phase, 1)
+    /** A line's radius at every angle, into `out`; `now` is the time, for the storm's noise. */
+    const radii = (out: Float32Array, phase: number, noiseAt: number | null, now = 0) => {
+      // the storm: the further out the line, the more
+      const s = noiseAt === null ? 0 : storm * smooth(STORM_FROM, STORM_TO, phase)
+      const grow = (1 + GROW * Math.max(0, phase - 1)) * (1 + STORM_SCALE * s)
+      const rise = Math.min(phase, 1) * (1 + STORM_RISE * s)
       if (noiseAt !== null) {
         noiseRing(tip, noiseAt * NOISE_SPEED, NOISE_ROUND, 0)
         noiseRing(swell, noiseAt * NOISE_SPEED * 0.5, 1.6, 40)
+        // its own noise, read now and not carried, each line a little apart: turbulent
+        if (s > 0.005) noiseRing(chaos, now * STORM_SPEED + phase * 2.3, STORM_ROUND, 90)
       }
       for (let kk = 0; kk < N; kk++) {
         let h = RISE[kk] * rise
+        let jitter = 0
         if (noiseAt !== null) {
           const f = (kk / N) * NOISE_N
           const i0 = Math.floor(f) % NOISE_N
@@ -214,9 +291,15 @@ export function SatoriSun({ className }: { className?: string }) {
           const nt = tip[i0] + (tip[i1] - tip[i0]) * u
           const ns = swell[i0] + (swell[i1] - swell[i0]) * u
           const tipness = RISE[kk] / MAX_RISE // the tips move most, the valleys least
-          h *= Math.max(0, 1 + TIP_NOISE * nt * (0.35 + 0.65 * tipness) + SWELL * ns)
+          let k = 1 + TIP_NOISE * nt * (0.35 + 0.65 * tipness) + SWELL * ns
+          if (s > 0.005) {
+            const nc = chaos[i0] + (chaos[i1] - chaos[i0]) * u
+            k += STORM_CHAOS * s * nc * (0.4 + 0.6 * tipness)
+            jitter = STORM_JITTER * s * nc
+          }
+          h *= Math.max(0, k)
         }
-        out[kk] = (SUN.r0 + h) * grow
+        out[kk] = (SUN.r0 + h) * grow + jitter
       }
     }
 
@@ -249,14 +332,49 @@ export function SatoriSun({ className }: { className?: string }) {
     const pool: Float32Array[] = []
     const buf = (i: number) => (pool[i] ??= new Float32Array(N))
 
+    // On a hover, a solar storm and a little quicker (see STORM_*).
+    let rate = 1
+    let hovered = false
+    // The radiating circles: their own time, and how much they are seen (0 on a hover).
+    let ringT = 0
+    let ringsA = 1
+    let ringsTarget = 1
+    let ringsBackAt = -1
+
+    /** The radiating circles inside the rays, at time `rt`. */
+    const drawRings = (rt: number) => {
+      if (ringsA < 0.003) return
+      const cx = SUN.cx - ox
+      const cy = SUN.cy - oy
+      for (let i = 0; i < RINGS; i++) {
+        const f = (((rt / RING_CYCLE_S + i / RINGS) % 1) + 1) % 1
+        const fade = f < 0.14 ? f / 0.14 : (1 - f) / 0.86
+        const a = RING_PEAK * ringsA * fade
+        if (a < 0.003) continue
+        const r = RING_FROM + (SUN.r0 - RING_FROM) * f
+        const g = ctx.createLinearGradient(0, cy - r, 0, cy + r)
+        g.addColorStop(0, `rgb(${GOLD})`)
+        g.addColorStop(1, `rgba(${GOLD}, 0.45)`)
+        ctx.strokeStyle = g
+        ctx.globalAlpha = a
+        ctx.lineWidth = RING_STROKE * (r / RING_FROM)
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI)
+        ctx.stroke()
+      }
+      ctx.globalAlpha = 1
+    }
+
     const draw = (t: number | null) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.setTransform(scale, 0, 0, scale, 0, 0)
+      if (t !== null) drawRings(ringT)
       ctx.lineWidth = dpr / scale // one screen pixel, like the drawings' lines
       ctx.lineJoin = "round"
       ctx.strokeStyle = strokeStyle()
-      stroke(circle, 1) // the circle the lines are born on
+      // The circle the lines are born on is not drawn (2026-11-12, the author's
+      // asking: it stood still inside the moving lines); they still rise off it.
       if (t === null) {
         for (let k = 1; k <= LINES; k++) {
           const r = buf(k)
@@ -279,7 +397,7 @@ export function SatoriSun({ className }: { className?: string }) {
         const alpha = fadeIn * fadeIn * (fadeOut * fadeOut * (3 - 2 * fadeOut))
         const r = buf(i++)
         // a line reads the noise from about when it was born: it carries its shape out
-        radii(r, phase, t - CARRY * TRAVEL_S * phase)
+        radii(r, phase, t - CARRY * TRAVEL_S * phase, t)
         if (!crossing) nest(r, inner)
         stroke(r, alpha)
         inner = r
@@ -297,11 +415,44 @@ export function SatoriSun({ className }: { className?: string }) {
     let last = performance.now()
     let t = TRAVEL_S * FADE_OUT // start full: the lines already under way
     const tick = (now: number) => {
-      t += Math.min(0.1, (now - last) / 1000)
+      const dt = Math.min(0.1, (now - last) / 1000)
       last = now
+      const k = 1 - Math.exp(-dt / (hovered ? HOVER_LAG_S : RETURN_LAG_S))
+      storm += ((hovered ? 1 : 0) - storm) * k
+      rate += ((hovered ? HOVER_SPEED : 1) - rate) * k
+      t += dt * rate
+      ringT += dt
+      if (ringsBackAt >= 0 && now >= ringsBackAt) {
+        ringsTarget = 1
+        ringsBackAt = -1
+      }
+      ringsA = ringsTarget > ringsA
+        ? Math.min(ringsTarget, ringsA + dt / RINGS_BACK_S)
+        : Math.max(ringsTarget, ringsA - dt / RINGS_OUT_S)
       draw(t)
       raf = requestAnimationFrame(tick)
     }
+    // The pendant's photograph, in the same frame: a mouse over it. Off it,
+    // the storm waits for the drawing to be drawn back (UNDRAWN_EVENT); the
+    // radiating circles come back as the drawing goes.
+    const frame = canvas.parentElement
+    const photo = frame?.querySelector<HTMLElement>(".sp-photo")
+    const enter = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return
+      hovered = true
+      ringsTarget = 0
+      ringsBackAt = -1
+    }
+    const leavePhoto = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return
+      ringsBackAt = performance.now() + RINGS_BACK_DELAY_S * 1000
+    }
+    const leave = () => {
+      hovered = false
+    }
+    photo?.addEventListener("pointerenter", enter)
+    photo?.addEventListener("pointerleave", leavePhoto)
+    frame?.addEventListener(UNDRAWN_EVENT, leave)
     const io = new IntersectionObserver(([e]) => {
       if (e.isIntersecting && !on) {
         on = true
@@ -323,6 +474,9 @@ export function SatoriSun({ className }: { className?: string }) {
       io.disconnect()
       ro.disconnect()
       cancelAnimationFrame(raf)
+      photo?.removeEventListener("pointerenter", enter)
+      photo?.removeEventListener("pointerleave", leavePhoto)
+      frame?.removeEventListener(UNDRAWN_EVENT, leave)
     }
   }, [])
 
@@ -334,7 +488,7 @@ export function SatoriSun({ className }: { className?: string }) {
       style={{
         position: "absolute",
         left: `${((SUN.cx - SIDE / 2) / FRAME_W) * 100}%`,
-        top: `${((SUN.cy - SIDE / 2) / 1635) * 100}%`,
+        top: `${((SUN.cy - SIDE / 2) / FRAME_H) * 100}%`,
         width: `${(SIDE / FRAME_W) * 100}%`,
         aspectRatio: "1 / 1",
         pointerEvents: "none",

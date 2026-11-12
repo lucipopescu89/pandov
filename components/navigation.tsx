@@ -2,8 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import type React from "react"
 
 /** Brand grey used for the logo and the menu links on every page. */
 const BRAND_GRAY = "#888888"
@@ -16,10 +16,23 @@ const BRAND_GRAY = "#888888"
  */
 const LOGO_FILTER = "brightness(0) invert(53.33%)"
 
-const menuItems = [
-  { name: "Mind", href: "/mind" },
-  { name: "Body", href: "/body" },
-  { name: "Space", href: "/space" },
+/**
+ * The three words and, under each, its collections (2026-11-12, the author's
+ * asking): a hover over a word opens them, a submenu under it. Mind has the
+ * Chess Set, Body Second Wind and Satori, Space nothing yet. A collection
+ * added to a page goes here too.
+ */
+const menuItems: { name: string; href: string; collections: { name: string; href: string }[] }[] = [
+  { name: "Mind", href: "/mind", collections: [{ name: "Chess Set", href: "/mind/chess-set" }] },
+  {
+    name: "Body",
+    href: "/body",
+    collections: [
+      { name: "Second Wind", href: "/body/second-wind" },
+      { name: "Satori", href: "/body/satori" },
+    ],
+  },
+  { name: "Space", href: "/space", collections: [] },
 ]
 
 /**
@@ -27,11 +40,37 @@ const menuItems = [
  * only thing a page may vary. The logo, the links, their colour, size, tracking
  * and spacing are the component's and are the same on every route; there is
  * deliberately no prop to override them.
+ *
+ * Since 2026-11-12 a phone shows the three words as a computer does (they were
+ * behind three lines; the author's asking), a little closer together. With a
+ * mouse, a hover over a word opens its collections under it; on a touch screen
+ * the first tap on a word with collections opens them, a second tap on it goes
+ * to its page, and a tap anywhere else closes them. A word with none (Space)
+ * goes to its page at once. The submenu lies over the page, on the page's own
+ * ground. `public/pandov-fx.js` finds the words by `.nv-word`.
  */
 export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [open, setOpen] = useState<string | null>(null)
+  const navRef = useRef<HTMLElement>(null)
 
-  const textColor = BRAND_GRAY
+  // A tap or click outside the menu closes an open submenu.
+  useEffect(() => {
+    if (!open) return
+    const away = (e: PointerEvent) => {
+      if (!navRef.current?.contains(e.target as Node)) setOpen(null)
+    }
+    document.addEventListener("pointerdown", away)
+    return () => document.removeEventListener("pointerdown", away)
+  }, [open])
+
+  const onWord = (item: (typeof menuItems)[number]) => (e: React.MouseEvent) => {
+    if (!item.collections.length) return
+    const touch = window.matchMedia("(hover: none)").matches
+    if (touch && open !== item.name) {
+      e.preventDefault()
+      setOpen(item.name)
+    }
+  }
 
   return (
     <header style={{ width: "100%", backgroundColor: bgColor }}>
@@ -59,54 +98,55 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
         </Link>
       </div>
 
-      {/* Menu */}
-      <nav className="pb-6 md:pb-8 lg:pb-10">
-        {/* Desktop Menu */}
-        <div className="hidden md:flex justify-center gap-20">
+      {/* Menu: the same row on every screen */}
+      <nav ref={navRef} className="pb-6 md:pb-8 lg:pb-10">
+        <div className="nv-row flex justify-center gap-12 md:gap-20">
           {menuItems.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="font-heading text-sm tracking-[0.2em] uppercase hover:opacity-50 transition-opacity"
-              style={{ fontSize: "12px", color: textColor }}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <div className="md:hidden flex justify-center">
-          <button
-            className="cursor-pointer bg-transparent border-none p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-          >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6" style={{ color: textColor }} />
-            ) : (
-              <Menu className="w-6 h-6" style={{ color: textColor }} />
-            )}
-          </button>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden flex flex-col items-center gap-6 pt-6 pb-4">
-            {menuItems.map((item) => (
+            <div key={item.name} className={`nv-item${open === item.name ? " nv-open" : ""}`}>
               <Link
-                key={item.name}
                 href={item.href}
-                className="font-heading text-sm tracking-[0.2em] uppercase hover:opacity-50 transition-opacity"
-                style={{ fontSize: "12px", color: textColor }}
-                onClick={() => setMobileMenuOpen(false)}
+                className="nv-word font-heading text-sm tracking-[0.2em] uppercase hover:opacity-50 transition-opacity"
+                style={{ fontSize: "12px", color: BRAND_GRAY }}
+                onClick={onWord(item)}
+                aria-haspopup={item.collections.length ? "true" : undefined}
+                aria-expanded={item.collections.length ? open === item.name : undefined}
               >
                 {item.name}
               </Link>
-            ))}
-          </div>
-        )}
+              {item.collections.length > 0 && (
+                <div className="nv-sub" style={{ backgroundColor: bgColor }}>
+                  {item.collections.map((c) => (
+                    <Link
+                      key={c.href}
+                      href={c.href}
+                      className="font-heading uppercase tracking-[0.2em] hover:opacity-50 transition-opacity"
+                      style={{ fontSize: "11px", color: BRAND_GRAY }}
+                      onClick={() => setOpen(null)}
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </nav>
+      <style>{`
+        .nv-item { position: relative; display: flex; justify-content: center; }
+        .nv-sub { position: absolute; top: 100%; left: 50%; z-index: 60; display: flex; flex-direction: column; align-items: center;
+          gap: 14px; margin-top: 12px; padding: 12px 20px 14px; white-space: nowrap;
+          opacity: 0; visibility: hidden; transform: translate(-50%, -4px);
+          transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s linear 0.35s; }
+        /* the gap between the word and its submenu still counts as over it */
+        .nv-sub::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 12px; }
+        .nv-open > .nv-sub, .nv-item:has(:focus-visible) > .nv-sub { opacity: 1; visibility: visible; transform: translate(-50%, 0);
+          transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s; }
+        @media (hover: hover) {
+          .nv-item:hover > .nv-sub { opacity: 1; visibility: visible; transform: translate(-50%, 0);
+            transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s; }
+        }
+      `}</style>
     </header>
   )
 }

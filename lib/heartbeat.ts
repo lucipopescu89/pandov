@@ -24,8 +24,12 @@ const HEART_SAMPLES = 32
  */
 const GLOW_FALL_S = 0.75
 
-/** Lub-dub: a strong beat, a softer echo, then rest. 0 → 1 → 0 over a period. */
-function heartbeat(t: number): number {
+/**
+ * Lub-dub: a strong beat, a softer echo, then rest. 0 → 1 → 0 over a period.
+ * Exported since 2026-11-12, when Satori 2's line of pulses took the same
+ * beat on a hover (`components/satori-pulse.tsx`).
+ */
+export function heartbeat(t: number): number {
   const lub = Math.exp(-(((t - 0.15) / 0.055) ** 2))
   const dub = 0.55 * Math.exp(-(((t - 0.33) / 0.07) ** 2))
   return Math.min(1, lub + dub)

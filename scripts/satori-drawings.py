@@ -28,7 +28,8 @@ in its square. The square is not drawn; its foot is the frame's foot, which
 leaves the frame's top 105 units for the verse. So Satori 4's sun nearly
 fills its frame and Satori 1's ring is under half of it, true to each other.
 The square was the Figma frames' width, 1020, and then, the same evening,
-150% of it (`ENLARGE`): 1530 units, 7.286 to the millimetre. (For an hour
+150% of it (`ENLARGE`): 1530 units, 7.286 to the millimetre; since 2026-11-12
+125% of it, 1275 units, 6.071 to the millimetre (the author's asking). (For an hour
 that day each drawing was instead scaled to the box its vector had in the
 author's Figma frames, which drew all four about the same size.)
 
@@ -41,9 +42,10 @@ import math, sys
 from pathlib import Path
 
 GOLD = "#C69B5C"
-# Up 150% from the Figma frames' 1020 (the author's asking, 2026-11-11): the
-# 210 mm square is 1530 units, and the frame keeps the 105 over it for the verse.
-ENLARGE = 1.5
+# 125% of the Figma frames' 1020 (the author's asking, 2026-11-12; it was 150%
+# from the evening of 2026-11-11): the 210 mm square is 1275 units, and the
+# frame keeps the 105 over it for the verse.
+ENLARGE = 1.25
 W = round(1020 * ENLARGE)
 H = W + 105
 SQUARE_PT = 595.28  # the drawings' squares, 210 mm
@@ -59,6 +61,14 @@ AXIS_DX = {4: -0.16}
 PANELS = {2: 0, 1: 1, 3: 2, 4: 3}
 # Where the fade has gone to nothing, as a share of the drawing's box (0.5 would be its edge).
 FADE_R = 0.75
+# How strong the gold is at the fade's middle (2026-11-12, the author's asking:
+# the lines were too strong). At 1 the lines were twice as bright as Second
+# Wind's, measured rasterised at their size on the page (alpha of the drawn
+# pixels: median 69 and 90th percentile 127 against 30 and 74); at 0.55 they
+# are about the same (38 and 70). The width was already Second Wind's main
+# lines', one screen pixel. The sun's and the core's JSON carry it as
+# `fade.peak` for the page's own drawing of them.
+INTENSITY = 0.55
 
 
 def parse(path):
@@ -129,6 +139,43 @@ def path_d(s, tf):
     return "".join(d)
 
 
+def points(s, tf, k=24):
+    """A shape's points on the frame, its curves cut into `k` straight steps."""
+    pos = s["start"]
+    o = [tf(*pos)]
+    for kind, v in s["segs"]:
+        if kind == "C":
+            o += [tf(x, y) for x, y in list(bez(pos, v[0:2], v[2:4], v[4:6], k))[1:]]
+            pos = (v[4], v[5])
+        else:
+            pos = (v[0], v[1])
+            o.append(tf(*pos))
+    return o
+
+
+def hand_lines(shapes, tf):
+    """
+    Lines for the page to draw by hand on a hover (components/satori-core.tsx):
+    each path's d, its length in frame units, its two ends and the point
+    halfway along it, so it can be drawn from wherever is nearest the pendant.
+    """
+    lines = []
+    for s in shapes:
+        p = points(s, tf, 48)
+        seg = [math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]) for i in range(len(p) - 1)]
+        total, run, mid = sum(seg), 0.0, p[-1]
+        for i, q in enumerate(seg):
+            if run + q >= total / 2:
+                f = (total / 2 - run) / q if q else 0
+                mid = (p[i][0] + (p[i + 1][0] - p[i][0]) * f, p[i][1] + (p[i + 1][1] - p[i][1]) * f)
+                break
+            run += q
+        (sx, sy), (ex, ey) = tf(*s["start"]), tf(*s["segs"][-1][1][-2:])
+        lines.append({"d": path_d(s, tf), "len": round(total, 1), "start": [round(sx, 2), round(sy, 2)],
+                      "mid": [round(mid[0], 2), round(mid[1], 2)], "end": [round(ex, 2), round(ey, 2)]})
+    return lines
+
+
 SUN_SAMPLES = 720
 
 
@@ -154,18 +201,7 @@ def write_sun(drawing, tf, gx, gy, gr, out, svg):
     import json
     stars = [s for s in drawing if is_star(s)]
     rest = [s for s in drawing if not is_star(s)]
-    def pts(s, k=24):
-        pos = s["start"]
-        o = [tf(*pos)]
-        for kind, v in s["segs"]:
-            if kind == "C":
-                o += [tf(x, y) for x, y in list(bez(pos, v[0:2], v[2:4], v[4:6], k))[1:]]
-                pos = (v[4], v[5])
-            else:
-                pos = (v[0], v[1])
-                o.append(tf(*pos))
-        return o
-    lines = [pts(s) for s in stars]
+    lines = [points(s, tf) for s in stars]
     def radius(line, c):
         th = [math.atan2(y - c[1], x - c[0]) % (2 * math.pi) for x, y in line]
         rr = [math.hypot(x - c[0], y - c[1]) for x, y in line]
@@ -193,7 +229,7 @@ def write_sun(drawing, tf, gx, gy, gr, out, svg):
     outer = max(lines, key=lambda l: max(math.hypot(x - c[0], y - c[1]) for x, y in l))
     rise = [max(0.0, q - r0) for q in radius(outer, c)]
     data = {"cx": round(c[0], 2), "cy": round(c[1], 2), "r0": round(r0, 2), "lines": len(lines),
-            "fade": {"cx": round(gx, 2), "cy": round(gy, 2), "r": round(gr, 2)},
+            "fade": {"cx": round(gx, 2), "cy": round(gy, 2), "r": round(gr, 2), "peak": INTENSITY},
             "rise": [round(q, 2) for q in rise]}
     lib = Path(__file__).resolve().parent.parent / "lib" / "satori-sun-4.json"
     lib.write_text(json.dumps(data))
@@ -201,7 +237,109 @@ def write_sun(drawing, tf, gx, gy, gr, out, svg):
         "\n".join(f'<path d="{path_d(s, tf)}"/>' for s in rest) + "\n</g>\n</svg>\n"
     core = core.replace("Satori 4: written", "Satori 4 without its stars (the page animates them): written")
     (out / "drawing-4-core.svg").write_text(core)
+    # The same lines for the page to draw by hand on a hover (2026-11-12, the
+    # author's asking; components/satori-core.tsx), with the drawings' fade.
+    (lib.parent / "satori-core-4.json").write_text(json.dumps(
+        {"fade": {"cx": round(gx, 2), "cy": round(gy, 2), "r": round(gr, 2), "peak": INTENSITY}, "lines": hand_lines(rest, tf)}))
     print(f"sun: centre {c[0]:.2f},{c[1]:.2f}, circle {r0:.2f}, rays up to {max(rise):.1f}, {len(lines)} lines")
+
+
+# Satori 2's pulse line is drawn this much larger about its middle (2026-11-12, the author's asking: 120%).
+PULSE_SCALE = 1.2
+
+
+def write_pulse(drawing, tf, svg, out, gx, gy, gr):
+    """
+    Satori 2, "a pulse of sparks / at the edge of mind" (2026-11-12, the
+    author's brief): the line of pulses round the circles, the one that reads
+    like a heart's trace, is no longer drawn; a light runs along it instead
+    (components/satori-pulse.tsx), a little larger than drawn (`PULSE_SCALE`
+    about its middle). Its twenty pieces, the open shapes, one after another
+    round the circle clockwise, are joined into one closed path and written
+    to lib/satori-pulse-2.json; the circles inside, the closed shapes, to
+    drawing-2-rest.svg (for reference: the page now draws them itself, from
+    lib/satori-core-2.json, components/satori-pulse.tsx).
+    """
+    import json
+    pieces = [s for s in drawing if not s.get("closed")]
+    rest = [s for s in drawing if s.get("closed")]
+    ends = [tf(*s["start"]) for s in pieces]
+    mx = sum(x for x, _ in ends) / len(ends)
+    my = sum(y for _, y in ends) / len(ends)
+    big = lambda x, y: (lambda p: (mx + (p[0] - mx) * PULSE_SCALE, my + (p[1] - my) * PULSE_SCALE))(tf(x, y))
+    d = "".join(path_d(s, big) if i == 0 else path_d(s, big).split("C", 1)[1].join(["C", ""]) for i, s in enumerate(pieces))
+    d = d.rstrip("Z") + "Z"
+    lib = Path(__file__).resolve().parent.parent / "lib" / "satori-pulse-2.json"
+    lib.write_text(json.dumps({"cx": round(mx, 2), "cy": round(my, 2), "scale": PULSE_SCALE, "d": d}))
+    # The circles inside, each starting at the foot of its dip, for the page
+    # to show only round the pendant's foot and to draw whole, one at a time,
+    # as the light passes the pulses (2026-11-12, the author's asking).
+    (lib.parent / "satori-core-2.json").write_text(json.dumps(
+        {"fade": {"cx": round(gx, 2), "cy": round(gy, 2), "r": round(gr, 2), "peak": INTENSITY}, "lines": hand_lines(rest, tf)}))
+    head = svg.split("<g stroke")[0]
+    body = '<g stroke="url(#g)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">\n' + \
+        "\n".join(f'<path d="{path_d(s, tf)}"/>' for s in rest) + "\n</g>\n</svg>\n"
+    (out / "drawing-2-rest.svg").write_text(
+        head.replace("Satori 2: written", "Satori 2 without its pulse line (the page runs a light along it): written") + body)
+    print(f"pulse: {len(pieces)} pieces joined about {mx:.2f},{my:.2f} at {PULSE_SCALE:.0%}; {len(rest)} circles kept")
+
+
+# Satori 1's lines as points this far apart (frame units), for the page to bend as it breathes.
+BREATH_STEP = 2.5
+
+
+def write_breath(drawing, tf, gx, gy, gr):
+    """
+    Satori 1, "the one who sits / is complete" (2026-11-12, the author's
+    brief): only the figure sitting in meditation is shown, its circles hidden;
+    its heart beats, the lines round the heart and the figure breathe, and on
+    a hover the whole drawing is drawn by hand (components/satori-breath.tsx).
+    The page bends the lines every frame, so they are written as points
+    `BREATH_STEP` apart rather than curves, with what each is: "outer" (the
+    great circle), "middle" (the middle circle, which comes down into the
+    lines round the heart), "body" (the figure's body and crossed legs),
+    "outline" (the great inner circle, which comes down into the figure's
+    shoulders and arms) and "heart" (the small circle at its heart); and for
+    the hand drawing, each line's length, ends and middle (as `hand_lines`).
+    Written to lib/satori-breath-1.json, the points as 16-bit tenths in base64.
+    """
+    import base64
+    import json
+    import struct
+    def box(s):
+        p = points(s, tf)
+        xs = [x for x, _ in p]; ys = [y for _, y in p]
+        return min(xs), min(ys), max(xs), max(ys)
+    boxes = [box(s) for s in drawing]
+    heart = min(range(len(drawing)), key=lambda i: boxes[i][2] - boxes[i][0])
+    outline = [i for i, s in enumerate(drawing) if not s.get("closed")][0]
+    closed = sorted((i for i in range(len(drawing)) if i not in (heart, outline)), key=lambda i: boxes[i][1])
+    roles = {closed[0]: "outer", closed[1]: "middle", closed[2]: "body", outline: "outline", heart: "heart"}
+    hands = hand_lines(drawing, tf)
+    lines = []
+    for i, s in enumerate(drawing):
+        p = points(s, tf, 64)
+        if s.get("closed") and p[0] != p[-1]:
+            p.append(p[0])
+        seg = [math.hypot(p[k + 1][0] - p[k][0], p[k + 1][1] - p[k][1]) for k in range(len(p) - 1)]
+        total = sum(seg)
+        n = max(8, round(total / BREATH_STEP))
+        out_pts, run, k = [], 0.0, 0
+        for j in range(n + (0 if s.get("closed") else 1)):
+            at = total * j / n
+            while k < len(seg) - 1 and run + seg[k] < at:
+                run += seg[k]; k += 1
+            f = 0 if seg[k] == 0 else (at - run) / seg[k]
+            out_pts.append((p[k][0] + (p[k + 1][0] - p[k][0]) * f, p[k][1] + (p[k + 1][1] - p[k][1]) * f))
+        raw = b"".join(struct.pack("<hh", round(x * 10), round(y * 10)) for x, y in out_pts)
+        line = dict(hands[i])
+        del line["d"]
+        line.update({"role": roles[i], "closed": bool(s.get("closed")), "pts": base64.b64encode(raw).decode()})
+        lines.append(line)
+    lib = Path(__file__).resolve().parent.parent / "lib" / "satori-breath-1.json"
+    lib.write_text(json.dumps({"fade": {"cx": round(gx, 2), "cy": round(gy, 2), "r": round(gr, 2), "peak": INTENSITY},
+                               "lines": lines}, separators=(",", ":")))
+    print("breath: " + ", ".join(f"{l['role']} {l['len']:.0f}" for l in lines) + f"; {lib.stat().st_size // 1024} KB")
 
 
 def main(src, out):
@@ -226,7 +364,7 @@ def main(src, out):
         svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" fill="none">
 <!-- Satori {n}: written by scripts/satori-drawings.py from the author's 3ds Max .ai; edit there, not here. -->
 <defs><radialGradient id="g" gradientUnits="userSpaceOnUse" cx="{fmt(cx)}" cy="{fmt(cy)}" r="{fmt(r)}">
-<stop stop-color="{GOLD}"/><stop offset="1" stop-color="{GOLD}" stop-opacity="0"/></radialGradient></defs>
+<stop stop-color="{GOLD}" stop-opacity="{INTENSITY}"/><stop offset="1" stop-color="{GOLD}" stop-opacity="0"/></radialGradient></defs>
 <style>path{{vector-effect:non-scaling-stroke}}</style>
 <g stroke="url(#g)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
 {paths}
@@ -236,6 +374,18 @@ def main(src, out):
         (out / f"drawing-{n}.svg").write_text(svg)
         if n == 4:
             write_sun(drawing, tf, cx, cy, r, out, svg)
+        if n == 1:
+            write_breath(drawing, tf, cx, cy, r)
+        if n == 2:
+            write_pulse(drawing, tf, svg, out, cx, cy, r)
+        if n == 3:
+            # Satori 3's whole drawing, drawn by hand on a hover (2026-11-12;
+            # at rest the page shows circles closing on the pendant instead,
+            # scripts/satori-flow.py).
+            import json
+            lib = Path(__file__).resolve().parent.parent / "lib" / "satori-core-3.json"
+            lib.write_text(json.dumps({"fade": {"cx": round(cx, 2), "cy": round(cy, 2), "r": round(r, 2), "peak": INTENSITY},
+                                       "lines": hand_lines(drawing, tf)}))
         print(f"drawing-{n}.svg: {len(drawing)} shapes, {SCALE * 72 / 25.4:.3f} units per mm, "
               f"box {fmt(bx)},{fmt(by)} {fmt(bw)} x {fmt(bh)}")
 
