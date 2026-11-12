@@ -465,15 +465,15 @@ export function SatoriSun({ className }: { className?: string }) {
         inner = r
       }
       ctx.globalAlpha = 1
-      // the lights round the lines, on a hover
-      if (lightsA > 0.003) {
+      // the lights round the lines, on a hover; not on a phone (2026-11-12,
+      // the author's asking: there they cost more than they gave)
+      if (lightsA > 0.003 && !lite) {
         ctx.strokeStyle = lightStyle()
         ctx.lineCap = "round"
         ctx.lineWidth = (LIGHT_PX * dpr) / scale
         const cx = SUN.cx - ox
         const cy = SUN.cy - oy
         for (let j = 0; j < i; j++) {
-          if (lite && j % 2) continue
           const r = pool[j]
           // its points from its top (a quarter turn back: y is down), clockwise
           let len = 0
