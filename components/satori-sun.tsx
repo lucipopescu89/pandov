@@ -55,6 +55,12 @@ const FRAME_H = 1380
  */
 const SIDE = 2100
 /**
+ * The crown's lines at this share of the drawings' strength, at rest and on a
+ * hover alike (2026-11-12, the author's asking: more transparent). The lights
+ * that run along them on a hover keep theirs.
+ */
+const CROWN_ALPHA = 0.6
+/**
  * The canvas's pixels are capped at this many a side: at twice the screen's
  * pixels the 2100 square would be over 4000 a side, cleared and drawn every
  * frame (the page was slow, 2026-11-12). The lines stay one screen pixel.
@@ -289,7 +295,7 @@ export function SatoriSun({ className }: { className?: string }) {
 
     const strokeStyle = () => {
       const g = ctx.createRadialGradient(SUN.fade.cx - ox, SUN.fade.cy - oy, 0, SUN.fade.cx - ox, SUN.fade.cy - oy, SUN.fade.r)
-      g.addColorStop(0, `rgba(${GOLD}, ${SUN.fade.peak})`) // as strong as the drawings' (INTENSITY in the script)
+      g.addColorStop(0, `rgba(${GOLD}, ${SUN.fade.peak * CROWN_ALPHA})`) // the drawings' strength (INTENSITY in the script), less (CROWN_ALPHA)
       g.addColorStop(1, `rgba(${GOLD}, 0)`)
       return g
     }
