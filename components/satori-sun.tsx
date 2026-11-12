@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import SUN from "@/lib/satori-sun-4.json"
-import { comets, type LightCfg, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, comets, isLite, type LightCfg, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 4's sun, breathing like the sun's own atmosphere (2026-11-11, the
@@ -66,6 +66,8 @@ const CROWN_ALPHA = 0.6
  * frame (the page was slow, 2026-11-12). The lines stay one screen pixel.
  */
 const MAX_PX = 2800
+/** On a phone, fewer (`isLite`; the author's iPhone 8 stuttered), and lights on every other line only. */
+const MAX_PX_LITE = 1600
 
 const TRAVEL_S = 16
 
@@ -276,13 +278,14 @@ export function SatoriSun({ className }: { className?: string }) {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const lite = isLite()
     const crossing = new URLSearchParams(window.location.search).get("sun") === "cross"
 
     let scale = 1 // device pixels per frame unit
     const size = () => {
       const cssW = canvas.getBoundingClientRect().width
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const px = Math.max(1, Math.min(MAX_PX, Math.round(cssW * dpr)))
+      const dpr = canvasDpr()
+      const px = Math.max(1, Math.min(isLite() ? MAX_PX_LITE : MAX_PX, Math.round(cssW * dpr)))
       if (canvas.width !== px) {
         canvas.width = px
         canvas.height = px
@@ -469,6 +472,7 @@ export function SatoriSun({ className }: { className?: string }) {
         const cx = SUN.cx - ox
         const cy = SUN.cy - oy
         for (let j = 0; j < i; j++) {
+          if (lite && j % 2) continue
           const r = pool[j]
           // its points from its top (a quarter turn back: y is down), clockwise
           let len = 0

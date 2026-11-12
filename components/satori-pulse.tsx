@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
-import { samplePath } from "@/lib/satori-lights"
+import { canvasDpr, samplePath } from "@/lib/satori-lights"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
@@ -196,7 +196,7 @@ export function SatoriPulse() {
     let dpr = 1
     const size = () => {
       const cssW = canvas.getBoundingClientRect().width
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      dpr = canvasDpr()
       const w = Math.max(1, Math.round(cssW * dpr))
       const h = Math.max(1, Math.round((w * box.h) / box.w))
       if (canvas.width !== w || canvas.height !== h) {

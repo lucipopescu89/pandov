@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import DATA from "@/lib/satori-breath-1.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
-import { comets, drawnStretches, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, comets, drawnStretches, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 1, "the one who sits / is complete" (2026-11-12, the author's brief).
@@ -231,7 +231,7 @@ export function SatoriBreath() {
       return pw / box.w
     }
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      dpr = canvasDpr()
       scale = fit(canvas, REST_BOX)
       hscale = fit(hand, HAND_BOX)
       zone.width = canvas.width

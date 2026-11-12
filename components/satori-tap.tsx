@@ -46,7 +46,8 @@ export function SatoriTap({ slug, href }: { slug: string; href: string }) {
         return
       }
       e.preventDefault()
-      router.prefetch(href)
+      // nothing else is started meanwhile (the page is fetched when it opens,
+      // or already was, by the link, in production), so the animation has the phone to itself
       frame.dispatchEvent(new Event(PLAY_EVENT))
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
       const wait = reduced ? 0 : Math.min(MAX_WAIT_MS, (PLAY_MS[slug] ?? 1500) + HOLD_MS)

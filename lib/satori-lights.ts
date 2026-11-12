@@ -182,3 +182,13 @@ export function lightWay(mode: Mode, l: Pts, p: number, after: number, cfg: Ligh
   const reach = mode === "both" || mode === "middle" ? m / 2 : m
   return reach * p + (after > 0 ? (after * cfg.speed) / step : 0)
 }
+
+/**
+ * A phone, or any screen without a hover (2026-11-12: on the author's
+ * iPhone 8 a tap's animation stuttered): Satori's canvases draw at no more
+ * than `LITE_DPR` device pixels to a CSS pixel there, and fewer lights run.
+ */
+export const LITE_DPR = 1.5
+export const isLite = () => typeof window !== "undefined" && window.matchMedia("(hover: none)").matches
+/** Device pixels per CSS pixel for Satori's canvases: the screen's, at most 2, at most `LITE_DPR` on a phone. */
+export const canvasDpr = () => Math.min(window.devicePixelRatio || 1, isLite() ? LITE_DPR : 2)

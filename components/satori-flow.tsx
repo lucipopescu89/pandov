@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import FLOW from "@/lib/satori-flow-3.json"
 import { PLAY_EVENT, UNDRAWN_EVENT, startsHover } from "@/components/satori-sun"
+import { canvasDpr } from "@/lib/satori-lights"
 
 /**
  * Satori 3, "the one who sits / expands inside" (2026-11-12, the author's
@@ -82,7 +83,7 @@ export function SatoriFlow() {
     let dpr = 1
     const size = () => {
       const cssW = canvas.getBoundingClientRect().width
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      dpr = canvasDpr()
       const px = Math.max(1, Math.round(cssW * dpr))
       if (canvas.width !== px) {
         canvas.width = px
