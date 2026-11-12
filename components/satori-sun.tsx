@@ -67,32 +67,36 @@ const TRAVEL_S = 16
  * **The sun keeps its size, and a hover over the pendant is a solar storm**
  * (2026-11-12, the author's asking; until then the sun rested at 85% and grew
  * to its place on a hover). On a hover the outer lines, the last rows of the
- * rays, are larger (`STORM_SCALE`, and their rays longer, `STORM_RISE`) and
- * move out at their own pace (the same afternoon, the author's asking: at
- * first they grew faster the further they went, and raced; `STORM_GROW` was
- * 0.85), and they turn chaotic: a second, finer and faster
+ * rays, stand further out (`STORM_SCALE`: every line's way out from the
+ * rays' circle is larger, so the outer ones grow most and the circle stays)
+ * and move out exactly as fast as at rest (time runs as much slower), and
+ * they turn chaotic: a second, finer and faster
  * noise shakes their rays and their whole line (`STORM_CHAOS`,
  * `STORM_JITTER`), more the further out the line is (`STORM_FROM`, `STORM_TO`,
  * in phases: 1 is the drawing's outermost line). The inner lines stay as they
- * are. They no longer quicken (`HOVER_SPEED` 1, the same afternoon: the
- * author found the outer lines far too fast, and asked for them only to grow
- * and then to move as slowly as before the hover; the storm's own noise was
- * slowed with it, `STORM_SPEED`), and the hover drawing
+ * are. (The author found the first tries far too fast, the outer lines racing
+ * out and quickening, and asked for them only to grow and then to move as
+ * slowly as before the hover; the storm's own noise was slowed too,
+ * `STORM_SPEED`.) The hover drawing
  * inside (`SatoriCore`) is as it was. It eases in (`HOVER_LAG_S`) and, off
  * the pendant, waits for the hover drawing to be drawn back (`UNDRAWN_EVENT`
  * from `SatoriCore`) and calms more slowly (`RETURN_LAG_S`).
  * A touch screen, with no hover, keeps it at rest; under reduced motion it is
  * drawn still and whole.
  */
-const HOVER_SPEED = 1 // 1.45 until the author found the hover too fast, 2026-11-12
 const HOVER_LAG_S = 0.4
 const RETURN_LAG_S = 1.1
 const STORM_FROM = 0.3
 const STORM_TO = 1.2
-/** How much longer the outer lines' rays are, at full storm (a share of their height). */
-const STORM_RISE = 0.5
-/** How much larger the outer lines are, whole, at full storm. */
-const STORM_SCALE = 0.5 // 0.3, then more on the author's asking
+/**
+ * How much further out every line stands from the rays' circle at full storm
+ * (the circle itself stays: the outer lines, furthest out, grow the most).
+ * Time runs as much slower (`rate`), so each line moves out exactly as fast as
+ * at rest: the author's asking, the same afternoon, after two tries that grew
+ * the outer lines more the further out they were and so sped them outward
+ * three to five times (measured).
+ */
+const STORM_SCALE = 0.7
 /** The storm's own noise: its strength on the rays, its push on the whole line (frame units), how fine and how fast. */
 const STORM_CHAOS = 0.75
 const STORM_JITTER = 9
@@ -108,8 +112,10 @@ const STORM_SPEED = 0.35 // 1.1 at first: it flickered, and read as speed
  * the hover and go as it ends (`LIGHTS_IN_S`, `LIGHTS_OUT_S`).
  */
 const LIGHT = "214, 172, 106"
-const LIGHT_PEAK = 0.85
-const LIGHT_CFG: LightCfg = { trail: 320, front: 30, piece: 12, speed: 140 }
+const LIGHT_PEAK = 1
+const LIGHT_CFG: LightCfg = { trail: 420, front: 30, piece: 12, speed: 140 }
+/** The lights' width, screen pixels: a little more than the lines', to read as a stroke over them. */
+const LIGHT_PX = 1.5
 const LIGHTS_IN_S = 0.6
 const LIGHTS_OUT_S = 0.4
 
@@ -291,9 +297,12 @@ export function SatoriSun({ className }: { className?: string }) {
     /** A line's radius at every angle, into `out`; `now` is the time, for the storm's noise. */
     const radii = (out: Float32Array, phase: number, noiseAt: number | null, now = 0) => {
       // the storm: the further out the line, the more
+      // the storm's chaos: the further out the line, the more
       const s = noiseAt === null ? 0 : storm * smooth(STORM_FROM, STORM_TO, phase)
-      const grow = (1 + GROW * Math.max(0, phase - 1)) * (1 + STORM_SCALE * s)
-      const rise = Math.min(phase, 1) * (1 + STORM_RISE * s)
+      const grow = 1 + GROW * Math.max(0, phase - 1)
+      const rise = Math.min(phase, 1)
+      // the storm's size: every line's way out from the rays' circle, larger alike
+      const wide = noiseAt === null ? 1 : 1 + STORM_SCALE * storm
       if (noiseAt !== null) {
         noiseRing(tip, noiseAt * NOISE_SPEED, NOISE_ROUND, 0)
         noiseRing(swell, noiseAt * NOISE_SPEED * 0.5, 1.6, 40)
@@ -319,7 +328,7 @@ export function SatoriSun({ className }: { className?: string }) {
           }
           h *= Math.max(0, k)
         }
-        out[kk] = (SUN.r0 + h) * grow + jitter
+        out[kk] = SUN.r0 + ((SUN.r0 + h) * grow - SUN.r0) * wide + jitter
       }
     }
 
@@ -441,6 +450,7 @@ export function SatoriSun({ className }: { className?: string }) {
       if (lightsA > 0.003) {
         ctx.strokeStyle = lightStyle()
         ctx.lineCap = "round"
+        ctx.lineWidth = (LIGHT_PX * dpr) / scale
         const cx = SUN.cx - ox
         const cy = SUN.cy - oy
         for (let j = 0; j < i; j++) {
@@ -474,7 +484,8 @@ export function SatoriSun({ className }: { className?: string }) {
       last = now
       const k = 1 - Math.exp(-dt / (hovered ? HOVER_LAG_S : RETURN_LAG_S))
       storm += ((hovered ? 1 : 0) - storm) * k
-      rate += ((hovered ? HOVER_SPEED : 1) - rate) * k
+      // as much slower as the crown is wider, so every line moves out as fast as at rest
+      rate = 1 / (1 + STORM_SCALE * storm)
       t += dt * rate
       ringT += dt
       lightT += dt
