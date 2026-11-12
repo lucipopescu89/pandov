@@ -101,31 +101,29 @@ const BREATH_SLUG = "satori-1"
  * distance over its drawing and a set distance under the drawing before it
  * (2026-11-12, the author's asking: the space between Satori 1 and the next
  * verse, and between Satori 2 and its verse, was huge; the same space between
- * every drawing and its text, a little tighter). Each frame keeps its own
- * units; it is pulled up over the empty foot of the one before (`margin`),
- * and its verse moved down to its drawing. Frames overlap only where they are
- * empty, and only the photograph takes the pointer (`.sp-photo`), so a frame
- * laid over the foot of the one before does not steal its hover.
+ * every drawing and its text, a little tighter). Every verse stands outside
+ * its drawing, over all of it, what shows on a hover included (the author's
+ * sketch, the same afternoon, after a first try put Satori 2's verse inside
+ * its line of pulses). Each frame keeps its own units; it is pulled up over
+ * the empty foot of the one before (`margin`), and its verse moved down to its
+ * drawing. Frames overlap only where they are empty, and only the photograph
+ * takes the pointer (`.sp-photo`), so a frame laid over the foot of the one
+ * before does not steal its hover.
  *
- * `top` and `bottom` are each drawing's extent in its frame, with what shows
- * on a hover: Satori 1's great circle (511 to 1013); Satori 2's circles from
- * 417 and its foot to 1108, its line of pulses (221 to 1226) a little below
- * that (1180, so the next verse clears its troughs); Satori 3's closing
- * circles as they come into sight (200) and its drawing's foot, with room for
- * the circles' faint start (1150); Satori 4's rays. `verse` overrides where a
- * verse's foot stands: Satori 2's sits inside its line of pulses, under the
- * troughs that dip to 323 near its top and over its circles, since above the
- * line it would stand far from everything seen at rest.
+ * `top` and `bottom` are each drawing's extent in its frame: Satori 1's great
+ * circle (511 to 1013); Satori 2's line of pulses (221 to 1226, its spikes);
+ * Satori 3's closing circles where they come into sight (170) and their faint
+ * start below (1200); Satori 4's rays at their full height (150).
  */
-const GAP_TO_DRAWING = 80
-const GAP_TO_VERSE = 160
+const GAP_TO_DRAWING = 70
+const GAP_TO_VERSE = 130
 /** Where the first verse stands under the menu, as before (frame units from the frame's top). */
 const FIRST_VERSE_TOP = 88
-const DRAWING: Record<string, { top: number; bottom: number; verse?: number }> = {
+const DRAWING: Record<string, { top: number; bottom: number }> = {
   "satori-1": { top: 511, bottom: 1013 },
-  "satori-2": { top: 417, bottom: 1180, verse: 395 },
-  "satori-3": { top: 200, bottom: 1150 },
-  "satori-4": { top: 133, bottom: FRAME_H },
+  "satori-2": { top: 221, bottom: 1226 },
+  "satori-3": { top: 170, bottom: 1200 },
+  "satori-4": { top: 150, bottom: FRAME_H },
 }
 /** A verse's height, frame units at full size: three lines of 14px, or one. */
 const verseH = (text: string) => text.split("\n").length * 14
@@ -135,7 +133,7 @@ function layout(slugs: string[]) {
   return slugs.map((slug, i) => {
     const d = DRAWING[slug]
     const vh = verseH(VERSES[slug].text)
-    const verse = d.verse ?? d.top - GAP_TO_DRAWING
+    const verse = d.top - GAP_TO_DRAWING
     const margin = i === 0 ? FIRST_VERSE_TOP + vh - verse : prevBottom + GAP_TO_VERSE + vh - FRAME_H - verse
     prevBottom = d.bottom
     return { verse, margin }
