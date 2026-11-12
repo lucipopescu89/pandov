@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import FLOW from "@/lib/satori-flow-3.json"
-import { UNDRAWN_EVENT } from "@/components/satori-sun"
+import { PLAY_EVENT, UNDRAWN_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
  * Satori 3, "the one who sits / expands inside" (2026-11-12, the author's
@@ -153,8 +153,8 @@ export function SatoriFlow() {
     const photo = frame?.querySelector<HTMLElement>(".sp-photo")
     let outerOn = true
     let outerOffAt = 0
-    const hide = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return
+    const hide = (e: Event) => {
+      if (!startsHover(e)) return
       canvas.style.transition = `opacity ${HIDE_MS}ms ease`
       canvas.style.opacity = "0"
       outerOn = false
@@ -166,6 +166,7 @@ export function SatoriFlow() {
       canvas.style.opacity = "1"
     }
     photo?.addEventListener("pointerenter", hide)
+    frame?.addEventListener(PLAY_EVENT, hide)
     frame?.addEventListener(UNDRAWN_EVENT, show)
 
     let raf = 0
@@ -195,6 +196,7 @@ export function SatoriFlow() {
       ro.disconnect()
       cancelAnimationFrame(raf)
       photo?.removeEventListener("pointerenter", hide)
+      frame?.removeEventListener(PLAY_EVENT, hide)
       frame?.removeEventListener(UNDRAWN_EVENT, show)
     }
   }, [])

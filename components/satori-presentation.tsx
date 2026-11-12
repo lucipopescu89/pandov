@@ -8,6 +8,7 @@ import { SatoriCore } from "@/components/satori-core"
 import { SatoriFlow } from "@/components/satori-flow"
 import { SatoriPulse } from "@/components/satori-pulse"
 import { SatoriBreath } from "@/components/satori-breath"
+import { SatoriTap } from "@/components/satori-tap"
 
 /**
  * /body/satori: the author's four Figma frames, "Satori 1" to "Satori 4"
@@ -46,7 +47,9 @@ import { SatoriBreath } from "@/components/satori-breath"
  * seen whole three at a time as a wave radiates outward through them.
  * Satori 1 is its figure alone, breathing, its heart beating
  * (`components/satori-breath.tsx`, the same day). The frames are drawn
- * closer together than Figma's squares (`DRAWING`, `layout`).
+ * closer together than Figma's squares (`DRAWING`, `layout`). On a touch
+ * screen a tap on a pendant plays its hover before its page opens
+ * (`SatoriTap`).
  *
  * Until 2026-11-11 this page was the four renders of the models
  * (`satori-<n>.avif`, still on disk and in `lib/satori.ts`), until these
@@ -196,6 +199,7 @@ export function SatoriPresentation() {
                   }}
                 />
               )}
+              <SatoriTap slug={slug} href={`/body/satori/${slug}`} />
               {verse && (
                 <p className="sp-verse" style={{ top: `${(place[i].verse / FRAME_H) * 100}%` } as React.CSSProperties}>
                   {verse.text}

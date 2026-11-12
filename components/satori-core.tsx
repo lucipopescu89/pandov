@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import CORE_3 from "@/lib/satori-core-3.json"
 import CORE_4 from "@/lib/satori-core-4.json"
-import { UNDRAWN_EVENT } from "@/components/satori-sun"
+import { PLAY_EVENT, UNDRAWN_EVENT, startsHover } from "@/components/satori-sun"
 import { comets, ease, lightWay, samplePath, type LightCfg, type Pts } from "@/lib/satori-lights"
 
 /**
@@ -133,6 +133,10 @@ const plan = (core: Core, origin: readonly number[]) => core.lines.map((l) => {
 const PLANS = Object.fromEntries(
   Object.entries(DRAWINGS).map(([slug, d]) => [slug, plan(d.core, d.origin)]),
 ) as Record<Slug, ReturnType<typeof plan>>
+/** When each drawing is whole on a hover, ms: its last line's end (for `SatoriTap`, which waits for it on a phone). */
+export const DRAWN_MS = Object.fromEntries(
+  Object.entries(PLANS).map(([slug, p]) => [slug, Math.max(...p.map((l) => l.delay + l.duration))]),
+) as Record<Slug, number>
 
 /** A line's dash, hidden (0) to drawn (1). */
 function dash(mode: Mode, drawn: 0 | 1): Keyframe {
@@ -187,8 +191,8 @@ export function SatoriCore({ slug }: { slug: Slug }) {
     let anims: Animation[] | null = null
     let gone = 0
     const frame = el.parentElement
-    const enter = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return
+    const enter = (e: Event) => {
+      if (!startsHover(e)) return
       window.clearTimeout(gone)
       if (!anims) {
         svg.style.opacity = String(dim)
@@ -223,12 +227,14 @@ export function SatoriCore({ slug }: { slug: Slug }) {
       gone = window.setTimeout(() => frame?.dispatchEvent(new Event(UNDRAWN_EVENT)), left / UNDRAW_RATE)
     }
     photo.addEventListener("pointerenter", enter)
+    frame?.addEventListener(PLAY_EVENT, enter)
     photo.addEventListener("pointerleave", leave)
     return () => {
       ro.disconnect()
       window.clearTimeout(gone)
       lights?.dispose()
       photo.removeEventListener("pointerenter", enter)
+      frame?.removeEventListener(PLAY_EVENT, enter)
       photo.removeEventListener("pointerleave", leave)
       anims?.forEach((a) => a.cancel())
     }

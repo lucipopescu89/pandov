@@ -146,6 +146,15 @@ const RINGS_BACK_S = 1.4
 const RINGS_BACK_DELAY_S = 0.3
 /** Sent on the frame by `SatoriCore` once its drawing has been drawn back. */
 export const UNDRAWN_EVENT = "satori-undrawn"
+/**
+ * Sent on the frame by `SatoriTap` when a finger taps the pendant (a touch
+ * screen has no hover): every part of the frame plays its hover as if a mouse
+ * had come onto the pendant, and stays so, since the page then opens the
+ * pendant's own page (2026-11-12, the author's asking).
+ */
+export const PLAY_EVENT = "satori-play"
+/** A pointer event from a mouse, or the tap's `PLAY_EVENT`: what starts a hover. */
+export const startsHover = (e: Event) => !(e instanceof PointerEvent) || e.pointerType === "mouse"
 const LINES = SUN.lines - 1 // the circle is not drawn: the lines are born on it unseen
 const SPACING = 1 / LINES
 /** How far past the drawing's outermost line a line goes before it has faded away (1 = the outermost line). */
@@ -511,8 +520,8 @@ export function SatoriSun({ className }: { className?: string }) {
     // radiating circles come back as the drawing goes.
     const frame = canvas.parentElement
     const photo = frame?.querySelector<HTMLElement>(".sp-photo")
-    const enter = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return
+    const enter = (e: Event) => {
+      if (!startsHover(e)) return
       hovered = true
       ringsTarget = 0
       ringsBackAt = -1
@@ -528,6 +537,7 @@ export function SatoriSun({ className }: { className?: string }) {
       hovered = false
     }
     photo?.addEventListener("pointerenter", enter)
+    frame?.addEventListener(PLAY_EVENT, enter)
     photo?.addEventListener("pointerleave", leavePhoto)
     frame?.addEventListener(UNDRAWN_EVENT, leave)
     const io = new IntersectionObserver(([e]) => {
@@ -552,6 +562,7 @@ export function SatoriSun({ className }: { className?: string }) {
       ro.disconnect()
       cancelAnimationFrame(raf)
       photo?.removeEventListener("pointerenter", enter)
+      frame?.removeEventListener(PLAY_EVENT, enter)
       photo?.removeEventListener("pointerleave", leavePhoto)
       frame?.removeEventListener(UNDRAWN_EVENT, leave)
     }

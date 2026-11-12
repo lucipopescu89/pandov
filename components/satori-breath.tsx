@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import DATA from "@/lib/satori-breath-1.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
+import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 import { comets, drawnStretches, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
 
 /**
@@ -182,7 +183,7 @@ const PLAN = LINES.map((l) => {
 const REST = LINES.map((l, i) => ({ l, i })).filter(({ l }) => l.role !== "outer" && l.role !== "heart")
 const HAND = LINES.map((l, i) => ({ l, i })).filter(({ l }) => l.role !== "heart")
 /** When the whole hover drawing is drawn, ms, and when its first line starts. */
-const HAND_END = Math.max(...HAND.map(({ i }) => PLAN[i].delay + PLAN[i].duration))
+export const HAND_END = Math.max(...HAND.map(({ i }) => PLAN[i].delay + PLAN[i].duration))
 const HAND_FIRST = Math.min(...HAND.map(({ i }) => PLAN[i].delay))
 /** The hover drawing's canvas: its lines' box, with room for the breath and the middle circle's swell. */
 const HAND_BOX = (() => {
@@ -365,13 +366,14 @@ export function SatoriBreath() {
 
     // On a hover over the pendant: the whole drawing drawn by hand.
     const photo = host?.querySelector<HTMLElement>(".sp-photo")
-    const enter = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") hovered = true
+    const enter = (e: Event) => {
+      if (startsHover(e)) hovered = true
     }
     const leave = (e: PointerEvent) => {
       if (e.pointerType === "mouse") hovered = false
     }
     photo?.addEventListener("pointerenter", enter)
+    host?.addEventListener(PLAY_EVENT, enter)
     photo?.addEventListener("pointerleave", leave)
 
     let last = 0
@@ -422,6 +424,7 @@ export function SatoriBreath() {
       ro.disconnect()
       cancelAnimationFrame(raf)
       photo?.removeEventListener("pointerenter", enter)
+      host?.removeEventListener(PLAY_EVENT, enter)
       photo?.removeEventListener("pointerleave", leave)
     }
   }, [])

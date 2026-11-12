@@ -5,6 +5,7 @@ import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { samplePath } from "@/lib/satori-lights"
+import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
  * Satori 2, "a pulse of sparks / at the edge of mind" (2026-11-12, the
@@ -284,14 +285,15 @@ export function SatoriPulse() {
     const frame = host
     const photo = frame?.querySelector<HTMLElement>(".sp-photo")
     let onPendant = false
-    const enterPendant = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return
+    const enterPendant = (e: Event) => {
+      if (!startsHover(e)) return
       onPendant = true
     }
     const leavePendant = () => {
       onPendant = false
     }
     photo?.addEventListener("pointerenter", enterPendant)
+    frame?.addEventListener(PLAY_EVENT, enterPendant)
     photo?.addEventListener("pointerleave", leavePendant)
 
     const beaten = new Float32Array(n * 2)
@@ -384,6 +386,7 @@ export function SatoriPulse() {
       ro.disconnect()
       cancelAnimationFrame(raf)
       photo?.removeEventListener("pointerenter", enterPendant)
+      frame?.removeEventListener(PLAY_EVENT, enterPendant)
       photo?.removeEventListener("pointerleave", leavePendant)
     }
   }, [])
