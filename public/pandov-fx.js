@@ -39,6 +39,17 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rnd = (a, b) => a + Math.random() * (b - a);
   const E = 'cubic-bezier(.2,.7,.2,1)';
+  // On a phone (the site's own 767px break) the dust is drawn as small and as
+  // faint as Second Wind's own dots there, and without a glow (2026-11-12, the
+  // author's report from an iPhone 8: the homepage dust and Silence's looked
+  // big and glowing beside the other Second Wind animations). Those dots are
+  // 1-1.6 artwork units at 20%, which a phone draws at about 0.6 of its size
+  // (radius 0.6-1px, see R_MIN_CSS in particle-field.tsx); the dust kept its
+  // computer size (0.3-1.1px), up to 60% strength, and a 3px glow on the homepage.
+  const PHONE = matchMedia('(max-width: 767px)');
+  const moteR = () => PHONE.matches ? rnd(.25, .55) : rnd(.3, 1.1);
+  const moteA = () => PHONE.matches ? rnd(.14, .3) : rnd(.22, .6);
+  const LIFT = () => PHONE.matches ? .35 : 1; // how far the flare near a planet lifts a mote
 
   // ======================= GLOBAL + HOMEPAGE =======================
   function installHome() {
@@ -56,6 +67,9 @@ header nav .nv-item:nth-child(3) .nv-word{animation-delay:1.5s}
 header nav a{position:relative}
 header nav a::after{content:'';position:absolute;left:50%;bottom:-7px;width:0;height:1px;background:linear-gradient(90deg,transparent,rgba(214,178,110,.45),transparent);transform:scaleY(.6);transition:width .9s ${E},left .9s ${E}}
 header nav a:hover::after{width:70%;left:15%}
+header nav .nv-open>.nv-word::after{width:70%;left:15%}
+@media (hover:hover){header nav .nv-item:hover>.nv-word::after{width:70%;left:15%}}
+header nav .nv-link::after{display:none}
 .pfx-r{opacity:0;filter:blur(2px);translate:0 6px;transition:opacity 1.1s ${E},filter 1.1s ${E},translate 1.1s ${E}}
 text.pfx-r{translate:none}
 .pfx-r.pfx-in{opacity:1;filter:blur(0);translate:0 0}
@@ -77,7 +91,7 @@ text.pfx-r{translate:none}
     const N = 110, motes = [];
     let alpha = 0, power = 0, raf, frameN = 0, seeded = false, latched = false, txtPeak = false, txtPeakY = 0;
     const ROWS = 14; let gap = null;
-    const look = m => { m.r = rnd(.3, 1.1); m.a = rnd(.22, .6); m.d = rnd(0, 6.28); m.born = 0; m.cool = [0, 0, 0, 0, 0, 0, 0, 0]; m.inside = [0, 0, 0, 0, 0, 0, 0, 0]; m.flung = 0; };
+    const look = m => { m.r = moteR(); m.a = moteA(); m.d = rnd(0, 6.28); m.born = 0; m.cool = [0, 0, 0, 0, 0, 0, 0, 0]; m.inside = [0, 0, 0, 0, 0, 0, 0, 0]; m.flung = 0; };
     const spawnScatter = (m, R) => { m.x = rnd(R.left, R.right); m.y = rnd(Math.max(R.top, 0), Math.min(R.bottom, H)); m.vx = rnd(-.08, .08); m.vy = rnd(-.08, .02); look(m); };
     let ring = { cx: 0, cy: 0, rx: 100, ry: 140 };
     // reborn just inside the first ellipse (78–92% of it), heading outward
@@ -159,7 +173,7 @@ text.pfx-r{translate:none}
     // The dark band with the logo and menu: its own calm dust from the first frame.
     const TN = 45, topDust = []; let topAlpha = 0, topSeeded = false;
     const topZone = sticky => { const hd = document.querySelector('header'); if (!hd) return null; return { a: hd.getBoundingClientRect().top + scrollY, b: sticky.getBoundingClientRect().top + scrollY }; };
-    const spawnTop = (m, z) => { m.x = rnd(0, W); m.py = rnd(z.a, z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.06, .02); m.r = rnd(.3, 1.1); m.a = rnd(.22, .6); m.d = rnd(0, 6.28); m.born = 0; };
+    const spawnTop = (m, z) => { m.x = rnd(0, W); m.py = rnd(z.a, z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.06, .02); m.r = moteR(); m.a = moteA(); m.d = rnd(0, 6.28); m.born = 0; };
 
     let txtEl = null, dirty = true;
     const tick = t => {
@@ -172,7 +186,7 @@ text.pfx-r{translate:none}
       const sticky = img && heroOf(img);
       if (sticky) dirty = true;
       if (!sticky) { alpha = 0; seeded = false; gap = null; latched = false; txtPeak = false; topSeeded = false; topAlpha = 0; txtEl = null; return; }
-      ctx.shadowColor = 'rgba(240,212,155,.6)'; ctx.shadowBlur = 3;
+      ctx.shadowColor = 'rgba(240,212,155,.6)'; ctx.shadowBlur = PHONE.matches ? 0 : 3;
 
       // --- top band ---
       const z = topZone(sticky);
@@ -268,7 +282,7 @@ text.pfx-r{translate:none}
         const out = m.x < R.left - 10 || m.x > R.right + 10 || m.y < R.top - 10 || m.y > R.bottom + 10 || (power > .3 && d > maxD);
         if (out) { if (power > .3) spawnRing(m); else spawnScatter(m, R); }
         const edge = power > .3 ? Math.max(0, 1 - Math.pow(d / maxD, 2)) : 1;
-        const glow = 1 + near * .6 + (m.flung ? .4 : 0);
+        const glow = 1 + (near * .6 + (m.flung ? .4 : 0)) * LIFT();
         const tw = m.a * (.65 + .35 * Math.sin(t / 1100 + m.d * 3)) * m.born * edge * alpha * glow;
         if (tw < .01) continue;
         ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 7); ctx.fillStyle = 'rgba(240,214,160,' + Math.min(1, tw) + ')'; ctx.fill();
@@ -389,7 +403,16 @@ text.pfx-r{translate:none}
     const FOOT = 40;        // the zone ends this far under the Silence pendant's foot, px
     const FADE = 140;       // soft edge, px, at the top and the foot of the zone
     const motes = []; let alpha = 0, seeded = false, raf, frame = 0, dirty = true;
-    const look = m => { m.r = rnd(.3, 1.1); m.a = rnd(.22, .6); m.d = rnd(0, 6.28); m.born = 0; m.inside = 0; m.flung = 0; };
+    // 2026-11-13, the author's asking: the dust hurries while the pointer is
+    // over the Silence pendant, or for 1.5s after a tap on it on a phone, as
+    // the other Second Wind fields do (lib/hurry.ts sends 'pandov:hurry'). Up
+    // to 9x its pace (18x the same morning: too much), eased in and out over about a second like theirs
+    // (MAX_BOOST, RESPONSE in particle-field.tsx): the motes take that many
+    // steps of their drift each frame.
+    const HURRY_MAX = 8, HURRY_RESPONSE = .025;
+    let hurried = false, hurry = 0, steps = 0;
+    addEventListener('pandov:hurry', e => { if (e.detail && e.detail.label === 'Silence') hurried = e.detail.on; });
+    const look = m => { m.r = moteR(); m.a = moteA(); m.d = rnd(0, 6.28); m.born = 0; m.inside = 0; m.flung = 0; };
     const spawn = (m, Z) => { m.x = rnd(Z.l, Z.r); m.py = rnd(Z.t, Z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.08, .02); look(m); };
     const tick = t => {
       raf = requestAnimationFrame(tick); frame++;
@@ -409,7 +432,10 @@ text.pfx-r{translate:none}
       const pb = rectEl.getBoundingClientRect();
       const hx = pb.left + pb.width * HEAD.fx, hy = pb.top + pb.height * HEAD.fy + scrollY;
       ctx.shadowBlur = 0; // no glow (2026-11-08, the author's asking)
+      hurry += ((hurried ? HURRY_MAX : 0) - hurry) * HURRY_RESPONSE; if (hurry < .001) hurry = 0;
+      steps += 1 + hurry; const n = Math.floor(steps); steps -= n;
       for (const m of motes) {
+       for (let k = 0; k < n; k++) {
         if (!m.flung) { m.vx += Math.sin(t / 3200 + m.d) * .0025; m.vy += Math.cos(t / 4100 + m.d * 1.7) * .0015 - .0012; }
         let inField = 0; m.near = 0;
         if (!m.flung) {
@@ -430,8 +456,9 @@ text.pfx-r{translate:none}
         const sp = Math.hypot(m.vx, m.vy), cap = (m.flung || inField) ? 3 : .22; if (sp > cap) { m.vx *= cap / sp; m.vy *= cap / sp; }
         m.x += m.vx; m.py += m.vy; m.born = Math.min(1, m.born + .008);
         if (m.x < Z.l - 10 || m.x > Z.r + 10 || m.py < Z.t - 10 || m.py > Z.b + 10) spawn(m, Z);
+       }
         const y = m.py - scrollY; if (y < -5 || y > H + 5) continue;
-        const tw = m.a * (.65 + .35 * Math.sin(t / 1100 + m.d * 3)) * m.born * alpha * (1 + m.near * .6 + (m.flung ? .4 : 0)); if (tw < .01) continue;
+        const tw = m.a * (.65 + .35 * Math.sin(t / 1100 + m.d * 3)) * m.born * alpha * (1 + (m.near * .6 + (m.flung ? .4 : 0)) * LIFT()); if (tw < .01) continue;
         ctx.beginPath(); ctx.arc(m.x, y, m.r, 0, 7); ctx.fillStyle = 'rgba(240,214,160,' + Math.min(1, tw) + ')'; ctx.fill();
       }
       // keep the dust inside its zone, soft at the top and the foot, and behind the pendant
@@ -449,6 +476,64 @@ text.pfx-r{translate:none}
     window.__pfxSilence = { remove() { cancelAnimationFrame(raf); removeEventListener('resize', size); cv.remove(); hideStyle.remove(); document.querySelectorAll('.pfx-silence-off').forEach(e => e.classList.remove('pfx-silence-off')); } };
   }
 
-  const start = () => { installHome(); installDim(); installSilence(); };
+  // ======================= CURSOR =======================
+  // 2026-11-13, the author's asking: the pointer is a small gold ring, seen on
+  // the white pages and on #202020 alike (a faint dark halo keeps it on white),
+  // that fills and grows over anything that can be clicked. Only where there is
+  // a mouse (hover + fine pointer); text fields keep their own caret. The ring
+  // sits exactly on the pointer, so aiming is as before. window.__pfxCursor.remove()
+  // brings the system's arrow back.
+  function installCursor() {
+    if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    // 2026-11-13, later the same morning (the author's asking: far too big, too
+    // evident over links, too yellow on the dark ground; then subtler again): 6px at rest, 10px over
+    // something clickable, a darker gold, a light fill and no glow. Sized by
+    // width and height, not scale, so its line stays one pixel at every size.
+    const GOLD = '128,102,64'; // 160,128,80 at first; darker again the same morning
+    const style = document.createElement('style');
+    style.textContent = `
+html.pfx-cur, html.pfx-cur *{cursor:none!important}
+html.pfx-cur :is(input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable=true]){cursor:text!important}
+.pfx-cursor{position:fixed;left:0;top:0;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483647;box-sizing:border-box;
+  border:1px solid rgba(${GOLD},.9);background:rgba(${GOLD},0);box-shadow:0 0 0 .5px rgba(0,0,0,.12);
+  translate:-100px -100px;opacity:0;
+  transition:width .3s cubic-bezier(.2,.7,.2,1),height .3s cubic-bezier(.2,.7,.2,1),margin .3s cubic-bezier(.2,.7,.2,1),background-color .3s ease,opacity .25s ease;will-change:translate}
+.pfx-cursor.pfx-on{opacity:1}
+.pfx-cursor.pfx-link{width:10px;height:10px;margin:-5px 0 0 -5px;background:rgba(${GOLD},.15)}
+.pfx-cursor.pfx-down{width:4px;height:4px;margin:-2px 0 0 -2px}
+.pfx-cursor.pfx-link.pfx-down{width:8px;height:8px;margin:-4px 0 0 -4px}
+.pfx-cursor.pfx-text{opacity:0}
+@media (prefers-reduced-motion: reduce){.pfx-cursor{transition:opacity .2s}}`;
+    document.head.appendChild(style);
+    const el = document.createElement('div'); el.className = 'pfx-cursor'; el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el);
+    document.documentElement.classList.add('pfx-cur');
+    // `translate` places it; its size eases about its middle, so it never leaves the pointer
+    const LINK = 'a[href],button:not(:disabled),[role=button],[role=link],summary,label[for],select,input[type=submit],input[type=button],input[type=checkbox],input[type=radio],[data-cursor=link]';
+    const TEXT = 'input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]),textarea,[contenteditable=true]';
+    let x = -100, y = -100, raf = 0;
+    const place = () => { raf = 0; el.style.translate = `${x}px ${y}px`; };
+    const move = e => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      x = e.clientX; y = e.clientY;
+      if (!raf) raf = requestAnimationFrame(place);
+      el.classList.add('pfx-on');
+      const t = e.target instanceof Element ? e.target : null;
+      el.classList.toggle('pfx-link', !!(t && t.closest(LINK)));
+      el.classList.toggle('pfx-text', !!(t && t.closest(TEXT)));
+    };
+    const down = () => el.classList.add('pfx-down');
+    const up = () => el.classList.remove('pfx-down');
+    const out = e => { if (!e.relatedTarget) el.classList.remove('pfx-on'); };
+    addEventListener('pointermove', move, { passive: true });
+    addEventListener('pointerdown', down, { passive: true });
+    addEventListener('pointerup', up, { passive: true });
+    document.addEventListener('mouseout', out);
+    // a page change under a still pointer: look again at what is under it
+    addEventListener('scroll', () => { const t = document.elementFromPoint(x, y); el.classList.toggle('pfx-link', !!(t && t.closest(LINK))); }, { passive: true });
+    window.__pfxCursor = { remove() { removeEventListener('pointermove', move); removeEventListener('pointerdown', down); removeEventListener('pointerup', up); document.removeEventListener('mouseout', out); el.remove(); style.remove(); document.documentElement.classList.remove('pfx-cur'); } };
+  }
+
+  const start = () => { installHome(); installDim(); installSilence(); installCursor(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
-import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { ParticleField, type DripSpec, type RainSpec } from "@/components/particle-field"
 import { MechanismField } from "@/components/mechanism-field"
 import { PresenceHalo } from "@/components/presence-halo"
 import { CaptionFade } from "@/components/caption-fade"
+import { PendantLink } from "@/components/pendant-link"
 import { splitMechanism, type Motion, type RingSpec, type Vignette } from "@/lib/mechanism"
 import { splitReveal, type RevealLayer, type RevealSpec } from "@/lib/reveal"
 
@@ -391,8 +391,9 @@ type Lift = { floor: number; rest: number; brighten?: number }
 /**
  * A ring that beats: lifted out of the file's dimming, dimmed again between
  * beats, and running as far behind the centre as the ripple takes to reach the
- * middle of its band. Everything that beats quickens alike with scrolling, so
- * the ripple keeps its shape however fast the page is moving.
+ * middle of its band. Everything that beats quickens alike when the pendant
+ * hurries the mechanism (a pointer over it, a tap on a phone: `lib/hurry.ts`),
+ * so the ripple keeps its shape however fast it is driven.
  */
 function beating(
   key: string,
@@ -457,6 +458,16 @@ const MNATURE_RINGS: RingSpec[] = [
 
 /** Sections split into independently animated rings. */
 const MECHANISMS: Record<string, RingSpec[]> = { "mnature.svg": MNATURE_RINGS }
+
+/**
+ * Sections whose field hurries while the pointer is over the pendant, or for
+ * 1.5s after a tap on a phone before its page opens (`PendantLink`, 2026-11-13,
+ * the author's asking; until then they hurried with scrolling). Silence's own
+ * dots are hidden under `pandov-fx.js`'s dust, which hears the same hurry.
+ * Presence's ellipses radiate faster (`RingHurry`, the author's asking the same
+ * morning). Emperor has nothing to hurry, so a tap opens its page at once.
+ */
+const HURRYING = new Set([...Object.keys(PARTICLE_TRACKS), ...Object.keys(MECHANISMS), ...Array.from(HALO_FILES)])
 
 async function loadSvg(file: string): Promise<string> {
   const filePath = path.join(process.cwd(), "public", "images", "body", file)
@@ -656,10 +667,11 @@ export async function BodyPresentation() {
           const box = pendantBox(svgs[i], wide ? 0 : section.left, wide ? CANVAS_W : section.w)
           if (!box) return null
           return (
-            <Link
+            <PendantLink
               key={`${section.file}-page`}
               href={href}
-              aria-label={section.label}
+              label={section.label}
+              hurries={HURRYING.has(section.file)}
               className="bp-pendant-link absolute block"
               style={{
                 left: box.left,

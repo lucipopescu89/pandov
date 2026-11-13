@@ -36,9 +36,9 @@ export type Motion = {
    * may travel less far, so the ring breaks apart as it goes.
    */
   scatter?: number
-  /** Spin quickens while the page is scrolling. */
+  /** Spin quickens while the pendant hurries its field (`lib/hurry.ts`; until 2026-11-13, while the page scrolled). */
   scrollSpin?: boolean
-  /** Pulse rate quickens while the page is scrolling. */
+  /** Pulse rate quickens while the pendant hurries its field. */
   scrollPulse?: boolean
 }
 

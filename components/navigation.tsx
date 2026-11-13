@@ -17,6 +17,30 @@ const BRAND_GRAY = "#888888"
 const LOGO_FILTER = "brightness(0) invert(53.33%)"
 
 /**
+ * A word and its submenu read apart, subtly (2026-11-13, the author's asking):
+ * over a word, or while its submenu is open, the word is whiter on a dark
+ * ground (darker on a light one) and keeps the gold line under it
+ * (`pandov-fx.js`); the collections are set smaller (10px against the word's
+ * 12), a little greyer (further from the ground than the word) and with no gold
+ * line, and lift a little when the pointer is on one. Until then both were #888
+ * and faded to half on a hover.
+ */
+const MENU_TONES = {
+  dark: { word: BRAND_GRAY, wordLit: "#e6e6e6", sub: "#6f6f6f", subLit: "#a8a8a8" },
+  light: { word: BRAND_GRAY, wordLit: "#333333", sub: "#a2a2a2", subLit: "#666666" },
+}
+const SUB_FONT_SIZE = "10px"
+
+/** Whether a band colour is dark, read from a #rgb or #rrggbb value; anything else counts as light. */
+function isDark(color: string) {
+  const hex = color.trim().replace(/^#/, "")
+  if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) return false
+  const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128
+}
+
+/**
  * The three words and, under each, its collections (2026-11-12, the author's
  * asking): a hover over a word opens them, a submenu under it. Mind has the
  * Chess Set, Body Second Wind and Satori, Space nothing yet. A collection
@@ -52,6 +76,7 @@ const menuItems: { name: string; href: string; collections: { name: string; href
 export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
   const [open, setOpen] = useState<string | null>(null)
   const navRef = useRef<HTMLElement>(null)
+  const tones = MENU_TONES[isDark(bgColor) ? "dark" : "light"]
 
   // A tap or click outside the menu closes an open submenu.
   useEffect(() => {
@@ -73,7 +98,18 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
   }
 
   return (
-    <header style={{ width: "100%", backgroundColor: bgColor }}>
+    <header
+      style={
+        {
+          width: "100%",
+          backgroundColor: bgColor,
+          "--nv-word": tones.word,
+          "--nv-word-lit": tones.wordLit,
+          "--nv-sub": tones.sub,
+          "--nv-sub-lit": tones.subLit,
+        } as React.CSSProperties
+      }
+    >
       {/* Logo */}
       <div className="py-6 md:py-8 lg:py-10">
         <Link href="/" className="flex flex-col items-center gap-2">
@@ -105,8 +141,8 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
             <div key={item.name} className={`nv-item${open === item.name ? " nv-open" : ""}`}>
               <Link
                 href={item.href}
-                className="nv-word font-heading text-sm tracking-[0.2em] uppercase hover:opacity-50 transition-opacity"
-                style={{ fontSize: "12px", color: BRAND_GRAY }}
+                className="nv-word font-heading text-sm tracking-[0.2em] uppercase"
+                style={{ fontSize: "12px" }}
                 onClick={onWord(item)}
                 aria-haspopup={item.collections.length ? "true" : undefined}
                 aria-expanded={item.collections.length ? open === item.name : undefined}
@@ -119,8 +155,8 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
                     <Link
                       key={c.href}
                       href={c.href}
-                      className="font-heading uppercase tracking-[0.2em] hover:opacity-50 transition-opacity"
-                      style={{ fontSize: "11px", color: BRAND_GRAY }}
+                      className="nv-link font-heading uppercase tracking-[0.2em]"
+                      style={{ fontSize: SUB_FONT_SIZE }}
                       onClick={() => setOpen(null)}
                     >
                       {c.name}
@@ -134,6 +170,10 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
       </nav>
       <style>{`
         .nv-item { position: relative; display: flex; justify-content: center; }
+        .nv-word { color: var(--nv-word); transition: color 0.35s ease; }
+        .nv-open > .nv-word, .nv-item:has(:focus-visible) > .nv-word { color: var(--nv-word-lit); }
+        .nv-link { color: var(--nv-sub); transition: color 0.35s ease; }
+        .nv-link:focus-visible { color: var(--nv-sub-lit); }
         .nv-sub { position: absolute; top: 100%; left: 50%; z-index: 60; display: flex; flex-direction: column; align-items: center;
           gap: 14px; margin-top: 12px; padding: 12px 20px 14px; white-space: nowrap;
           opacity: 0; visibility: hidden; transform: translate(-50%, -4px);
@@ -143,6 +183,8 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
         .nv-open > .nv-sub, .nv-item:has(:focus-visible) > .nv-sub { opacity: 1; visibility: visible; transform: translate(-50%, 0);
           transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s; }
         @media (hover: hover) {
+          .nv-item:hover > .nv-word { color: var(--nv-word-lit); }
+          .nv-link:hover { color: var(--nv-sub-lit); }
           .nv-item:hover > .nv-sub { opacity: 1; visibility: visible; transform: translate(-50%, 0);
             transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s; }
         }

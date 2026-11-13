@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { PLAY_EVENT } from "@/components/satori-sun"
 import { DRAWN_MS } from "@/components/satori-core"
 import { HAND_END } from "@/components/satori-breath"
+import { PULSE_DRAWN_MS } from "@/components/satori-pulse"
 
 /**
  * On a touch screen, a tap on a pendant on /body/satori plays its hover first
@@ -18,10 +19,10 @@ import { HAND_END } from "@/components/satori-breath"
  * page as before.
  */
 
-/** How long each drawing takes to be whole, ms. Satori 2 draws nothing by hand: its line of pulses comes in and its wave widens. */
+/** How long each drawing takes to be whole, ms. Satori 2's circles are drawn by hand behind their lights, as Satori 3's drawing is. */
 const PLAY_MS: Record<string, number> = {
   "satori-1": HAND_END,
-  "satori-2": 1400,
+  "satori-2": PULSE_DRAWN_MS, // its circles drawn by hand behind their lights (satori-pulse.tsx)
   "satori-3": DRAWN_MS["satori-3"],
   "satori-4": DRAWN_MS["satori-4"],
 }

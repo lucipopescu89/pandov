@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
-import { canvasDpr, flush, level, lights, samplePath, skipFrame, type Gate } from "@/lib/satori-lights"
+import { canvasDpr, cometsFrom, ease, flush, level, lights, samplePath, skipFrame, stretch, type Gate, type LightCfg, type Pts } from "@/lib/satori-lights"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
@@ -33,7 +33,8 @@ import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
  * gradually as the wave passes (the author's asking, the same day; at first
  * each pulse the light passed drew a circle whole by hand, and the author
  * did not like it). The wave adds only what the foot does not show (`OUTSIDE`,
- * the zone's complement), so the foot is never brighter than it is.
+ * the zone's complement), so the foot is never brighter than it is. The foot
+ * fades towards the sides, to nothing `LATERAL_R` from the axis (2026-11-13).
  *
  * The wave goes out calmly, at an even pace (for a while the same day it went
  * out in surges at the heartbeat; the author preferred it calm). The foot is
@@ -41,11 +42,17 @@ import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
  * brought down the same day).
  *
  * **On a hover over the pendant** (the author's asking, the same day), with a
- * mouse:
- * - the wave widens from three circles seen whole to nine (`WIDE`: the middle
- *   one at full strength, falling to `SIDE` at the outermost two; five until
- *   2026-11-12);
- * - the line of pulses itself shows, still, at 30% (`TRACK_ALPHA`), and its
+ * mouse (on a phone, a tap: `satori-tap.tsx`):
+ * - lights trace the circles, as Satori 3's drawing is traced (2026-11-13, the
+ *   author's asking; until then the wave widened to nine circles, now gone):
+ *   each circle is drawn by hand from where it comes nearest the pendant's
+ *   body, one on either side, both ways round it, its lights riding the
+ *   fronts and then running on; off the pendant it is drawn back, as the
+ *   other three are (`DRAW_SPEED`, `UNDRAW_RATE`). The circles set out
+ *   one after another from the neck down to the feet: the innermost, which
+ *   passes 4 units from the figure's shoulders, first, the outermost, under
+ *   its feet, last (`NEAREST`, `FRONT_SPEED`), at the others' pace. The wave goes on as at rest;
+ * - the line of pulses itself shows, still, at 10% (`TRACK_ALPHA`), and its
  *   pulses beat together at the site's one heartbeat (`lib/heartbeat.ts`,
  *   Mother Nature's lub-dub): on each beat every spike rises higher and every
  *   trough sinks lower, about the line's circle (`TRACK_BEAT_AMP`), and the
@@ -103,6 +110,28 @@ const ZONE_D = (() => {
 const FEATHER = 18
 
 /**
+ * The circles round the foot fade sideways (2026-11-13, the author's asking,
+ * with a sketch): as strong as they were along the axis, top and bottom, and
+ * fading towards the left and the right until, `LATERAL_R` from the axis,
+ * where the zone's feathered edge already had them gone, nothing is left. So
+ * the V under the pendant stays and the strokes reaching out at its shoulders
+ * go softly. A gradient across the frame over the foot, on top of the zone and
+ * the drawing's own fade; the wave and the line of pulses are as they were.
+ * The fall-off is a smoothstep. (The same morning it ran out to the outermost
+ * circle's sides, 307, and changed next to nothing.)
+ */
+const LATERAL_R = 100
+const lateral = (u: number) => {
+  const a = Math.min(1, Math.abs(u))
+  return 1 - a * a * (3 - 2 * a)
+}
+/** The gradient's stops across [axis − LATERAL_R, axis + LATERAL_R]: offset 0…1 and strength. */
+const LATERAL_STOPS: [number, number][] = Array.from({ length: 21 }, (_, i) => {
+  const o = i / 20
+  return [o, +lateral(2 * o - 1).toFixed(4)]
+})
+
+/**
  * The wave through the circles: seconds from before the innermost to past the
  * outermost, and how strong the circles either side of its middle one are.
  */
@@ -112,11 +141,15 @@ const SIDE = 0.3
 const WAVE_ALPHA = 0.5
 const FOOT_ALPHA = 0.7
 /** On a hover over the pendant: the line of pulses at this strength, its beat's extra light and spike height, and how fast it comes and goes. */
-const TRACK_ALPHA = 0.2 // 0.3 until the author asked for it fainter, 2026-11-12
-const TRACK_BEAT_LIGHT = 0.08 // 0.25, then 0.12, the same day: the author asked for a gentler beat, in light and in height
+const TRACK_ALPHA = 0.1 // 0.3, then 0.2 (2026-11-12), then half that (2026-11-13): the author asked for it fainter each time
+const TRACK_BEAT_LIGHT = 0.04 // 0.25, then 0.12, then 0.08 on 2026-11-12, halved with the line on 2026-11-13
 const TRACK_BEAT_AMP = 0.22 // 0.45 until then
 const TRACK_LAG_S = 0.25
-/** The wave's half-width in circles: one either side at rest (three seen), four on a hover (nine; five until 2026-11-12, the author's asking). */
+/**
+ * The wave's half-width in circles: one either side (three seen). On a hover
+ * it widened to `WIDE` either side (nine) until 2026-11-13; it no longer
+ * does, but its pace is still reckoned with room for nine (`WAVE_S`).
+ */
 const NARROW = 1
 const WIDE = 4
 
@@ -130,19 +163,61 @@ const strength = (d: number, h: number) => {
   return a <= h ? 1 - ((1 - SIDE) * a) / h : a <= h + 1 ? SIDE * (h + 1 - a) : 0
 }
 /**
- * On a hover the nine fade one way only (2026-11-12, the author's asking): the
- * one leading the wave out, `WIDE` past its middle, is the strongest, and each
- * behind it a little fainter, down to `TAIL` at the ninth; nothing past them.
- * It comes in from nothing over the circle ahead of the leader.
+ * The lights round the circles on a hover: Satori 3's (`satori-core.tsx`),
+ * brighter than the circles and faded towards the edge as they are.
  */
-const TAIL = 0.1
-const leading = (d: number) => {
-  const k = WIDE - d // circles behind the leader
-  if (k < -1 || k > 2 * WIDE + 1) return 0
-  if (k < 0) return 1 + k
-  if (k <= 2 * WIDE) return 1 - ((1 - TAIL) * k) / (2 * WIDE)
-  return TAIL * (2 * WIDE + 1 - k)
-}
+const LIGHT_PEAK = 0.85
+const LIGHT_CFG: LightCfg = { trail: 320, front: 30, piece: 6, speed: 115 }
+/** The circles are measured into points this far apart for the lights, frame units. */
+const LIGHT_STEP = 2
+/**
+ * How fast the start goes down the body from one circle to the next, frame
+ * units a second: Satori 3's `FRONT_SPEED`, so the circles set out from the
+ * shoulders to under the feet in about a quarter of a second (0.13s a circle,
+ * 1.3s in all, the first try that morning, was slow beside the others).
+ */
+const FRONT_SPEED = 520
+/** Seconds the lights take to come, and to go on leaving the pendant. */
+const LIGHT_IN_S = 0.2
+const LIGHT_OUT_S = 0.35
+/**
+ * The circles are drawn by hand behind the lights, as Satori 3's drawing is
+ * (2026-11-13, the author's asking: off the pendant the lights only went
+ * out, where the other three draw their lines back): from where each comes
+ * nearest the body, both ways, at `DRAW_SPEED` frame units a second (eased,
+ * never under `DRAW_MIN_S`), the lights riding the fronts and then running
+ * on; dimmed to `DIM` of the drawing's gold. Off the pendant they are drawn
+ * back `UNDRAW_RATE` times faster, from wherever they had got to, and the
+ * lights go out. Satori 3's numbers (`satori-core.tsx`).
+ */
+const DRAW_SPEED = 400
+const DRAW_MIN_S = 0.5
+const UNDRAW_RATE = 1.6
+const DIM = 0.45
+/**
+ * Where each circle comes nearest the pendant's body, frame units along it
+ * from its start (the foot of its dip, going right), in lib/satori-core-2.json's
+ * order, outermost first; its mirror on the left is as far from the end.
+ * Measured on the page against photo-2.avif's alpha (2026-11-13): no circle
+ * passes behind the figure; the innermost comes within 4 units of it at the
+ * shoulders (y 803), each next one a little lower, the outermost 84 units
+ * under its feet (y 920). Measure again if the photograph or the circles move.
+ */
+const NEAREST = [174, 158, 144, 130, 118, 106, 94, 84, 76, 72, 68]
+/** Those points, on the right (x, y), in the same order: the innermost's, by the shoulders, is where the drawing starts. */
+const NEAREST_AT = [[691, 920], [686, 904], [682, 888], [677, 875], [674, 862], [670, 851], [667, 843], [664, 834], [661, 825], [660, 813], [658, 803]]
+/** Each circle's start, its farthest front (up and round to its top) and its drawing's length, seconds. */
+const RING_PLAN = CORE.lines.map((l, i) => {
+  const reach = l.len / 2 - NEAREST[i]
+  const [x0, y0] = NEAREST_AT[NEAREST_AT.length - 1]
+  return {
+    delay: Math.hypot(NEAREST_AT[i][0] - x0, NEAREST_AT[i][1] - y0) / FRONT_SPEED,
+    reach,
+    duration: Math.max(DRAW_MIN_S, reach / DRAW_SPEED),
+  }
+})
+/** When the circles are whole on a hover, ms (for `SatoriTap`, which waits for it on a phone). */
+export const PULSE_DRAWN_MS = Math.max(...RING_PLAN.map((r) => r.delay + r.duration)) * 1000
 
 export function SatoriPulse() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -261,12 +336,10 @@ export function SatoriPulse() {
     /** The wave through the circles, cut out of the zone round the foot. */
     const wave = (t: number) => {
       const w = ((t / WAVE_S) % 1) * (count + 2 * WIDE + 1) - (WIDE + 0.5)
-      const h = NARROW + (WIDE - NARROW) * shown
       ctx.strokeStyle = fade
       let any = false
       for (let j = 0; j < count; j++) {
-        // at rest even about its middle; on a hover, strongest at its lead
-        const a = WAVE_ALPHA * (strength(j - w, h) * (1 - shown) + leading(j - w) * shown)
+        const a = WAVE_ALPHA * strength(j - w, NARROW)
         if (a < 0.003) continue
         ctx.globalAlpha = a
         ctx.stroke(circles[j])
@@ -347,11 +420,68 @@ export function SatoriPulse() {
       }
       flush(ctx, gather)
     }
+    // The lights round the circles, on a hover.
+    const rings: Pts[] = CORE.lines.map((l) => samplePath(l.d, LIGHT_STEP))
+    const origins = rings.map((l, i) => {
+      const per = l.total / l.n // frame units a point
+      return [NEAREST[i] / per, (l.total - NEAREST[i]) / per]
+    })
+    const lineFade = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
+    lineFade.addColorStop(0, `rgba(198, 155, 92, ${CORE.fade.peak * DIM})`)
+    lineFade.addColorStop(1, "rgba(198, 155, 92, 0)")
+    const lightFade = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
+    lightFade.addColorStop(0, `rgba(${LIGHT}, ${LIGHT_PEAK})`)
+    lightFade.addColorStop(1, `rgba(${LIGHT}, 0)`)
+    const ringGather = lights()
+    const drawnEnd = PULSE_DRAWN_MS / 1000
+    let clock = 0 // seconds into the drawing: on with the hover, back faster off it
+    let lit = 0 // the lights, 0 → 1
+    const after = RING_PLAN.map(() => 0) // seconds each circle has been whole, for its lights to run on
+    const ringLights = (dt: number) => {
+      clock = onPendant ? Math.min(drawnEnd, clock + dt) : Math.max(0, clock - dt * UNDRAW_RATE)
+      lit = onPendant ? Math.min(1, lit + dt / LIGHT_IN_S) : Math.max(0, lit - dt / LIGHT_OUT_S)
+      if (clock <= 0 && lit <= 0) {
+        after.fill(0)
+        return
+      }
+      // how far each circle's fronts have come from where it set out, frame units
+      const fronts = RING_PLAN.map((r, i) => {
+        const p = ease((clock - r.delay) / r.duration)
+        after[i] = onPendant && p >= 1 ? after[i] + dt : p >= 1 ? after[i] : 0
+        return p * r.reach
+      })
+      // the circles, drawn from where they set out: down to the foot of the dip, up and round to the top
+      ctx.strokeStyle = lineFade
+      ctx.beginPath()
+      rings.forEach((l, i) => {
+        const D = fronts[i]
+        if (D <= 0) return
+        const per = l.total / l.n
+        const down = Math.min(D, NEAREST[i]) / per
+        const up = Math.min(D, RING_PLAN[i].reach) / per
+        const [right, left] = origins[i]
+        stretch(ctx, l, right - down, right + up)
+        stretch(ctx, l, left - up, left + down)
+      })
+      ctx.stroke()
+      if (lit <= 0.003) return
+      // the lights ride the fronts, then run on round
+      ctx.strokeStyle = lightFade
+      rings.forEach((l, i) => {
+        if (fronts[i] <= 0) return
+        const per = l.total / l.n
+        const d = (fronts[i] + after[i] * LIGHT_CFG.speed) / per
+        cometsFrom(ringGather, l, origins[i], d, lit, LIGHT_CFG, per)
+      })
+      flush(ctx, ringGather)
+    }
+
     const draw = (t: number, dt: number) => {
       begin()
       wave(t)
       light(t)
       drawTrack(t, dt)
+      ringLights(dt)
     }
 
     let on = false
@@ -425,8 +555,23 @@ export function SatoriPulse() {
           <mask id="satori-pulse-zone" maskUnits="userSpaceOnUse" x="0" y="0" width={FRAME_W} height={FRAME_H}>
             <path d={ZONE_D} fill="white" filter="url(#satori-pulse-feather)" />
           </mask>
+          <linearGradient
+            id="satori-pulse-side"
+            gradientUnits="userSpaceOnUse"
+            x1={AXIS_X - LATERAL_R}
+            y1={0}
+            x2={AXIS_X + LATERAL_R}
+            y2={0}
+          >
+            {LATERAL_STOPS.map(([o, a]) => (
+              <stop key={o} offset={o} stopColor="white" stopOpacity={a} />
+            ))}
+          </linearGradient>
+          <mask id="satori-pulse-sides" maskUnits="userSpaceOnUse" x="0" y="0" width={FRAME_W} height={FRAME_H}>
+            <rect x="0" y="0" width={FRAME_W} height={FRAME_H} fill="url(#satori-pulse-side)" />
+          </mask>
         </defs>
-        <g stroke="url(#satori-pulse-fade)" strokeLinecap="round" strokeLinejoin="round">
+        <g stroke="url(#satori-pulse-fade)" strokeLinecap="round" strokeLinejoin="round" mask="url(#satori-pulse-sides)">
           <g mask="url(#satori-pulse-zone)" opacity={FOOT_ALPHA}>
             {CORE.lines.map((l, i) => (
               <path key={i} d={l.d} />

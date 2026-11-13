@@ -119,6 +119,12 @@ const STORM_SPEED = 0.35 // 1.1 at first: it flickered, and read as speed
  * towards the edge as they are) and as strong as each line is. They come with
  * the hover and go as it ends (`LIGHTS_IN_S`, `LIGHTS_OUT_S`).
  */
+/**
+ * Off since 2026-11-13, the author's asking: on a hover only the drawing
+ * inside the rays is traced by lights (`SatoriCore`), the crown no longer.
+ * `true` brings the crown's lights back as they were.
+ */
+const CROWN_LIGHTS = false
 const LIGHT = "214, 172, 106"
 const LIGHT_PEAK = 1
 const LIGHT_CFG: LightCfg = { trail: 420, front: 30, piece: 12, speed: 140 }
@@ -467,7 +473,7 @@ export function SatoriSun({ className }: { className?: string }) {
       ctx.globalAlpha = 1
       // the lights round the lines, on a hover; not on a phone (2026-11-12,
       // the author's asking: there they cost more than they gave)
-      if (lightsA > 0.003 && !lite) {
+      if (CROWN_LIGHTS && lightsA > 0.003 && !lite) {
         ctx.strokeStyle = lightStyle()
         ctx.lineCap = "round"
         ctx.lineWidth = (LIGHT_PX * dpr) / scale

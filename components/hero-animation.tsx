@@ -163,6 +163,20 @@ const DOORS_WAIT_MS = 2000
  */
 const OPEN_WHEEL_PX = 500
 const OPEN_TOUCH_PX = 380
+/**
+ * A finger lifted while still moving carries the doors on (2026-11-12, the
+ * author's report from an iPhone 8: a swipe down left the doors stuck part
+ * open). A phone is swiped, not dragged: the finger leaves the glass moving,
+ * and the page was expected to go on as it does everywhere else. Until then
+ * the doors stopped where the finger left them, a third or a half open after
+ * a quick swipe. Now they go on by as far as the finger would have gone in
+ * `FLICK_S` at its speed when it was lifted, as a page's own momentum does;
+ * a finger that stopped before it was lifted leaves them where they are,
+ * still in the reader's hand. Up the same way.
+ */
+const FLICK_S = 0.4
+/** Slower than this when lifted, px/s, and nothing is carried on. */
+const FLICK_MIN_SPEED = 150
 const OPEN_KEY = 0.2
 const STEP_LAG_S = 0.12
 const STEP_FASTEST_S = 0.9
@@ -811,6 +825,9 @@ function holdScroll(el: HTMLElement, beats: Beat[], doors?: DoorsStep): () => vo
     if (touch.mode === "step") {
       e.preventDefault()
       stepBy(dy / OPEN_TOUCH_PX, !first)
+      // Its speed, for the carry when it is lifted (see FLICK_S).
+      const dt = e.timeStamp - touch.at
+      if (dt > 0) touch.v = first ? (dy / dt) * 1000 : 0.75 * ((dy / dt) * 1000) + 0.25 * touch.v
       // Fully open: the page has gone on, and the rest of the drag is held.
       if (-rest() > beats[0].at()) touch.mode = "hold"
       touch.x = p.clientX
@@ -840,6 +857,12 @@ function holdScroll(el: HTMLElement, beats: Beat[], doors?: DoorsStep): () => vo
     const t = touch
     touch = null
     fingerUntil = performance.now() + FLING_MS
+    // A swipe at the doors carries them on (see FLICK_S).
+    if (t?.mode === "step") {
+      const v = e.timeStamp - t.at > 80 ? 0 : t.v
+      if (Math.abs(v) >= FLICK_MIN_SPEED) stepBy((v * FLICK_S) / OPEN_TOUCH_PX, true)
+      return
+    }
     if (t?.mode !== "arrive") return
     // A finger that stopped before it was lifted throws nothing; one that
     // turned back up leaves the page where it is.

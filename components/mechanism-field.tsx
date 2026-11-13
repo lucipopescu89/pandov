@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { HEART_S, heartKeyframes } from "@/lib/heartbeat"
 import type { MechanismLayer, Motion, ViewBox } from "@/lib/mechanism"
+import { listenHurry } from "@/lib/hurry"
 
 /** Seconds between a wave ring's pulses: each of its dots sets off once a cycle. */
 const WAVE_S = 6
@@ -24,11 +25,18 @@ const JOURNEY_SAMPLES = 256
  * of 1. It shrinks with the scatter, so a ring that moves as one stays whole.
  */
 const REACH_SPREAD = 0.6
-/** Scroll speed, in px/s, that reads as scrolling hard. */
-const FULL_BOOST_SPEED = 1600
-/** Spin multiplier added at full scroll, for rings with `scrollSpin`. */
+/**
+ * The rings hurry while the pointer is over Mother Nature's pendant, or for a
+ * moment after a tap on it on a phone (`lib/hurry.ts`), no longer when the page
+ * is scrolled (2026-11-13, the author's asking), as fast as scrolling hard took
+ * them: spin 7×, the beat 2.2×. (Twice that, tried the same morning, was too
+ * much by the author's eye.)
+ * The `scrollSpin` and `scrollPulse` flags keep their names; they now mark the
+ * rings the hurry quickens.
+ */
+/** Spin multiplier added at a full hurry, for rings with `scrollSpin`. */
 const SPIN_BOOST = 6
-/** Pulse-rate multiplier added at full scroll, for rings with `scrollPulse`. */
+/** Pulse-rate multiplier added at a full hurry, for rings with `scrollPulse`. */
 const PULSE_BOOST = 1.2
 /**
  * Fraction of the remaining gap closed each 60fps frame. Lower is lazier, so
@@ -359,7 +367,7 @@ async function buildSprites(
  * hundred sprite copies a frame, like the particles over Chaos. The canvas
  * sits behind the artwork, so the waves pass under its text.
  *
- * A light loop also turns scroll velocity into an eased boost and adjusts
+ * A light loop also eases a boost toward the pendant's hurry and adjusts
  * playback rates. It and the animations run only while the artwork is near
  * the screen.
  */
@@ -415,7 +423,7 @@ export function MechanismField({
 
       if (motion.pulse === "heart") {
         // Hearts share a start, so a ring's lag alone sets when it beats, and
-        // they keep their places in the ripple however scrolling quickens them.
+        // they keep their places in the ripple however a hurry quickens them.
         const beat = pulse.animate(heartKeyframes(motion), {
           duration: HEART_S * 1000,
           iterations: Infinity,
@@ -527,26 +535,22 @@ export function MechanismField({
     }
 
     let boost = 0
-    let scrolled = 0
-    let lastY = window.scrollY
+    let hurried = false
     let last = performance.now()
     let spinRate = 1
     let pulseRate = 1
     let raf = 0
     let visible = false
 
-    const onScroll = () => {
-      const y = window.scrollY
-      scrolled += Math.abs(y - lastY)
-      lastY = y
-    }
+    const stopListening = listenHurry(label, (on) => {
+      hurried = on
+    })
 
     const frame = (now: number) => {
-      // Clamp so a backgrounded tab doesn't read as one enormous scroll.
-      const dt = Math.min(0.1, (now - last) / 1000)
+      // Clamp so a backgrounded tab doesn't jump the clock forward on return.
+      const dt = Math.max(0, Math.min(0.1, (now - last) / 1000))
       last = now
-      const target = dt > 0 ? Math.min(1, scrolled / dt / FULL_BOOST_SPEED) : 0
-      scrolled = 0
+      const target = hurried ? 1 : 0
       boost += (target - boost) * (1 - Math.pow(1 - RESPONSE, dt * 60))
       if (boost < 0.001) boost = 0
 
@@ -583,8 +587,6 @@ export function MechanismField({
         if (visible) {
           for (const a of all) a.play()
           last = performance.now()
-          lastY = window.scrollY
-          scrolled = 0
           raf = requestAnimationFrame(frame)
         } else {
           for (const a of all) a.pause()
@@ -601,13 +603,12 @@ export function MechanismField({
     if (ctx && canvas) io.observe(canvas)
     const ro = ctx ? new ResizeObserver(measure) : null
     ro?.observe(wrap)
-    window.addEventListener("scroll", onScroll, { passive: true })
 
     return () => {
       disposed = true
       io.disconnect()
       ro?.disconnect()
-      window.removeEventListener("scroll", onScroll)
+      stopListening()
       if (raf) cancelAnimationFrame(raf)
       for (const a of all) a.cancel()
       // Back to the still rings, with nothing left behind on the canvas.
@@ -617,7 +618,7 @@ export function MechanismField({
         ctx.clearRect(0, 0, canvas.width, canvas.height)
       }
     }
-  }, [layers, viewBox])
+  }, [layers, viewBox, label])
 
   const field = waveField(layers)
 

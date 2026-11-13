@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { revealPosition, revealStrip, type RevealLayer } from "@/lib/reveal"
+import { listenHurry } from "@/lib/hurry"
 
 const PARTICLES_PER_PATH = 36
 /** Peak opacity, held between the fade in and the fade out. */
@@ -12,8 +13,8 @@ const PARTICLE_COLORS = ["#f2e2a0", "#b8912f"]
  * Seconds to cover `REF_LEN` at rest; randomised per dot in this range.
  * The range has been stretched twice from the 45-100s it was first tuned at —
  * 30% off the speed, then 35% off what was left — so the drift now runs at
- * 45% of that first pass. The scroll boost below multiplies this same speed,
- * so the quickened field slowed by exactly as much.
+ * 45% of that first pass. The hurry below multiplies this same speed, so the
+ * quickened field slowed by exactly as much.
  */
 const LAP_MIN = 98
 const LAP_SPREAD = 122
@@ -63,14 +64,20 @@ const SAMPLES = 240
  */
 const LIFT = 2
 
-/** Multiplier on the resting speed once you are scrolling hard. */
+/**
+ * Added to the resting speed while the field hurries: the pointer over the
+ * section's pendant, or a tap on it on a phone (`lib/hurry.ts`). 8 as when it
+ * was reached by scrolling hard (1600px/s), until 2026-11-13: 9× the resting
+ * speed. That morning the author asked for the hurry to come from the pendant
+ * instead and twice as fast (17, 18×), then found that too much and asked for
+ * half of it, which is where it began.
+ */
 const MAX_BOOST = 8
-/** Scroll speed, in px/s, that asks for the full boost. */
-const FULL_BOOST_SPEED = 1600
 /**
  * Fraction of the remaining gap closed each 60fps frame. Lower is lazier: the
- * boost eases toward what the scrolling is asking for rather than snapping to
- * it, so the field takes about a second to wind up and the same to wind down.
+ * boost eases toward the hurry rather than snapping to it, so the field takes
+ * about a second to wind up (90% of the way in a phone's 1.5s tap) and the
+ * same to wind down.
  */
 const RESPONSE = 0.025
 /** Retina is worth it; 3x on a phone is not, for dots this small. */
@@ -101,7 +108,7 @@ const RAIN_DECAY = 1.4
  * go and falls: how fast it quickens, in artwork units per second squared, and
  * the speed the air holds it to. At rest a drop off the hands is gone in about
  * four seconds — quicker than the streams pour, since a drop is let go rather
- * than carried — and scrolling quickens it with everything else.
+ * than carried — and a hurry quickens it with everything else.
  */
 const DRIP_G = 60
 const DRIP_VMAX = 120
@@ -117,7 +124,7 @@ const DRIP_FOLLOW_MIN = 0.25
 const DRIP_FOLLOW_SPREAD = 0.2
 /**
  * Seconds of travel smeared out behind a falling bead, so the faster it goes
- * the more it reads as a streak; capped, in artwork units, for hard scrolling.
+ * the more it reads as a streak; capped, in artwork units, for a hard hurry.
  */
 const DRIP_SMEAR = 0.12
 const DRIP_TAIL_MAX = 60
@@ -504,9 +511,10 @@ type DripSource = {
  * thread every frame — smooth on a desktop, visibly choppy on an iPhone 8.
  * Sampled paths plus one canvas reduce a frame to a few hundred arc fills.
  *
- * Scrolling adds to a boost that eases back to nothing, so the field drifts
- * almost imperceptibly at rest and quickens while the page is moving. The loop
- * only runs while the artwork is on screen.
+ * The field drifts almost imperceptibly at rest and hurries while its pendant
+ * asks it to (`lib/hurry.ts`, matched by `label`): the boost eases up to it and
+ * back to nothing. Scrolling no longer quickens it. The loop only runs while
+ * the artwork is on screen.
  *
  * `tracks` is the selector for the strokes the dots ride — Chaos hands over
  * every stroked path, Waterfall only its long streams, since dots crawling on
@@ -744,9 +752,8 @@ export function ParticleField({
     }
 
     let boost = 0
-    let scrolled = 0
+    let hurried = false
     let last = performance.now()
-    let lastY = window.scrollY
     let raf = 0
     let visible = false
 
@@ -756,11 +763,9 @@ export function ParticleField({
 
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
-    const onScroll = () => {
-      const y = window.scrollY
-      scrolled += Math.abs(y - lastY)
-      lastY = y
-    }
+    const stopListening = listenHurry(label, (on) => {
+      hurried = on
+    })
 
     const frame = (now: number) => {
       // Clamp so a backgrounded tab doesn't jump the clock forward on return,
@@ -769,13 +774,8 @@ export function ParticleField({
       const dt = Math.max(0, Math.min(0.1, (now - last) / 1000))
       last = now
 
-      // Scroll events are bursty, so turn them into a speed and let the boost
-      // chase that target instead of reacting to each event directly.
-      const pxPerSec = dt > 0 ? scrolled / dt : 0
-      scrolled = 0
-      const target = calm
-        ? 0
-        : Math.min(MAX_BOOST, (pxPerSec / FULL_BOOST_SPEED) * MAX_BOOST)
+      // The boost chases the hurry rather than jumping to it.
+      const target = !calm && hurried ? MAX_BOOST : 0
       boost += (target - boost) * (1 - Math.pow(1 - RESPONSE, dt * 60))
       const advance = dt * (1 + boost)
 
@@ -951,8 +951,6 @@ export function ParticleField({
         visible = entry.isIntersecting
         if (visible) {
           last = performance.now()
-          lastY = window.scrollY
-          scrolled = 0
           raf = requestAnimationFrame(frame)
         } else {
           cancelAnimationFrame(raf)
@@ -965,15 +963,14 @@ export function ParticleField({
       { rootMargin: "0px" },
     )
     io.observe(wrap)
-    window.addEventListener("scroll", onScroll, { passive: true })
 
     return () => {
       ro.disconnect()
       io.disconnect()
-      window.removeEventListener("scroll", onScroll)
+      stopListening()
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [trackSelector, flow, rain, drips, spacing, mirror, reveal])
+  }, [trackSelector, flow, rain, drips, spacing, mirror, reveal, label])
 
   return (
     <div ref={wrapRef} aria-label={label} className={className} style={style}>

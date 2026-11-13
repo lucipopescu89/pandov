@@ -1,4 +1,5 @@
 import { RadiantRings } from "@/components/radiant-rings"
+import { RingHurry } from "@/components/ring-hurry"
 
 /**
  * Presence: the sculpture's outline, set radiating.
@@ -11,7 +12,9 @@ import { RadiantRings } from "@/components/radiant-rings"
  *
  * What is left here is the measurement: where the ellipse sits in the
  * artwork's own units, and how much room the section has to give the rings.
- * The motion is `RadiantRings`, shared with the homepage hero.
+ * The motion is `RadiantRings`, shared with the homepage hero. On
+ * /body/second-wind the rings radiate faster while the pendant hurries them
+ * (`RingHurry`, 2026-11-13).
  */
 
 /** presence.svg's own viewBox. */
@@ -103,6 +106,7 @@ export function PresenceHalo({ label, html, className, style }: Props) {
       </div>
 
       <div style={{ position: "relative" }} dangerouslySetInnerHTML={{ __html: html }} />
+      <RingHurry label={label} />
     </div>
   )
 }

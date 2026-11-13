@@ -205,6 +205,40 @@ export function comets(b: Lights, l: Pts, mode: Mode, d: number, alpha: number, 
   }
 }
 
+/**
+ * Lights leaving points of a closed line both ways at once (Satori 2's
+ * circles, 2026-11-13): from each of `origins` (point indices) one runs
+ * forward and one back, `d` points along their way, round and round; as
+ * `comets` otherwise.
+ */
+export function cometsFrom(b: Lights, l: Pts, origins: number[], d: number, alpha: number, cfg: LightCfg, step: number) {
+  if (d <= 0) return
+  const trail = cfg.trail / step
+  const front = Math.max(1, cfg.front / step)
+  const piece = Math.max(1, Math.round(cfg.piece / step))
+  const { pts, n } = l
+  const len = Math.min(trail, d)
+  for (const origin of origins) {
+    for (const dir of [1, -1]) {
+      const head = Math.floor(origin + dir * d)
+      for (let k = 0; k < len; k += piece) {
+        const mid = k + piece / 2
+        const f = 1 - mid / trail
+        const g = Math.min(1, mid / front)
+        const path = level(b, alpha * f * f * g * g * (3 - 2 * g))
+        if (!path) continue
+        const a0 = head - dir * k
+        const i0 = ((a0 % n) + n) % n
+        path.moveTo(pts[2 * i0], pts[2 * i0 + 1])
+        for (let j = 1; j <= piece && k + j <= len; j++) {
+          const q = (((a0 - dir * j) % n) + n) % n
+          path.lineTo(pts[2 * q], pts[2 * q + 1])
+        }
+      }
+    }
+  }
+}
+
 /** How far a line's lights have come, in points: `p` (0 → 1) of its drawing, then on at `speed` for `after` seconds. */
 export function lightWay(mode: Mode, l: Pts, p: number, after: number, cfg: LightCfg, step: number) {
   const m = span(l)
