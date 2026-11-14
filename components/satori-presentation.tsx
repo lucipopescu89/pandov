@@ -114,8 +114,10 @@ const BREATH_SLUG = "satori-1"
  * before does not steal its hover.
  *
  * `top` and `bottom` are each drawing's extent in its frame: Satori 1's great
- * circle as it stands come forward on a hover (458 to 1036; 511 to 1013 at
- * rest, before it came forward, 2026-11-14); Satori 2's line of pulses (221 to 1226, its spikes);
+ * circle as it stands come forward on a hover to 140% (371 to 1073), with 30
+ * more either side so the verses over and under it are not crowded as it
+ * grows (2026-11-14, the author's asking; 458 to 1036 at 115% that morning,
+ * 511 to 1013 at rest); Satori 2's line of pulses (221 to 1226, its spikes);
  * Satori 3's closing circles where they come into sight (170) and their faint
  * start below (1200); Satori 4's rays at their full height (150).
  */
@@ -124,7 +126,7 @@ const GAP_TO_VERSE = 130
 /** Where the first verse stands under the menu, as before (frame units from the frame's top). */
 const FIRST_VERSE_TOP = 88
 const DRAWING: Record<string, { top: number; bottom: number }> = {
-  "satori-1": { top: 458, bottom: 1036 },
+  "satori-1": { top: 340, bottom: 1104 },
   "satori-2": { top: 221, bottom: 1226 },
   "satori-3": { top: 170, bottom: 1200 },
   "satori-4": { top: 150, bottom: FRAME_H },

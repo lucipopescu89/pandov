@@ -128,12 +128,14 @@ const LIGHT_OUT_S = 0.35
  * a point within `ZOOM_BLEND` of the figure moves partly with it, so no line
  * breaks where it leaves the figure. Back off the pendant `ZOOM_BACK` times
  * as fast in its order, outermost first. All at one size in the end, so the
- * drawing is only larger, never bent. The great circle grows to 288 and
- * rises, so the frame's extent on /body/satori is `DRAWING` satori-1 459 to
- * 1036 (`satori-presentation.tsx`), the verse still outside it.
+ * drawing is only larger, never bent. The great circle grows to 351 and
+ * rises, reaching 371 to 1073, so the frame's extent on /body/satori is
+ * `DRAWING` satori-1 (`satori-presentation.tsx`), the verses still outside it.
+ * 1.40 and a lift of 40 since 2026-11-14 (the author's asking: 140%; it was
+ * 1.15 and 15 that morning; the lift kept in proportion to the growth).
  */
-const ZOOM_IN = 1.15
-const ZOOM_LIFT = 15
+const ZOOM_IN = 1.4
+const ZOOM_LIFT = 40
 const ZOOM_C: [number, number] = [DATA.fade.cx, DATA.fade.cy]
 const ZOOM_R0 = 100
 const ZOOM_R1 = 255
