@@ -33,7 +33,9 @@ import { canvasDpr, isLite, skipFrame, type Gate } from "@/lib/satori-lights"
  * closest, most detailed lines are seen, and is gone as it arrives. Drawn on a canvas over the first circle's box, one screen pixel
  * wide, in the drawing's gold, as the other drawings' lines are; it runs
  * only while the frame is on screen. Under reduced motion nothing is drawn
- * here: the author's drawing stands still instead (`SatoriCore`).
+ * here: the author's drawing stands still instead (`SatoriCore`). On a hover
+ * the canvas comes forward with the pendant (`SatoriCore`'s `zoom` finds it
+ * by `data-satori-flow`), so the circles never touch it while they fade.
  */
 
 const FRAME_W = 1275
@@ -213,6 +215,7 @@ export function SatoriFlow() {
     <canvas
       ref={ref}
       aria-hidden
+      data-satori-flow=""
       style={{
         position: "absolute",
         left: `${((FLOW.cx - SIDE / 2) / FRAME_W) * 100}%`,

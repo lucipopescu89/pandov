@@ -364,7 +364,7 @@ text.pfx-r{translate:none}
 
   // ======================= SECOND WIND: Silence =======================
   function installSilence() {
-    const cfg = { G: 190, soft: 50, range: 230, boost: 1.7, side: .32, N: 50 }; // N was 90 (2026-11-08: fewer, more discreet)
+    const cfg = { G: 190, soft: 50, range: 230, boost: 1.7, side: .32, N: 100 }; // N was 90, 50 from 2026-11-08 (fewer, more discreet), 100 since 2026-11-14 (the author's asking: they could hardly be seen)
     const cv = document.createElement('canvas'); cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9995'; document.body.appendChild(cv);
     const ctx = cv.getContext('2d'); let W, H; const dpr = Math.min(devicePixelRatio, 2);
     const size = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
@@ -389,7 +389,9 @@ text.pfx-r{translate:none}
       chaosEl = bp.querySelector('[aria-label="Chaos"]');
       for (const s of bp.children) { if ([...s.querySelectorAll('text')].some(t => /^\s*Silence\s*$/i.test(t.textContent))) { sec = s; break; } }
       if (!sec) return;
-      canvasEl = sec.querySelector('canvas'); rectEl = sec.querySelector('rect.bp-pendant');
+      // the photograph's own layer when it has one (components/pendant-link.tsx,
+      // 2026-11-14): it grows on a hover, and the dust must pass behind it as it is
+      canvasEl = sec.querySelector('canvas'); rectEl = sec.querySelector('.bp-pendant-layer') || sec.querySelector('rect.bp-pendant');
       const im = sec.querySelector('image'); const s2 = im && (im.getAttribute('href') || im.getAttribute('xlink:href'));
       if (s2 && s2 !== src) { src = s2; buildMask(src); }
       if (canvasEl) canvasEl.classList.add('pfx-silence-off');
@@ -412,7 +414,14 @@ text.pfx-r{translate:none}
     const HURRY_MAX = 8, HURRY_RESPONSE = .025;
     let hurried = false, hurry = 0, steps = 0;
     addEventListener('pandov:hurry', e => { if (e.detail && e.detail.label === 'Silence') hurried = e.detail.on; });
-    const look = m => { m.r = moteR(); m.a = moteA(); m.d = rnd(0, 6.28); m.born = 0; m.inside = 0; m.flung = 0; };
+    // 2026-11-14, the author's asking: some of the motes 2px across, and a
+    // little brighter (BIG_SHARE of them, BIG_R, BIG_A); on a computer only,
+    // a phone keeps its fine dust (see moteR).
+    const BIG_SHARE = .25, BIG_R = 1, BIG_A = () => rnd(.4, .75);
+    const look = m => {
+      const big = !PHONE.matches && Math.random() < BIG_SHARE;
+      m.r = big ? BIG_R : moteR(); m.a = big ? BIG_A() : moteA(); m.d = rnd(0, 6.28); m.born = 0; m.inside = 0; m.flung = 0;
+    };
     const spawn = (m, Z) => { m.x = rnd(Z.l, Z.r); m.py = rnd(Z.t, Z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.08, .02); look(m); };
     const tick = t => {
       raf = requestAnimationFrame(tick); frame++;

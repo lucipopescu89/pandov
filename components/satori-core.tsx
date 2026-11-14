@@ -55,6 +55,18 @@ import {
  *   back. Once it is gone it tells the frame (`UNDRAWN_EVENT`): Satori 4's
  *   storm only then calms, Satori 3's closing circles only then come back.
  *
+ * **Satori 3 also comes forward on a hover** (2026-11-14, the author's
+ * asking: as Satori 1, a little less; `zoom` in `DRAWINGS`): the pendant and
+ * the drawing grow about the ring's middle (`CORE.fade`) and rise a little.
+ * The drawing's circles come into the figure under the pendant, so what lies
+ * near the pendant moves with it, as one, first, and what lies further out
+ * follows by its distance from the pendant (`ZOOM_D0`…`ZOOM_D1`, a spring a
+ * band, `ZOOM_STAGGER` apart), blending smoothly, so no line breaks and all
+ * end at one size. Off the pendant the outermost go back first. The circles
+ * closing on the pendant at rest (`SatoriFlow`) grow with it while they fade,
+ * so they never touch it. The photograph stays on a layer of its own
+ * (`will-change`), or it jumps a pixel as it starts and stops moving.
+ *
  * A touch screen has no hover: there the circles radiate and the drawing
  * stays hidden (a tap is the frame's link). Under reduced motion the drawing
  * is shown whole and still, and nothing radiates.
@@ -84,10 +96,13 @@ type Core = typeof CORE_4
  * asking: Satori 3 at 0.55, then a little less; Satori 4 the same since the
  * same afternoon).
  */
-const DRAWINGS = {
-  "satori-3": { core: CORE_3 as Core, origin: [637.5, 785.35], dim: 0.45, lights: true },
+const DRAWINGS: Record<
+  "satori-3" | "satori-4",
+  { core: Core; origin: readonly number[]; dim: number; lights: boolean; zoom?: { in: number; lift: number } }
+> = {
+  "satori-3": { core: CORE_3 as Core, origin: [637.5, 785.35], dim: 0.45, lights: true, zoom: { in: 1.1, lift: 10 } },
   "satori-4": { core: CORE_4, origin: [637.5, 765.3], dim: 0.45, lights: true },
-} as const
+}
 type Slug = keyof typeof DRAWINGS
 
 /** Making's birth: how fast the start of the drawing travels out from the pendant, and each line is drawn, units a second. */
@@ -116,6 +131,21 @@ const LIGHT_MIN_LITE = 400
 /** The drawing's lines are measured into points this far apart, frame units. */
 const STEP = 2
 const LIGHT_OUT_S = 0.35
+
+/**
+ * Coming forward on a hover (Satori 3, `zoom`): the pendant's box on the page
+ * (`PHOTO_BOX`), which moves first with what lies within `ZOOM_D0` of it;
+ * further out the lines follow by their distance from it, in `ZOOM_BANDS`
+ * bands `ZOOM_STAGGER` apart, the last at `ZOOM_D1`; each band a critically
+ * damped spring (`ZOOM_W`, back `ZOOM_W_BACK`), as Satori 1's and 2's.
+ */
+const ZOOM_D0 = 40
+const ZOOM_D1 = 280
+const ZOOM_BANDS = 9
+const ZOOM_STAGGER = 0.07
+const ZOOM_BACK = 3
+const ZOOM_W = 3.2
+const ZOOM_W_BACK = 4
 
 /** How each line is drawn, and when it starts. */
 const plan = (core: Core, origin: readonly number[]) => core.lines.map((l) => {
@@ -154,7 +184,7 @@ export const DRAWN_MS = Object.fromEntries(
 ) as Record<Slug, number>
 
 export function SatoriCore({ slug }: { slug: Slug }) {
-  const { core: CORE, dim, lights: withLights } = DRAWINGS[slug]
+  const { core: CORE, dim, lights: withLights, zoom: ZOOM } = DRAWINGS[slug]
   const PLAN = PLANS[slug]
   const host = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLCanvasElement>(null)
@@ -178,21 +208,28 @@ export function SatoriCore({ slug }: { slug: Slug }) {
         y0 = Math.min(y0, l.pts[2 * k + 1]); y1 = Math.max(y1, l.pts[2 * k + 1])
       }
     }
-    const pad = 4
+    // the centre it comes forward about, and room for it to grow and rise
+    const zc = [CORE.fade.cx, CORE.fade.cy] as const
+    let reach = 0
+    for (const l of lines) for (let k = 0; k < l.n; k++) reach = Math.max(reach, Math.hypot(l.pts[2 * k] - zc[0], l.pts[2 * k + 1] - zc[1]))
+    const pad = 4 + (ZOOM ? reach * (ZOOM.in - 1) + ZOOM.lift : 0)
     const box = { x: x0 - pad, y: y0 - pad, w: x1 - x0 + 2 * pad, h: y1 - y0 + 2 * pad }
     canvas.style.left = `${(box.x / FRAME_W) * 100}%`
     canvas.style.top = `${(box.y / FRAME_H) * 100}%`
     canvas.style.width = `${(box.w / FRAME_W) * 100}%`
     canvas.style.aspectRatio = `${box.w} / ${box.h}`
 
-    const gradient = (color: string, peak: number) => {
-      const g = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
+    // the drawing's fade, grown and risen with the pendant (`p`, its way forward) so the lines keep their strength
+    const gradient = (color: string, peak: number, p = 0) => {
+      const sc = ZOOM ? 1 + (ZOOM.in - 1) * p : 1
+      const cy = CORE.fade.cy - (ZOOM ? ZOOM.lift * p : 0)
+      const g = ctx.createRadialGradient(CORE.fade.cx, cy, 0, CORE.fade.cx, cy, CORE.fade.r * sc)
       g.addColorStop(0, `rgba(${color}, ${peak})`)
       g.addColorStop(1, `rgba(${color}, 0)`)
       return g
     }
-    const lineFade = gradient("198, 155, 92", CORE.fade.peak * dim)
-    const lightFade = gradient(LIGHT, LIGHT_PEAK)
+    let lineFade = gradient("198, 155, 92", CORE.fade.peak * dim)
+    let lightFade = gradient(LIGHT, LIGHT_PEAK)
 
     let scale = 1
     let dpr = 1
@@ -219,6 +256,55 @@ export function SatoriCore({ slug }: { slug: Slug }) {
     let hovered = false
     let shown = 0 // the lights, 0 → 1
 
+    // Coming forward (`zoom`): each point's band by its distance from the
+    // pendant's box, each band's way forward (0 → 1) and pace, and the lines
+    // moved forward, redrawn into `movedLines` when a band has moved.
+    const zp = new Float32Array(ZOOM_BANDS)
+    const zv = new Float32Array(ZOOM_BANDS)
+    let moved = false
+    const movedLines: Pts[] = lines.map((l) => ({ ...l, pts: Float32Array.from(l.pts) }))
+    const pbox = (() => {
+      const ph = el.parentElement?.querySelector<HTMLElement>(".sp-photo")
+      if (!ph) return null
+      return {
+        x: (parseFloat(ph.style.left) / 100) * FRAME_W,
+        y: (parseFloat(ph.style.top) / 100) * FRAME_H,
+        w: (parseFloat(ph.style.width) / 100) * FRAME_W,
+        h: (parseFloat(ph.style.height) / 100) * FRAME_H,
+      }
+    })()
+    const bands = lines.map((l) => {
+      const f = new Float32Array(l.n)
+      for (let k = 0; k < l.n; k++) {
+        const x = l.pts[2 * k], y = l.pts[2 * k + 1]
+        let d = 0
+        if (pbox) {
+          const dx = Math.max(0, pbox.x - x, x - (pbox.x + pbox.w))
+          const dy = Math.max(0, pbox.y - y, y - (pbox.y + pbox.h))
+          d = Math.hypot(dx, dy)
+        }
+        const t = Math.min(1, Math.max(0, (d - ZOOM_D0) / (ZOOM_D1 - ZOOM_D0)))
+        f[k] = t * t * (3 - 2 * t) * (ZOOM_BANDS - 1)
+      }
+      return f
+    })
+    const moveLines = () => {
+      if (!ZOOM) return
+      lines.forEach((l, i) => {
+        const f = bands[i]
+        const src = l.pts
+        const dst = movedLines[i].pts
+        for (let k = 0; k < l.n; k++) {
+          const b0 = Math.floor(f[k])
+          const b1 = Math.min(ZOOM_BANDS - 1, b0 + 1)
+          const p = zp[b0] + (zp[b1] - zp[b0]) * (f[k] - b0)
+          const sc = 1 + (ZOOM.in - 1) * p
+          dst[2 * k] = zc[0] + (src[2 * k] - zc[0]) * sc
+          dst[2 * k + 1] = zc[1] + (src[2 * k + 1] - zc[1]) * sc - ZOOM.lift * p
+        }
+      })
+    }
+
     const gather = lights()
     const draw = (all = false) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -230,7 +316,8 @@ export function SatoriCore({ slug }: { slug: Slug }) {
       ctx.strokeStyle = lineFade
       ctx.beginPath()
       const ps = PLAN.map((pl, i) => (all ? 1 : ease((clock[i] - pl.delay) / pl.duration)))
-      lines.forEach((l, i) => {
+      const shownLines = moved ? movedLines : lines
+      shownLines.forEach((l, i) => {
         if (ps[i] <= 0) return
         for (const [a, b] of drawnStretches(PLAN[i].mode as Mode, span(l), ps[i])) stretch(ctx, l, a, b)
       })
@@ -238,7 +325,7 @@ export function SatoriCore({ slug }: { slug: Slug }) {
       if (shown < 0.003 || all) return
       ctx.lineCap = "round"
       ctx.strokeStyle = lightFade
-      lines.forEach((l, i) => {
+      shownLines.forEach((l, i) => {
         if (!lit[i] || ps[i] <= 0) return
         comets(gather, l, PLAN[i].mode as Mode, lightWay(PLAN[i].mode as Mode, l, ps[i], whole[i], LIGHT_CFG, STEP), shown, LIGHT_CFG, STEP)
       })
@@ -258,6 +345,77 @@ export function SatoriCore({ slug }: { slug: Slug }) {
     const frame = el.parentElement
     const photo = frame?.querySelector<HTMLElement>(".sp-photo")
     if (!photo) return
+
+    // The pendant, and the circles closing on it at rest, come forward with the
+    // drawing (`zoom`): grown from the ring's middle and raised, by CSS. The
+    // photograph is kept on a layer of its own from the start (see above).
+    const flowCanvas = frame?.querySelector<HTMLElement>("[data-satori-flow]")
+    const originOf = (e: HTMLElement) => {
+      const x = (parseFloat(e.style.left) / 100) * FRAME_W
+      const y = (parseFloat(e.style.top) / 100) * FRAME_H
+      const w = (parseFloat(e.style.width) / 100) * FRAME_W
+      const r = e.getBoundingClientRect()
+      const h = r.width > 0 ? (w * r.height) / r.width : w
+      return { x, y, w, h }
+    }
+    const photoBox = ZOOM && pbox ? pbox : null
+    const flowBox = ZOOM && flowCanvas ? originOf(flowCanvas) : null
+    if (ZOOM && photoBox) {
+      photo.style.transformOrigin = `${(((zc[0] - photoBox.x) / photoBox.w) * 100).toFixed(3)}% ${(((zc[1] - photoBox.y) / photoBox.h) * 100).toFixed(3)}%`
+      photo.style.willChange = "transform"
+      photo.style.transform = "translateY(0%) scale(1)"
+    }
+    if (ZOOM && flowCanvas && flowBox) {
+      flowCanvas.style.transformOrigin = `${(((zc[0] - flowBox.x) / flowBox.w) * 100).toFixed(3)}% ${(((zc[1] - flowBox.y) / flowBox.h) * 100).toFixed(3)}%`
+    }
+    let placedP = 0
+    const place = (p: number) => {
+      if (!ZOOM || Math.abs(p - placedP) < 0.0002) return
+      placedP = p
+      const s = (1 + (ZOOM.in - 1) * p).toFixed(4)
+      if (photoBox) photo.style.transform = `translateY(${((-ZOOM.lift * p * 100) / photoBox.h).toFixed(3)}%) scale(${s})`
+      if (flowCanvas && flowBox) flowCanvas.style.transform = p > 0 ? `translateY(${((-ZOOM.lift * p * 100) / flowBox.h).toFixed(3)}%) scale(${s})` : ""
+      lineFade = gradient("198, 155, 92", CORE.fade.peak * dim, p)
+      lightFade = gradient(LIGHT, LIGHT_PEAK, p)
+    }
+    // an intent that runs on with the hover and back off it, seconds, which
+    // sends each band forward, the pendant's first, or back, the outermost first
+    const icEnd = (ZOOM_BANDS - 1) * ZOOM_STAGGER + 0.001
+    let ic = 0
+    /** Steps the springs; whether any band is still off its rest or moving. */
+    const zoom = (dt: number) => {
+      if (!ZOOM) return false
+      ic = hovered ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK)
+      let changed = false
+      moved = false
+      for (let j = 0; j < ZOOM_BANDS; j++) {
+        const target = ic > j * ZOOM_STAGGER ? 1 : 0
+        let p = zp[j]
+        let v = zv[j]
+        if (dt > 0 && (p !== target || v !== 0)) {
+          const w = target ? ZOOM_W : ZOOM_W_BACK
+          // a critically damped spring, in small steps so it holds at any frame rate
+          const steps = Math.max(1, Math.ceil(dt / 0.008))
+          const h = dt / steps
+          for (let q = 0; q < steps; q++) {
+            v += (w * w * (target - p) - 2 * w * v) * h
+            p += v * h
+          }
+          if (p < 0) { p = 0; if (v < 0) v = 0 }
+          if (p > 1) { p = 1; if (v > 0) v = 0 }
+          if (Math.abs(target - p) < 0.0004 && Math.abs(v) < 0.002) { p = target; v = 0 }
+          zp[j] = p
+          zv[j] = v
+          changed = true
+        }
+        if (zp[j] > 0) moved = true
+      }
+      if (changed) {
+        moveLines()
+        place(zp[0])
+      }
+      return moved || ic > 0
+    }
 
     let raf = 0
     let last = 0
@@ -282,8 +440,9 @@ export function SatoriCore({ slug }: { slug: Slug }) {
         if (clock[i] > pl.delay) any = true
       })
       shown = hovered ? Math.min(1, shown + dt / 0.2) : Math.max(0, shown - dt / LIGHT_OUT_S)
+      const forward = zoom(dt)
       draw()
-      if (!hovered && !any) {
+      if (!hovered && !any && !forward) {
         // drawn back: the sun calms, Satori 3's circles come back
         clock.fill(0)
         if (drawn) frame?.dispatchEvent(new Event(UNDRAWN_EVENT))
@@ -323,8 +482,14 @@ export function SatoriCore({ slug }: { slug: Slug }) {
       photo.removeEventListener("pointerenter", enter)
       frame?.removeEventListener(PLAY_EVENT, enter)
       photo.removeEventListener("pointerleave", leave)
+      if (ZOOM) {
+        photo.style.transform = ""
+        photo.style.transformOrigin = ""
+        photo.style.willChange = ""
+        if (flowCanvas) flowCanvas.style.transform = ""
+      }
     }
-  }, [CORE, PLAN, dim, withLights])
+  }, [CORE, PLAN, dim, withLights, ZOOM])
 
   return (
     <div ref={host} aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>

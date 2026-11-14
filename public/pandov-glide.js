@@ -50,6 +50,17 @@
   // in SETTLE_MS.
   var OMEGA = 5.8 / (SETTLE_MS / 1000)
 
+  // The last few pixels at an even pace (2026-11-14, the author's report: a
+  // very small hitch at the end of every scroll, on a desktop and a laptop).
+  // The browser puts the page on whole pixels, and the spring's tail moved it
+  // by fractions of one a frame, so the last pixels came at uneven moments,
+  // 1, 0, 1, 0, 0, 0, 1, … over a third of a second (measured in Chrome). Once
+  // the spring would go slower than TAIL_SPEED within TAIL_PX of where it is
+  // heading, the page goes on at TAIL_SPEED, a pixel a frame at 60 frames a
+  // second, and stops there: the tail is a few even steps.
+  var TAIL_PX = 12
+  var TAIL_SPEED = 60 // px/s
+
   // The Chess Set carries the wheel itself; it takes the same feel from here
   // (and goes back to its own 24 Hz, full-length notch if this script is gone).
   window.__pandovGlideFeel = { hz: OMEGA, carry: CARRY }
@@ -104,12 +115,21 @@
     last = now
     // The critically damped spring, solved exactly for the step, so that it
     // holds at any frame rate.
+    var before = pos
     var decay = Math.exp(-OMEGA * dt)
     var off = pos - target
     var push = (vel + OMEGA * off) * dt
     vel = (vel - OMEGA * push) * decay
     pos = target + (off + push) * decay
-    if (Math.abs(target - pos) < 0.3 && Math.abs(vel) < 8) {
+    // the tail, at an even pace (see TAIL_SPEED)
+    var left = target - before
+    var step = pos - before
+    if (left !== 0 && Math.abs(left) <= TAIL_PX && step * left >= 0 && Math.abs(step) < TAIL_SPEED * dt) {
+      var even = Math.min(Math.abs(left), TAIL_SPEED * dt)
+      pos = before + (left > 0 ? even : -even)
+      vel = (pos - before) / (dt || 1)
+    }
+    if (Math.abs(target - pos) < 0.3 && Math.abs(vel) < 8 || pos === target) {
       pos = target
       vel = 0
       window.scrollTo(0, target)

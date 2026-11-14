@@ -86,6 +86,10 @@ const NOTCH_HZ = 24
  * are as they were. The extra distance is given only where the scroll is free,
  * so the slow stretch by the moon is slowed exactly as before.
  */
+/** The spring's tail: within `TAIL_PX` of where it is heading, never slower than `TAIL_SPEED` px/s (a pixel a frame at 60), so the last pixels come evenly. */
+const TAIL_PX = 12
+const TAIL_SPEED = 60
+
 type GlideFeel = { hz: number; carry: number }
 const glideFeel = (): GlideFeel | undefined => {
   const f = (window as Window & { __pandovGlideFeel?: GlideFeel }).__pandovGlideFeel
@@ -164,7 +168,18 @@ export function gearScroll(gear: Gear): GearedScroll {
     const push = (vel + omega * off) * dt
     vel = (vel - omega * push) * decay
     let y = target + (off + push) * decay
-    if (Math.abs(target - y) < 0.3 && Math.abs(vel) < 8) {
+    // The last few pixels at an even pace, as public/pandov-glide.js's
+    // (2026-11-14, the author's report of a small hitch as a scroll stopped):
+    // the page stands on whole pixels, and the spring's tail moved it by
+    // fractions of one a frame, so they came at uneven moments.
+    const left = target - pos
+    const moved = y - pos
+    if (left !== 0 && Math.abs(left) <= TAIL_PX && moved * left >= 0 && Math.abs(moved) < TAIL_SPEED * dt) {
+      const even = Math.min(Math.abs(left), TAIL_SPEED * dt)
+      y = pos + (left > 0 ? even : -even)
+      vel = (y - pos) / (dt || 1)
+    }
+    if ((Math.abs(target - y) < 0.3 && Math.abs(vel) < 8) || y === target) {
       y = target
       vel = 0
     }

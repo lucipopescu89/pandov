@@ -286,6 +286,19 @@ const PENDANT_PAGES: Record<string, string> = {
 }
 
 /**
+ * On a phone every pendant's photograph is drawn `PHONE_PHOTO_SCALE` its size
+ * (2026-11-14, the author's asking: they looked small there), about its own
+ * middle, but Mother Nature's about the mandala's centre, so its ring stays
+ * on it (`PHONE_PHOTO_ORIGIN`, a share of the photograph's box: the rings
+ * turn about (481.9, 518.5) in mnature.svg, measured on the page, and the
+ * photograph's rect is 395, 428, 172 × 417). A computer is unchanged.
+ */
+const PHONE_PHOTO_SCALE = 1.1
+const PHONE_PHOTO_ORIGIN: Record<string, [number, number]> = {
+  "Mother Nature": [(481.92 - 395) / 172, (518.5 - 428) / 417],
+}
+
+/**
  * How far the pendant rises above its place and sinks below it, in canvas
  * units — a breath, not a bounce, on a photo 486 tall. Given to CSS in `cqw`, so
  * it scales with the canvas like everything else on it.
@@ -713,6 +726,18 @@ export async function BodyPresentation() {
           .bp-canvas svg :is(path, line, circle, ellipse, polyline, polygon, rect) {
             vector-effect: non-scaling-stroke;
           }
+          /* The photographs a little larger on a phone (PHONE_PHOTO_SCALE). */
+          .bp-canvas rect.bp-pendant {
+            transform-box: fill-box;
+            transform-origin: 50% 50%;
+            transform: scale(${PHONE_PHOTO_SCALE});
+          }
+          ${Object.entries(PHONE_PHOTO_ORIGIN)
+            .map(
+              ([label, [x, y]]) =>
+                `.bp-canvas [aria-label="${label}"] rect.bp-pendant { transform-origin: ${(x * 100).toFixed(3)}% ${(y * 100).toFixed(3)}%; }`,
+            )
+            .join("\n          ")}
         }
       `}</style>
     </main>

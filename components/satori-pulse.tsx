@@ -61,19 +61,35 @@ import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
  *   whole line grew on the beat, and the circle under the pointer was drawn
  *   whole; the author preferred this.)
  *
+ * - the pendant and its circles come forward (2026-11-14, the author's
+ *   asking): the pendant grows to `ZOOM_IN` about the circles' centre and
+ *   rises a little (`ZOOM_LIFT`), the innermost circle with it, and the
+ *   others follow one after another outward while their gold lines are
+ *   being drawn (`ZOOM_STAGGER`), so it reads as one movement spreading out
+ *   from the pendant. The outer circles grow less, down to `ZOOM_OUT` for
+ *   the outermost, so they stay inside the line of pulses (at 130% the two
+ *   outermost dips crossed it). The line of pulses and its light do not
+ *   move. Each circle (and the pendant) is a spring, critically damped
+ *   (`ZOOM_W`), so the movement starts the moment the pointer arrives,
+ *   settles softly, and turns round smoothly if the pointer leaves mid-way.
+ *   Off the pendant they go back outermost first, the pendant last, a little
+ *   quicker (`ZOOM_W_BACK`). The zone round the foot moves with the pendant.
+ *
  * The track and the circles are lib/satori-pulse-2.json and
  * lib/satori-core-2.json, in the frame's units. Lines are one screen pixel
- * wide. The foot is an SVG that never changes; the wave, the light and the
- * track are drawn on one canvas, the wave cut out of the zone there by a
- * feathered copy of it made once (it was an SVG whose circles changed every
- * frame under two blurred masks, which the browser blurred again every frame:
- * the page was slow, 2026-11-12). It runs only while the frame is on screen. Under reduced motion the
- * circles are drawn whole and still, and the track faint.
+ * wide, at any size. Everything is drawn on one canvas: the foot (an SVG until
+ * 2026-11-14; its circles now move on a hover, so it is drawn on a scratch
+ * canvas, cut by a feathered copy of the zone and the sideways fade made
+ * once, and kept while the circles stand still), the wave, cut out of the
+ * zone by a feathered copy of it made once (it was an SVG whose circles
+ * changed every frame under two blurred masks, which the browser blurred
+ * again every frame: the page was slow, 2026-11-12), the light and the track.
+ * It runs only while the frame is on screen. Under reduced motion the
+ * foot is drawn still, the track faint, and nothing comes forward.
  */
 
 const FRAME_W = 1275
 const FRAME_H = 1380
-const GOLD = "#C69B5C"
 
 /** The light: the drawings' gold, a little lighter, at its brightest. */
 const LIGHT = "214, 172, 106"
@@ -219,22 +235,48 @@ const RING_PLAN = CORE.lines.map((l, i) => {
 /** When the circles are whole on a hover, ms (for `SatoriTap`, which waits for it on a phone). */
 export const PULSE_DRAWN_MS = Math.max(...RING_PLAN.map((r) => r.delay + r.duration)) * 1000
 
+/**
+ * Coming forward on a hover (2026-11-14, the author's asking): the pendant and
+ * the innermost circle grow to `ZOOM_IN`, the outermost circle to `ZOOM_OUT`,
+ * the ones between in proportion, all about the circles' centre (`PULSE.cx`,
+ * `PULSE.cy`: the circles, the line of pulses and the drawing's fade share
+ * it). At 1.3 for all, the two outermost circles' dips crossed the line of
+ * pulses by up to 25 units; with the outermost at 1.15 they stay some 20
+ * units inside it, its beat included.
+ */
+const ZOOM_IN = 1.3
+const ZOOM_OUT = 1.15
+/**
+ * As it comes forward, the pendant and its circles rise by `ZOOM_LIFT` frame
+ * units (2026-11-14, the author's asking, the same morning: grown about the
+ * circles' centre alone, the figure seemed to lose height). With the lift the
+ * circles stay some 30 units inside the line of pulses, top and bottom.
+ */
+const ZOOM_LIFT = 30
+/**
+ * Each circle sets out `ZOOM_STAGGER` seconds after the one inside it, the
+ * pendant and the innermost first; off the pendant the outermost turns back
+ * first, `ZOOM_STAGGER / ZOOM_BACK` apart, so all are on their way back within 0.3s. Each moves as a critically damped
+ * spring of angular frequency `ZOOM_W` (back: `ZOOM_W_BACK`): it moves off at
+ * once, with no wait, and settles without overshoot, about 95% of the way in
+ * 1.5s (1.2s back). The first try the same morning ran every circle along one
+ * eased clock, whose soft start (and a 0.3s ramp of its pace) read as a lag.
+ */
+const ZOOM_STAGGER = 0.09
+const ZOOM_BACK = 3 // 1.3 at first: the pendant, last to be sent back, went on forward 0.7s after the pointer had left
+const ZOOM_W = 3.2
+const ZOOM_W_BACK = 4
+/** Circle `k`'s scale at full forward (0 the innermost). */
+const zoomTop = (k: number, count: number) => ZOOM_IN + ((ZOOM_OUT - ZOOM_IN) * k) / Math.max(1, count - 1)
+
 export function SatoriPulse() {
   const ref = useRef<HTMLCanvasElement>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
     const canvas = ref.current
-    const svg = svgRef.current
     const ctx = canvas?.getContext("2d")
-    if (!canvas || !svg || !ctx) return
-    const host = svg.parentElement
-
-    // One screen pixel wide, however large the frame is drawn (the foot's SVG).
-    const hairline = () => {
-      const w = host?.clientWidth || 0
-      if (w > 0) svg.style.strokeWidth = String(FRAME_W / w)
-    }
+    if (!canvas || !ctx) return
+    const host = canvas.parentElement
 
     // The track, as points STEP apart (measured from its d: the browser's
     // own measure, a point at a time, froze the page for seconds).
@@ -263,9 +305,15 @@ export function SatoriPulse() {
     const circles = CORE.lines.map((l) => new Path2D(l.d)).reverse()
     const count = circles.length
     // The zone round the foot, feathered, at the canvas's size: the wave is cut
-    // out of it, so the foot is never brighter than it is (`OUTSIDE`).
+    // out of it, so the foot is never brighter than it is (`OUTSIDE`); and the
+    // same zone faded sideways (`LATERAL_R`), through which the foot is seen.
     const zone = document.createElement("canvas")
+    const footMask = document.createElement("canvas")
+    // the foot itself, drawn here and kept while its circles stand still
+    const foot = document.createElement("canvas")
+    const fctx = foot.getContext("2d")
     const zoneD = new Path2D(ZONE_D)
+    let footKey = "" // the scales the foot was last drawn at ("" : to be drawn)
 
     let scale = 1 // device pixels per frame unit
     let dpr = 1
@@ -279,7 +327,6 @@ export function SatoriPulse() {
         canvas.height = h
       }
       scale = w / box.w
-      hairline()
       // A Gaussian edge as the SVG's blur had it: the zone drawn far off the
       // canvas, only its shadow on it (a shadow's blur is twice its sigma).
       zone.width = w
@@ -293,8 +340,37 @@ export function SatoriPulse() {
       z.shadowOffsetX = off * scale
       z.fillStyle = "#000"
       z.fill(zoneD)
+      // the foot's mask: the zone, faded towards the sides
+      footMask.width = w
+      footMask.height = h
+      const m = footMask.getContext("2d")
+      if (m) {
+        m.drawImage(zone, 0, 0)
+        m.setTransform(scale, 0, 0, scale, -box.x * scale, -box.y * scale)
+        const side = m.createLinearGradient(AXIS_X - LATERAL_R, 0, AXIS_X + LATERAL_R, 0)
+        for (const [o, a] of LATERAL_STOPS) side.addColorStop(o, `rgba(0, 0, 0, ${a})`)
+        m.globalCompositeOperation = "destination-in"
+        m.fillStyle = side
+        m.fillRect(box.x, box.y, box.w, box.h)
+      }
+      foot.width = w
+      foot.height = h
+      footKey = ""
     }
     size()
+
+    /** The canvas's transform, grown `s` times about the circles' centre and raised `lift` frame units. */
+    const zoomed = (c: CanvasRenderingContext2D, s: number, lift: number) =>
+      c.setTransform(
+        scale * s, 0, 0, scale * s,
+        (PULSE.cx * (1 - s) - box.x) * scale,
+        (PULSE.cy * (1 - s) - lift - box.y) * scale,
+      )
+    /** A mask made at the canvas's size, drawn grown `s` times about the circles' centre and raised `lift`. */
+    const maskAt = (c: CanvasRenderingContext2D, mask: HTMLCanvasElement, s: number, lift: number) => {
+      c.setTransform(s, 0, 0, s, (PULSE.cx - box.x) * scale * (1 - s), ((PULSE.cy - box.y) * (1 - s) - lift) * scale)
+      c.drawImage(mask, 0, 0)
+    }
 
     const at = (i: number) => ((i % n) + n) % n
     const begin = () => {
@@ -306,11 +382,57 @@ export function SatoriPulse() {
       ctx.lineCap = "round"
     }
 
+    /** The drawing's own gold, fading from the centre, in a context's frame units. */
+    const fadeIn = (c: CanvasRenderingContext2D, peak: number) => {
+      const g = c.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
+      g.addColorStop(0, `rgba(198, 155, 92, ${peak})`)
+      g.addColorStop(1, "rgba(198, 155, 92, 0)")
+      return g
+    }
+    const footFade = fctx ? fadeIn(fctx, CORE.fade.peak) : null
+
+    /**
+     * The circles round the pendant's foot, each at its own scale and lift
+     * (innermost first), seen through the zone moved with the pendant (the
+     * innermost's). Drawn on the scratch canvas only when one has moved, then
+     * laid on.
+     */
+    const drawFoot = (sc: Float32Array, lf: Float32Array) => {
+      if (!fctx || !footFade) return
+      let key = ""
+      for (let k = 0; k < count; k++) key += sc[k].toFixed(4) + ":" + lf[k].toFixed(2) + " "
+      if (key !== footKey) {
+        footKey = key
+        fctx.setTransform(1, 0, 0, 1, 0, 0)
+        fctx.globalCompositeOperation = "source-over"
+        fctx.clearRect(0, 0, foot.width, foot.height)
+        fctx.strokeStyle = footFade
+        fctx.lineJoin = "round"
+        fctx.lineCap = "round"
+        for (let k = 0; k < count; k++) {
+          zoomed(fctx, sc[k], lf[k])
+          fctx.lineWidth = dpr / (scale * sc[k]) // still one screen pixel
+          fctx.stroke(circles[k])
+        }
+        fctx.globalCompositeOperation = "destination-in"
+        maskAt(fctx, footMask, sc[0], lf[0])
+        fctx.globalCompositeOperation = "source-over"
+      }
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.globalAlpha = FOOT_ALPHA
+      ctx.drawImage(foot, 0, 0)
+      ctx.restore()
+    }
+
+    const rest = new Float32Array(count).fill(1)
+    const none = new Float32Array(count)
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     if (still) {
       // The circles round the foot only, still, and the track faint.
       const drawStill = () => {
         begin()
+        drawFoot(rest, none)
         ctx.strokeStyle = STILL_COLOR
         ctx.beginPath()
         for (let i = 0; i < n; i++) ctx[i ? "lineTo" : "moveTo"](pts[2 * i], pts[2 * i + 1])
@@ -329,12 +451,10 @@ export function SatoriPulse() {
 
     let shown = 0 // 0 → 1, a hover over the pendant coming in (see below)
 
-    const fade = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
-    fade.addColorStop(0, `rgba(198, 155, 92, ${CORE.fade.peak})`)
-    fade.addColorStop(1, "rgba(198, 155, 92, 0)")
+    const fade = fadeIn(ctx, CORE.fade.peak)
 
-    /** The wave through the circles, cut out of the zone round the foot. */
-    const wave = (t: number) => {
+    /** The wave through the circles, each at its scale and lift, cut out of the zone round the foot (moved with the pendant). */
+    const wave = (t: number, sc: Float32Array, lf: Float32Array) => {
       const w = ((t / WAVE_S) % 1) * (count + 2 * WIDE + 1) - (WIDE + 0.5)
       ctx.strokeStyle = fade
       let any = false
@@ -342,15 +462,18 @@ export function SatoriPulse() {
         const a = WAVE_ALPHA * strength(j - w, NARROW)
         if (a < 0.003) continue
         ctx.globalAlpha = a
+        zoomed(ctx, sc[j], lf[j])
+        ctx.lineWidth = dpr / (scale * sc[j])
         ctx.stroke(circles[j])
         any = true
       }
       ctx.globalAlpha = 1
+      ctx.setTransform(scale, 0, 0, scale, -box.x * scale, -box.y * scale)
+      ctx.lineWidth = dpr / scale
       if (!any) return
       ctx.save()
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.globalCompositeOperation = "destination-out"
-      ctx.drawImage(zone, 0, 0)
+      maskAt(ctx, zone, sc[0], lf[0])
       ctx.restore()
     }
 
@@ -368,6 +491,76 @@ export function SatoriPulse() {
     photo?.addEventListener("pointerenter", enterPendant)
     frame?.addEventListener(PLAY_EVENT, enterPendant)
     photo?.addEventListener("pointerleave", leavePendant)
+
+    // The pendant comes forward about the circles' centre: its photograph is
+    // grown from that point (its box is set by the page, `PHOTO_BOX`).
+    if (photo) {
+      // its box, in shares of the frame, as the page sets it
+      const left = (parseFloat(photo.style.left) / 100) * FRAME_W
+      const top = (parseFloat(photo.style.top) / 100) * FRAME_H
+      const w = (parseFloat(photo.style.width) / 100) * FRAME_W
+      const h = (parseFloat(photo.style.height) / 100) * FRAME_H
+      if (w > 0 && h > 0) {
+        photo.style.transformOrigin = `${(((PULSE.cx - left) / w) * 100).toFixed(3)}% ${(((PULSE.cy - top) / h) * 100).toFixed(3)}%`
+        // on a layer of its own from the start, and kept there: added only for
+        // the movement and dropped after it, the layer put the photograph a
+        // pixel or so aside as it came and went (2026-11-14, the author's report)
+        photo.style.willChange = "transform"
+        photo.style.transform = "translateY(0%) scale(1)"
+      }
+    }
+    // its height in frame units, for the lift (a share of it, as CSS takes it)
+    const photoH = photo ? (parseFloat(photo.style.height) / 100) * FRAME_H : 0
+    let photoP = 0
+    const placePhoto = (p: number, s: number, lift: number) => {
+      if (!photo || Math.abs(p - photoP) < 0.0002) return
+      photoP = p
+      if (p <= 0) {
+        photo.style.transform = "translateY(0%) scale(1)"
+      } else {
+        const up = photoH > 0 ? (lift / photoH) * 100 : 0
+        photo.style.transform = `translateY(${(-up).toFixed(3)}%) scale(${s.toFixed(4)})`
+      }
+    }
+
+    // Coming forward: an intent that runs on with the hover and back off it
+    // (seconds), which sends each circle, the innermost first, towards the
+    // front or back (`ZOOM_STAGGER`), and each circle's way forward (0 → 1),
+    // a spring towards where it is sent.
+    const icEnd = (count - 1) * ZOOM_STAGGER + 0.001
+    let ic = 0
+    const zp = new Float32Array(count) // each circle's way forward, innermost first
+    const zv = new Float32Array(count) // and its pace
+    const sc = new Float32Array(count).fill(1) // each circle's scale
+    const lf = new Float32Array(count) // and how far it has risen, frame units
+    const tops = Array.from({ length: count }, (_, k) => zoomTop(k, count))
+    const zoom = (dt: number) => {
+      ic = onPendant ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK)
+      for (let k = 0; k < count; k++) {
+        const target = ic > k * ZOOM_STAGGER ? 1 : 0
+        let p = zp[k]
+        let v = zv[k]
+        if (dt > 0 && (p !== target || v !== 0)) {
+          const w = target ? ZOOM_W : ZOOM_W_BACK
+          // a critically damped spring, in small steps so it holds at any frame rate
+          const steps = Math.max(1, Math.ceil(dt / 0.008))
+          const h = dt / steps
+          for (let q = 0; q < steps; q++) {
+            v += (w * w * (target - p) - 2 * w * v) * h
+            p += v * h
+          }
+          if (p < 0) { p = 0; if (v < 0) v = 0 }
+          if (p > 1) { p = 1; if (v > 0) v = 0 }
+          // at rest (or all the way forward) it is exactly there
+          if (Math.abs(target - p) < 0.0004 && Math.abs(v) < 0.002) { p = target; v = 0 }
+          zp[k] = p
+          zv[k] = v
+        }
+        sc[k] = 1 + (tops[k] - 1) * zp[k]
+        lf[k] = ZOOM_LIFT * zp[k]
+      }
+      placePhoto(zp[0], sc[0], lf[0])
+    }
 
     const beaten = new Float32Array(n * 2)
 
@@ -422,16 +615,45 @@ export function SatoriPulse() {
     }
     // The lights round the circles, on a hover.
     const rings: Pts[] = CORE.lines.map((l) => samplePath(l.d, LIGHT_STEP))
+    // the same points grown with their circle as it comes forward (CORE's
+    // order, outermost first: circle i is `sc[count - 1 - i]`)
+    const grown: Pts[] = rings.map((l) => ({ ...l, pts: Float32Array.from(l.pts) }))
+    const grownAt = new Float32Array(count) // the way forward each was last grown at
+    const grow = () => {
+      for (let i = 0; i < count; i++) {
+        const k = count - 1 - i
+        if (zp[k] === grownAt[i]) continue
+        grownAt[i] = zp[k]
+        const s = sc[k]
+        const up = lf[k]
+        const src = rings[i].pts
+        const dst = grown[i].pts
+        for (let q = 0; q < src.length; q += 2) {
+          dst[q] = PULSE.cx + (src[q] - PULSE.cx) * s
+          dst[q + 1] = PULSE.cy + (src[q + 1] - PULSE.cy) * s - up
+        }
+      }
+    }
     const origins = rings.map((l, i) => {
       const per = l.total / l.n // frame units a point
       return [NEAREST[i] / per, (l.total - NEAREST[i]) / per]
     })
-    const lineFade = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
-    lineFade.addColorStop(0, `rgba(198, 155, 92, ${CORE.fade.peak * DIM})`)
-    lineFade.addColorStop(1, "rgba(198, 155, 92, 0)")
-    const lightFade = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy, 0, CORE.fade.cx, CORE.fade.cy, CORE.fade.r)
-    lightFade.addColorStop(0, `rgba(${LIGHT}, ${LIGHT_PEAK})`)
-    lightFade.addColorStop(1, `rgba(${LIGHT}, 0)`)
+    // the drawing's fade, moved with the pendant so the circles keep their strength
+    const fadeAt = (peak: string, s: number, up: number) => {
+      const g = ctx.createRadialGradient(CORE.fade.cx, CORE.fade.cy - up, 0, CORE.fade.cx, CORE.fade.cy - up, CORE.fade.r * s)
+      g.addColorStop(0, peak)
+      g.addColorStop(1, peak.replace(/[\d.]+\)$/, "0)"))
+      return g
+    }
+    let fadeP = -1
+    let lineFade: CanvasGradient = fade
+    let lightFade: CanvasGradient = fade
+    const fadesAt = () => {
+      if (zp[0] === fadeP) return
+      fadeP = zp[0]
+      lineFade = fadeAt(`rgba(198, 155, 92, ${CORE.fade.peak * DIM})`, sc[0], lf[0])
+      lightFade = fadeAt(`rgba(${LIGHT}, ${LIGHT_PEAK})`, sc[0], lf[0])
+    }
     const ringGather = lights()
     const drawnEnd = PULSE_DRAWN_MS / 1000
     let clock = 0 // seconds into the drawing: on with the hover, back faster off it
@@ -444,6 +666,8 @@ export function SatoriPulse() {
         after.fill(0)
         return
       }
+      grow()
+      fadesAt()
       // how far each circle's fronts have come from where it set out, frame units
       const fronts = RING_PLAN.map((r, i) => {
         const p = ease((clock - r.delay) / r.duration)
@@ -460,8 +684,8 @@ export function SatoriPulse() {
         const down = Math.min(D, NEAREST[i]) / per
         const up = Math.min(D, RING_PLAN[i].reach) / per
         const [right, left] = origins[i]
-        stretch(ctx, l, right - down, right + up)
-        stretch(ctx, l, left - up, left + down)
+        stretch(ctx, grown[i], right - down, right + up)
+        stretch(ctx, grown[i], left - up, left + down)
       })
       ctx.stroke()
       if (lit <= 0.003) return
@@ -471,14 +695,16 @@ export function SatoriPulse() {
         if (fronts[i] <= 0) return
         const per = l.total / l.n
         const d = (fronts[i] + after[i] * LIGHT_CFG.speed) / per
-        cometsFrom(ringGather, l, origins[i], d, lit, LIGHT_CFG, per)
+        cometsFrom(ringGather, grown[i], origins[i], d, lit, LIGHT_CFG, per)
       })
       flush(ctx, ringGather)
     }
 
     const draw = (t: number, dt: number) => {
+      zoom(dt)
       begin()
-      wave(t)
+      wave(t, sc, lf)
+      drawFoot(sc, lf)
       light(t)
       drawTrack(t, dt)
       ringLights(dt)
@@ -525,61 +751,15 @@ export function SatoriPulse() {
       photo?.removeEventListener("pointerenter", enterPendant)
       frame?.removeEventListener(PLAY_EVENT, enterPendant)
       photo?.removeEventListener("pointerleave", leavePendant)
+      if (photo) {
+        photo.style.transform = ""
+        photo.style.transformOrigin = ""
+        photo.style.willChange = ""
+      }
     }
   }, [])
 
-  return (
-    <>
-      {/* The circles round the pendant's foot: still, so drawn once. */}
-      <svg
-        ref={svgRef}
-        aria-hidden
-        viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
-        fill="none"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-      >
-        <defs>
-          <radialGradient
-            id="satori-pulse-fade"
-            gradientUnits="userSpaceOnUse"
-            cx={CORE.fade.cx}
-            cy={CORE.fade.cy}
-            r={CORE.fade.r}
-          >
-            <stop stopColor={GOLD} stopOpacity={CORE.fade.peak} />
-            <stop offset="1" stopColor={GOLD} stopOpacity="0" />
-          </radialGradient>
-          <filter id="satori-pulse-feather" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation={FEATHER} />
-          </filter>
-          <mask id="satori-pulse-zone" maskUnits="userSpaceOnUse" x="0" y="0" width={FRAME_W} height={FRAME_H}>
-            <path d={ZONE_D} fill="white" filter="url(#satori-pulse-feather)" />
-          </mask>
-          <linearGradient
-            id="satori-pulse-side"
-            gradientUnits="userSpaceOnUse"
-            x1={AXIS_X - LATERAL_R}
-            y1={0}
-            x2={AXIS_X + LATERAL_R}
-            y2={0}
-          >
-            {LATERAL_STOPS.map(([o, a]) => (
-              <stop key={o} offset={o} stopColor="white" stopOpacity={a} />
-            ))}
-          </linearGradient>
-          <mask id="satori-pulse-sides" maskUnits="userSpaceOnUse" x="0" y="0" width={FRAME_W} height={FRAME_H}>
-            <rect x="0" y="0" width={FRAME_W} height={FRAME_H} fill="url(#satori-pulse-side)" />
-          </mask>
-        </defs>
-        <g stroke="url(#satori-pulse-fade)" strokeLinecap="round" strokeLinejoin="round" mask="url(#satori-pulse-sides)">
-          <g mask="url(#satori-pulse-zone)" opacity={FOOT_ALPHA}>
-            {CORE.lines.map((l, i) => (
-              <path key={i} d={l.d} />
-            ))}
-          </g>
-        </g>
-      </svg>
-      <canvas ref={ref} aria-hidden style={{ position: "absolute", pointerEvents: "none" }} />
-    </>
-  )
+  // The circles round the pendant's foot, the wave, the light and the line of
+  // pulses: one canvas over the frame's box of the track.
+  return <canvas ref={ref} aria-hidden style={{ position: "absolute", pointerEvents: "none" }} />
 }
