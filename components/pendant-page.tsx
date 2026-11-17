@@ -1,18 +1,17 @@
 import Link from "next/link"
-import { Assistant } from "next/font/google"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { PendantGallery } from "@/components/pendant-gallery"
 import { PendantChoice, PendantMade, PendantOrder } from "@/components/pendant-order"
 import { CORD, MADE, SECOND_WIND, STUDIO_EMAIL, moreFrom, type Pendant } from "@/lib/second-wind"
 import { u } from "@/lib/canvas-length"
+import { JULIUS_MIN, TEXT_MIN, TEXT_TRACK, TRACK } from "@/lib/type"
 
-/**
- * Assistant, the brand's face for text that is read rather than glanced at,
- * in the one weight the design uses. Loaded here rather than in the root
- * layout, so only the pages that set it download it; `--font-body` reaches it.
+/*
+ * Text that is read is in Manrope 400 (`var(--font-text)`, loaded once in the
+ * root layout; Assistant 300 until 2026-11-16), never under TEXT_MIN. Julius
+ * carries the site's one TRACK and never goes under JULIUS_MIN.
  */
-const assistant = Assistant({ weight: "300", subsets: ["latin"], variable: "--font-body", display: "swap" })
 
 /** Second Wind's ground. */
 const GROUND = "#202020"
@@ -108,16 +107,17 @@ export function PendantPage({
   const { name, statement, line, height, model, cutout, photos, materials } = pendant
   const last = statement.length - 1
   return (
-    <main className={`w-full ${assistant.variable}`} style={{ backgroundColor: GROUND, color: TEXT }}>
+    <main className="w-full" style={{ backgroundColor: GROUND, color: TEXT }}>
       <Navigation bgColor={GROUND} />
       <div className="pp">
         {/* Smaller and airier than the design, on the author's asking on
             2026-09-25: the top menu's size and tracking, 12px at 0.2em, the
             lines two and a half apart, and midway between the menu and the
             photograph (`AIR`). It keeps its lines as stored, on every screen.
-            A phone tracks it at 0.06em, as before: at the menu's 0.2em,
-            Silence's and Mother Nature's longer lines broke in two on a 390px
-            screen, and at 0.06em every line of all seven holds. */}
+            Since 2026-11-16 a phone tracks it at the same 0.2em (`TRACK`):
+            until then it was 0.06em there, for fear Silence's and Mother
+            Nature's longer lines would break on a 390px screen; measured that
+            day, every line of all eleven holds at 375. */}
         {/* A pendant whose statement is still to come (Satori's, 2026-11-10)
             keeps the room of a line, so the photograph stands where it would. */}
         <p className="pp-statement" aria-hidden={statement.length ? undefined : true}>
@@ -181,40 +181,41 @@ export function PendantPage({
           each gives it back on its right to sit on the centre as drawn. */}
       <style>{`
         .pp { max-width: 1920px; margin: 0 auto; }
-        .pp-statement { max-width: 560px; margin: ${(AIR.phone - SLACK.phone) / 2}px auto 0; padding: 0 28px 0 calc(28px + 0.06em); text-align: center; text-wrap: balance;
-          font-family: var(--font-heading); font-size: 12px; line-height: 2.5; letter-spacing: 0.06em; color: ${TEXT}; }
+        .pp-statement { max-width: 560px; margin: ${(AIR.phone - SLACK.phone) / 2}px auto 0; padding: 0 28px 0 calc(28px + ${TRACK}); text-align: center; text-wrap: balance;
+          font-family: var(--font-heading); font-size: 12px; line-height: 2.5; letter-spacing: ${TRACK}; color: ${TEXT}; }
         .pp-statement > span { display: block; }
         .pp-row { margin-top: ${(AIR.phone + SLACK.phone) / 2}px; }
         .pp-info { max-width: 560px; margin: 40px auto 0; padding: 0 24px; }
-        .pp-name { font-family: var(--font-heading); font-weight: 400; font-size: ${NAME_SIZE}; line-height: 1; letter-spacing: 0.18em; color: ${INK}; }
-        .pp-line { margin: 14px 0 32px; font-family: var(--font-body); font-weight: 300; font-size: 15px; line-height: 1.3; letter-spacing: 0.025em; color: ${TEXT}; }
+        .pp-name { font-family: var(--font-heading); font-weight: 400; font-size: ${NAME_SIZE}; line-height: 1; letter-spacing: ${TRACK}; color: ${INK}; }
+        .pp-line { margin: 14px 0 32px; font-family: var(--font-text); font-weight: 400; font-size: ${TEXT_MIN}px; line-height: 1.3; letter-spacing: ${TEXT_TRACK}; color: ${TEXT}; }
         .pp-details { margin-top: 36px; }
         .pp-details > div { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 0 12px; border-top: 1px solid ${RULE}; }
-        .pp-details dt { font-family: var(--font-heading); font-size: 10px; line-height: 1; letter-spacing: 0.3em; text-transform: uppercase; color: ${MUTED}; }
-        .pp-details dd { margin-top: 1px; font-family: var(--font-body); font-weight: 300; font-size: 14px; line-height: 1.7333; text-align: right; color: ${INK}; }
+        .pp-details dt { font-family: var(--font-heading); font-size: ${JULIUS_MIN}px; line-height: 1; letter-spacing: ${TRACK}; text-transform: uppercase; color: ${MUTED}; }
+        /* The details in the colour of the metals not chosen (2026-11-16, the author's asking). */
+        .pp-details dd { margin-top: 1px; font-family: var(--font-text); font-weight: 400; font-size: ${TEXT_MIN}px; letter-spacing: ${TEXT_TRACK}; line-height: 1.7333; text-align: right; color: ${TEXT}; }
         .pp-details dd > span { display: block; }
         .pp-more { margin: 72px 16px 0; padding-bottom: 40px; border-top: 1px solid ${RULE}; text-align: center; }
-        .pp-more > h2 { margin-top: 48px; padding-left: 0.34em; font-family: var(--font-heading); font-weight: 400; font-size: 11px; line-height: 1;
-          letter-spacing: 0.34em; text-transform: uppercase; color: ${TEXT}; }
+        .pp-more > h2 { margin-top: 48px; padding-left: ${TRACK}; font-family: var(--font-heading); font-weight: 400; font-size: 11px; line-height: 1;
+          letter-spacing: ${TRACK}; text-transform: uppercase; color: ${TEXT}; }
         .pp-more-list { display: flex; justify-content: center; gap: 12px; margin-top: 40px; }
         .pp-more-item { flex: 0 1 45%; display: flex; flex-direction: column; align-items: center; transition: opacity 150ms; }
         .pp-more-item:hover { opacity: 0.5; }
         .pp-more-item > img { display: block; width: 100%; height: min(${78 * MORE_SCALE}vw, ${320 * MORE_SCALE}px); object-fit: contain; }
-        .pp-more-item > span { margin-top: 28px; padding-left: 0.24em; font-family: var(--font-heading); font-size: 11px; line-height: 1.5;
-          letter-spacing: 0.24em; text-transform: uppercase; text-wrap: balance; color: ${INK}; }
+        .pp-more-item > span { margin-top: 28px; padding-left: ${TRACK}; font-family: var(--font-heading); font-size: 11px; line-height: 1.5;
+          letter-spacing: ${TRACK}; text-transform: uppercase; text-wrap: balance; color: ${INK}; }
 
         @media (min-width: 1024px) {
-          .pp-statement { max-width: none; margin: calc(${u(AIR.computer / 2)} - ${SLACK.computer / 2}px) auto 0; padding: 0 0 0 0.2em; letter-spacing: 0.2em; }
+          .pp-statement { max-width: none; margin: calc(${u(AIR.computer / 2)} - ${SLACK.computer / 2}px) auto 0; padding: 0 0 0 ${TRACK}; }
           .pp-row { display: flex; align-items: flex-start; margin-top: calc(${u(AIR.computer / 2)} + ${SLACK.computer / 2}px); padding-left: ${u(200)}; }
           .pp-info { flex: none; width: max(340px, ${u(500)}); max-width: none; margin: 0 0 0 ${u(166)}; padding: 0; }
           .pp-name { margin-top: ${u(1.8)}; }
-          .pp-line { margin: ${u(20.5)} 0 ${u(46.7)}; font-size: ${fit(17, 14)}; line-height: 1; }
+          .pp-line { margin: ${u(20.5)} 0 ${u(46.7)}; line-height: 1; }
           .pp-details { margin-top: ${u(42.5)}; }
           .pp-details > div { padding: ${u(16)} 0 ${u(15)}; }
-          .pp-details dt { font-size: ${fit(11, 10)}; }
-          .pp-details dd { margin-top: ${u(1)}; font-size: ${fit(15, 13)}; }
+          .pp-details dt { font-size: ${fit(11, JULIUS_MIN)}; }
+          .pp-details dd { margin-top: ${u(1)}; }
           .pp-more { width: ${u(1120)}; margin: ${u(207)} auto 0; padding-bottom: ${u(160)}; }
-          .pp-more > h2 { margin-top: ${u(80)}; font-size: ${fit(12, 10)}; }
+          .pp-more > h2 { margin-top: ${u(80)}; font-size: ${fit(12, JULIUS_MIN)}; }
           .pp-more-list { gap: ${u(132)}; margin-top: ${u(81)}; }
           .pp-more-item { flex: none; width: ${u(400)}; }
           .pp-more-item > img { height: ${u(620 * MORE_SCALE)}; }

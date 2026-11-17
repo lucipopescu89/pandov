@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { PendantViewer, lookOf } from "@/components/pendant-viewer"
 import { useChoice } from "@/components/pendant-order"
 import { u } from "@/lib/canvas-length"
+import { JULIUS_MIN, TRACK } from "@/lib/type"
 
 /**
  * A photograph of the pendant, as three files: one for a computer, a narrower
@@ -212,12 +213,12 @@ export function PendantGallery({
         .pg-thumb > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
         .pg-thumb-model > img { object-fit: contain; padding: 10% 0 26%; }
         .pg-thumb-model > span { position: absolute; left: 0; right: 0; bottom: 9%; text-align: center;
-          font-family: var(--font-heading); font-size: 8px; letter-spacing: 0.2em; line-height: 1; color: #E9E4DC; }
+          font-family: var(--font-heading); font-size: ${JULIUS_MIN}px; letter-spacing: ${TRACK}; line-height: 1; color: #E9E4DC; }
         @media (min-width: 1024px) {
           .pg { flex-direction: row; align-items: flex-start; }
           .pg-thumbs { flex-direction: column; justify-content: flex-start; gap: ${u(18)}; margin: 0; width: max(40px, ${u(64)}); }
           .pg-thumb { width: 100%; }
-          .pg-thumb-model > span { font-size: max(8px, ${u(9)}); }
+          .pg-thumb-model > span { font-size: ${JULIUS_MIN}px; }
           .pg-stage { width: ${u(640)}; margin: 0 0 0 ${u(60)}; }
         }
       `}</style>

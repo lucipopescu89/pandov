@@ -222,8 +222,8 @@ export function SatoriPresentation() {
         .sp-frame > img.sp-photo { inset: auto; }
         .sp-frame:hover > img { opacity: 0.8; }
         .sp-verse { position: absolute; left: 0; right: 0; pointer-events: none; margin: 0; text-align: center; white-space: pre-line; transform: translateY(-100%);
-          font-family: "Julius Sans One", var(--font-heading); font-size: 12px; line-height: 14px; color: #888888; }
-        @media (max-width: 600px) { .sp-verse { font-size: 10px; line-height: 12px; } }
+          font-family: "Julius Sans One", var(--font-heading); font-size: 12px; line-height: 14px; letter-spacing: 0.2em; padding-left: 0.2em; color: #888888; }
+        @media (max-width: 600px) { .sp-verse { font-size: 11px; line-height: 13px; } }
       `}</style>
     </main>
   )

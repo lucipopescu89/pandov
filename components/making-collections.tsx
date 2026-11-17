@@ -2,6 +2,7 @@ import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { FadeInVideo } from "@/components/fade-in-video"
 import { AmbientMode } from "@/components/ambient-mode"
+import { JULIUS_MIN, TRACK } from "@/lib/type"
 
 /**
  * Making landing page — same dark shell as the Body/Mind pages
@@ -80,8 +81,8 @@ export function MakingCollections() {
           style={{
             color: "#ffffff",
             opacity: 0.5,
-            fontSize: "clamp(10px, 0.62vw, 12px)",
-            letterSpacing: "0.14em",
+            fontSize: `clamp(${JULIUS_MIN}px, 0.62vw, 12px)`,
+            letterSpacing: TRACK,
             lineHeight: 1.3,
             ...julius,
           }}

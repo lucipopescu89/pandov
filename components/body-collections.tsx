@@ -1,14 +1,12 @@
-import type React from "react"
 import Link from "next/link"
 import { BODY_PIECES, SATORI_PIECE, type BodyPiece } from "@/lib/body-collections"
 import { BODY_INTRO } from "@/components/collection-intro"
+import { BodyWipGallery } from "@/components/body-wip-gallery"
 import {
   CollectionName,
   CollectionPage,
   Heart,
   LIST_SPACE,
-  Mark,
-  PHONE_PIECE_W,
   SPACE,
   WorkInProgress,
 } from "@/components/collection-page"
@@ -43,8 +41,8 @@ const EMPEROR_FOOT_INSET = 20
  * bracelet and neither looks the heavier. Within `PIECE_MAX_H` × `PIECE_MAX_W`.
  * `scale` in `BODY_PIECES` is the author's knob for one that reads wrong.
  */
-/** The pieces under the rule, work in progress, are drawn faint, as if not yet active (2026-11-12, the author's asking: 50%, then 35%). */
-const WIP_PIECE_OPACITY = 0.35
+/** The pieces under the rule, work in progress, are drawn faint, as if not yet active (2026-11-12, the author's asking: 50%, then 35%; then 30%, 20% and 10% for the gallery's side pieces on 2026-11-17). */
+const WIP_PIECE_OPACITY = 0.1
 
 const PIECE_AREA = 235
 const PIECE_MAX_H = 320
@@ -118,43 +116,37 @@ export function BodyCollections() {
       {/* ── Work in progress ── */}
       <WorkInProgress theme="dark" style={{ marginTop: LIST_SPACE.note }} />
 
-      {BODY_PIECES.map((piece, i) => {
-        const k = sizeOf(piece)
-        const pad = piece.pad * k
-        const metal = (piece.w - 2 * piece.pad) * k
-        const fit = metal > PHONE_PIECE_W ? PHONE_PIECE_W / metal : 0
+      {/* ── The rest, in one horizontal gallery that goes round (2026-11-17,
+          the author's asking): no diamonds, the piece in the middle at full
+          strength, the two beside it at 10% (the list had 35%). Until then they stood
+          one under the next, each under an outlined diamond (`Mark`). The
+          name keeps the gap the first mark and its name had under the rule,
+          and the stage the gap from a name to its piece. ── */}
+      {(() => {
+        const sized = BODY_PIECES.map((piece) => {
+          const k = sizeOf(piece)
+          return { piece, k, metalH: (piece.h - 2 * piece.pad) * k }
+        })
         return (
-          <div key={piece.file} className="flex flex-col items-center">
-            <Mark style={{ marginTop: i === 0 ? LIST_SPACE.mark : LIST_SPACE.next }} />
-            <CollectionName theme="dark" as="h2" wip style={{ marginTop: LIST_SPACE.name }}>
-              {piece.name}
-            </CollectionName>
-            {/* The photograph's margin of ground overlaps the gaps either side,
-                so the gaps are measured to its metal. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/images/body-collections/${piece.file}`}
-              alt={`${piece.name}, ${piece.kind}`}
-              width={piece.w}
-              height={piece.h}
-              loading="lazy"
-              decoding="async"
-              className={fit ? "cp-fit" : undefined}
-              style={{
-                ...(fit ? ({ "--fit": fit.toFixed(4) } as React.CSSProperties) : {}),
-                // as if not yet active, like their names (2026-11-12, the author's asking)
-                opacity: WIP_PIECE_OPACITY,
-                display: "block",
-                width: piece.w * k,
-                maxWidth: "none",
-                height: "auto",
-                marginTop: LIST_SPACE.piece - pad,
-                marginBottom: -pad,
-              }}
-            />
-          </div>
+          <BodyWipGallery
+            items={sized.map(({ piece, k }) => ({
+              src: `/images/body-collections/${piece.file}`,
+              alt: `${piece.name}, ${piece.kind}`,
+              w: piece.w * k,
+              h: piece.h * k,
+            }))}
+            names={BODY_PIECES.map((piece) => (
+              <CollectionName key={piece.file} theme="dark" as="h2">
+                {piece.name}
+              </CollectionName>
+            ))}
+            stageH={Math.max(...sized.map((s) => s.metalH))}
+            sideOpacity={WIP_PIECE_OPACITY}
+            nameTop={LIST_SPACE.mark + LIST_SPACE.name}
+            stageTop={LIST_SPACE.piece}
+          />
         )
-      })}
+      })()}
     </CollectionPage>
   )
 }

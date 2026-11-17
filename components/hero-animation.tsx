@@ -302,6 +302,29 @@ const T1_FIRST_OPACITY = 0.05
 const T1_FULL_FRAME = 32       // fully lit
 
 /**
+ * Since 2026-11-16 (the author's asking) text 1 is no longer behind the doors:
+ * it stands where the top menu was, at the top of the screen, and comes when
+ * the first scroll down sends the menu away. It goes as the doors part
+ * (`T1_GONE_FROM` → `T1_GONE_AT`, while the handles finish turning), and in
+ * its place Presence comes straight through the opening, out of a light
+ * behind the doors, clipped to the opening as text 1 was: the field first,
+ * the sculpture coming up out of the dark to its own tone, the line last. All of it follows the doors' frames, so it opens and closes in
+ * the reader's hand with them. The beat of its own that Presence had (a
+ * further scroll, `PRESENCE_BEAT_S`) is gone: the scroll after the doors
+ * brings For Mind.
+ */
+/** The top menu's band on the homepage, px: its logo and its words. */
+const MENU_BAND_PX = 153
+/** Text 1 stands this much lower than the middle of the menu's band. */
+const T1_DOWN_PX = 50
+const T1_GONE_FROM = 12
+const T1_GONE_AT = 21
+const P_HALO = [20, 32] as const
+const P_SCULPTURE = [21, 36] as const
+const P_LINE = [30, 38] as const
+
+
+/**
  * Presence's beat, played: seconds from the scroll that starts it.
  *
  * Text 1 goes back to black first. Then the last beat arrives in three, not
@@ -956,6 +979,7 @@ export function HeroAnimation() {
   // the three share, as `--presence-scale` on the stage.
   const stageRef = useRef<HTMLDivElement>(null)
   const text1OutRef = useRef<HTMLDivElement>(null)
+  const presenceLayerRef = useRef<HTMLDivElement>(null)
   const haloRef = useRef<HTMLDivElement>(null)
   const sculptureRef = useRef<HTMLImageElement>(null)
   const captionRef = useRef<HTMLDivElement>(null)
@@ -1134,6 +1158,7 @@ export function HeroAnimation() {
       ctx.drawImage(img, (W - wholeW(img) * s) / 2 + offsetX(img) * s, 0, img.naturalWidth * s, H)
     }
 
+    let haloOn = false
     const paint = () => {
       // Once the doors themselves come past the breath, it is theirs.
       if (breath > 0 && pos * (FRAME_COUNT - 1) >= breath) breath = 0
@@ -1144,7 +1169,14 @@ export function HeroAnimation() {
       // apart: the reveal is as much the clip as the light. The canvas draws
       // each frame scaled to its height and centred, so the gap's percentages
       // go through that same fit to land on the doors.
-      const layer = text1DoorsRef.current
+      // Text 1, at the top where the menu was, goes as the doors part.
+      if (text1DoorsRef.current) {
+        text1DoorsRef.current.style.opacity = String(1 - ease(ramp(f, T1_GONE_FROM, T1_GONE_AT)))
+      }
+      // Presence, behind the doors: clipped to the opening, which is why it
+      // also gets wider as they slide apart. The gap's percentages go through
+      // the same fit the canvas draws each frame with.
+      const layer = presenceLayerRef.current
       if (layer && cssW > 0) {
         const drawnW = cssH * FRAME_ASPECT
         const left = (cssW - drawnW) / 2
@@ -1152,15 +1184,21 @@ export function HeroAnimation() {
         const clip = `inset(0 ${Math.max(0, cssW - left - gapR * drawnW)}px 0 ${Math.max(0, left + gapL * drawnW)}px)`
         layer.style.clipPath = clip
         layer.style.setProperty("-webkit-clip-path", clip)
-        layer.style.opacity = String(
-          f < T1_FIRST_FRAME
-            ? 0
-            : T1_FIRST_OPACITY +
-                ramp(f, T1_FIRST_FRAME, T1_FULL_FRAME) * (1 - T1_FIRST_OPACITY),
-        )
-        // The first half of its drift, from its first glimmer to the last
-        // frame (see TEXT1_RISE_PX).
-        layer.style.setProperty("--t1-in", String(ease(ramp(f, T1_FIRST_FRAME, FRAME_COUNT - 1))))
+        const halo = ease(ramp(f, P_HALO[0], P_HALO[1]))
+        const grow = ramp(f, P_SCULPTURE[0], P_SCULPTURE[1])
+        layer.style.setProperty("--presence-scale", String(0.65 + 0.35 * easeOut(ramp(f, P_HALO[0], FRAME_COUNT - 1))))
+        if (haloRef.current) haloRef.current.style.opacity = String(halo)
+        if (sculptureRef.current) {
+          sculptureRef.current.style.opacity = String(ease(grow))
+          // Out of the dark (2026-11-16, the author's asking; it came out of a light for an hour): black at first, its own tone at the end.
+          sculptureRef.current.style.filter = grow >= 1 ? "" : `brightness(${ease(grow).toFixed(3)})`
+        }
+        if (captionRef.current) captionRef.current.style.opacity = String(ease(ramp(f, P_LINE[0], P_LINE[1])))
+        // The field's rings run only while it can be seen.
+        if (halo > 0 !== haloOn) {
+          haloOn = halo > 0
+          setHaloLive(haloOn)
+        }
       }
 
       const W = canvas.width
@@ -1431,36 +1469,10 @@ export function HeroAnimation() {
     const stage = stageRef.current
     if (!el || !stage) return
     const past = () => -el.getBoundingClientRect().top
-    let live = false
 
-    // Text 1 goes back to black, then the field, the sculpture and the line
-    // come up, PRESENCE_BEAT_S in all.
-    const presence = playBeat(
-      PRESENCE_BEAT_S,
-      () => !heroUp.on && past() > presenceAt(stickyRef.current),
-      (t) => {
-        const fade = (from: number, length: number) => ease(ramp(t, from, from + length))
-        const out = fade(0, TEXT1_OUT_S)
-        const halo = fade(HALO_FROM_S, HALO_IN_S)
-        const grow = ramp(t, PRESENCE_FROM_S, PRESENCE_FROM_S + PRESENCE_IN_S)
-        stage.style.setProperty("--t1-out", String(out))
-        stage.style.setProperty("--presence-scale", String(0.65 + 0.35 * easeOut(grow)))
-        if (text1OutRef.current) text1OutRef.current.style.opacity = String(1 - out)
-        if (haloRef.current) haloRef.current.style.opacity = String(halo)
-        if (sculptureRef.current) sculptureRef.current.style.opacity = String(ease(grow))
-        if (captionRef.current) {
-          captionRef.current.style.opacity = String(fade(TEXT2_FROM_S, TEXT2_IN_S))
-        }
-        // Nothing of the field is on screen while the doors are still
-        // opening, and that is the stretch the page can least spare.
-        if (halo > 0 !== live) {
-          live = halo > 0
-          setHaloLive(live)
-        }
-      },
-      "presence",
-    )
-
+    // Presence has no beat of its own since 2026-11-16: it comes through the
+    // doors with their frames (see the doors' paint). Nothing here waits on
+    // it, so the doors close at once on the way up.
     // For Mind's beat, whose first MIND_WASH_S is the wash to white and the
     // lift that goes with it. Its row plays the rest on the same clock: both
     // start on the same scroll, and its place is the row's (see MindRow).
@@ -1614,7 +1626,7 @@ export function HeroAnimation() {
     // read the page, and heroUp, as back has left them.
     window.addEventListener("scroll", back, { passive: true, capture: true })
 
-    presenceRef.current = presence.done
+    presenceRef.current = () => 0
     mindRef.current = mind.done
     // For the top menu: it waits for the doors to be shut (see heroDoors).
     heroDoors.shut = () => doorsRef.current() === 0 && presenceRef.current() === 0
@@ -1623,7 +1635,6 @@ export function HeroAnimation() {
       window.removeEventListener("scroll", back, { capture: true })
       window.removeEventListener(TO_TOP_EVENT, toTop)
       if (heroUp.on) setUp(false)
-      presence.dispose()
       mind.dispose()
       presenceRef.current = () => 1
       mindRef.current = () => 1
@@ -1637,7 +1648,6 @@ export function HeroAnimation() {
     if (!el) return
     return holdScroll(el, [
       { at: () => PAST_PIN_PX, done: () => doorsRef.current() },
-      { at: () => presenceAt(stickyRef.current), done: () => presenceRef.current() },
       { at: () => mindAt(stickyRef.current), done: () => mindRef.current() },
     ], {
       active: () => !!stepRef.current?.active(),
@@ -1763,9 +1773,6 @@ export function HeroAnimation() {
   // however differently the two of them light up.
   const presenceH = `calc(${PRESENCE_VH}vh * var(--presence-scale, 0.65))`
 
-  // Text 1 drifts up half a rise as it comes up with the doors (`--t1-in`)
-  // and half again as it fades ahead of Presence (`--t1-out`).
-  const text1Rise = `${TEXT1_RISE_PX}px * (0.5 - 0.5 * var(--t1-in, 0) - 0.5 * var(--t1-out, 0))`
 
   // Content lags on the way in, cubed so its velocity relative to the page
   // reaches zero exactly at the pin. On the way out it lifts as it washes to
@@ -1825,8 +1832,11 @@ export function HeroAnimation() {
           />
 
           {/* Presence: the sculpture, the line beneath it, and the field
-              radiating from the pair — all three on one centre. */}
+              radiating from the pair — all three on one centre. Behind the
+              doors since 2026-11-16: clipped to the opening between them,
+              which the doors' player writes with every frame. */}
           <div
+            ref={presenceLayerRef}
             style={{
               position: "absolute",
               inset: 0,
@@ -1835,6 +1845,8 @@ export function HeroAnimation() {
               justifyContent: "center",
               pointerEvents: "none",
               zIndex: 2,
+              clipPath: "inset(0 50% 0 50%)",
+              WebkitClipPath: "inset(0 50% 0 50%)",
             }}
           >
             <div
@@ -1929,56 +1941,6 @@ export function HeroAnimation() {
             </div>
           </div>
 
-          {/* Text 1 — clipped to the opening between the doors so it reads as
-              being behind them. The layers span the canvas exactly, which is
-              what lets the inset be given in canvas pixels. The outer one
-              fades with Presence's beat; the inner one is the doors'. Their
-              players write both, so React sets them once and never again. */}
-          <div
-            ref={text1OutRef}
-            style={{
-              position: "absolute",
-              inset: 0,
-              opacity: 1,
-              zIndex: 1,
-              pointerEvents: "none",
-            }}
-          >
-            <div
-              ref={text1DoorsRef}
-              style={{
-                position: "absolute",
-                inset: 0,
-                clipPath: "inset(0 50% 0 50%)",
-                WebkitClipPath: "inset(0 50% 0 50%)",
-                opacity: 0,
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: `translate(-50%, calc(-50% + ${text1Rise}))`,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "'Julius Sans One', sans-serif",
-                    fontSize: "clamp(11px, 2vw, 20px)",
-                    letterSpacing: "0.2em",
-                    color: "#888",
-                    fontWeight: 400,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  We Open The Doors Of Perception
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* The wash. It covers everything the section draws — the doors as
               well as the composition — so what leaves the screen is one white
               field rather than a sculpture fading off a dark ground. It sits
@@ -1997,6 +1959,48 @@ export function HeroAnimation() {
             }}
           />
         </div>
+
+        {/* Text 1, where the top menu was (2026-11-16, the author's asking):
+            it comes as the first scroll down sends the menu away, and goes as
+            the doors part. The outer box follows the menu (`heroMenu`, set by
+            RevealOnScrollUp), the inner one the doors (their player writes its
+            opacity). Centred in the menu's band, MENU_BAND_PX tall. */}
+        <div
+          ref={text1OutRef}
+          className="hero-t1"
+          style={{
+            position: "absolute",
+            // 50px lower than the menu's band (2026-11-16, the author's asking).
+            top: T1_DOWN_PX,
+            left: 0,
+            right: 0,
+            height: MENU_BAND_PX,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        >
+          <div ref={text1DoorsRef} style={{ paddingLeft: "0.2em", whiteSpace: "nowrap" }}>
+            <span
+              style={{
+                fontFamily: "'Julius Sans One', sans-serif",
+                fontSize: "clamp(11px, 2vw, 20px)",
+                letterSpacing: "0.2em",
+                color: "#888",
+                fontWeight: 400,
+                textTransform: "uppercase",
+              }}
+            >
+              We Open The Doors Of Perception
+            </span>
+          </div>
+        </div>
+        <style>{`
+          .hero-t1 { opacity: 0; transition: opacity 0.6s ease; }
+          html[data-hero-menu="away"] .hero-t1 { opacity: 1; transition: opacity 0.9s ease 0.25s; }
+        `}</style>
       </div>
     </div>
   )

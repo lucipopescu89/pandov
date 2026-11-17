@@ -1,10 +1,11 @@
-import { MakingCollections } from "@/components/making-collections"
+import { MakingPage } from "@/components/making-page"
 
 export const metadata = {
   title: "Making — PANDOV",
-  description: "Making is still in the making.",
+  description:
+    "Every Pandov piece begins with a search: in nature, in discarded objects, or on a blank sheet of paper. How the forms are found, scanned, drawn and made.",
 }
 
-export default function MakingPage() {
-  return <MakingCollections />
+export default function Making() {
+  return <MakingPage />
 }

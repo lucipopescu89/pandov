@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react"
 import Link from "next/link"
-import { Assistant } from "next/font/google"
+import { JULIUS, TEXT_FONT, TEXT_TRACK, TRACK } from "@/lib/type"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { CollectionIntro, INTRO_FONT_SIZE } from "@/components/collection-intro"
@@ -113,9 +113,8 @@ const CSS = [
  */
 export const PHONE_PIECE_W = 300
 
-/** The note's face: Assistant, Regular, as the frame has it. */
-const assistant = Assistant({ weight: "400", subsets: ["latin"], display: "swap" })
-const julius = { fontFamily: "'Julius Sans One', sans-serif" }
+/** The note is in Manrope (Assistant until 2026-11-16), the names in Julius. */
+const julius = { fontFamily: JULIUS }
 
 export function CollectionPage({
   theme,
@@ -201,7 +200,7 @@ export function CollectionName({
         margin: 0,
         fontWeight: 400,
         fontSize: NAME_FONT_SIZE,
-        letterSpacing: "0.2em",
+        letterSpacing: TRACK,
         lineHeight: 1.2,
         textAlign: "center",
         whiteSpace: "nowrap",
@@ -226,9 +225,10 @@ export function WorkInProgress({ theme, style }: { theme: Theme; style?: CSSProp
     <>
       <p
         style={{
-          fontFamily: assistant.style.fontFamily,
+          fontFamily: TEXT_FONT,
           fontWeight: 400,
           fontSize: INTRO_FONT_SIZE,
+          letterSpacing: TEXT_TRACK,
           lineHeight: 1.3,
           textAlign: "center",
           margin: 0,

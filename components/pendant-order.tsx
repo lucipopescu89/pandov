@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useState } from "react"
 import type { Material } from "@/lib/second-wind"
 import { u } from "@/lib/canvas-length"
+import { JULIUS_MIN, TEXT_MIN, TEXT_TRACK, TRACK } from "@/lib/type"
 
 /*
  * The colours of the order panel, read off the author's Figma design ("Varianta
@@ -218,17 +219,17 @@ export function PendantOrder({ name, materials, email }: { name: string; materia
           each margin below is the distance between two boxes in the design. */}
       <style>{`
         .po { border-top: 1px solid ${RULE}; }
-        .po-label { font-family: var(--font-heading); font-size: 10px; letter-spacing: 0.3em; line-height: 1; text-transform: uppercase; color: ${MUTED}; }
+        .po-label { font-family: var(--font-heading); font-size: ${JULIUS_MIN}px; letter-spacing: ${TRACK}; line-height: 1; text-transform: uppercase; color: ${MUTED}; }
         .po > .po-label { margin: 28px 0 4px; }
         .po-row { display: flex; align-items: flex-end; height: 52px; padding-bottom: 18px; border-bottom: 1px solid ${RULE}; }
         .po-option { position: relative; display: flex; align-items: flex-end; background: none; border: 0; padding: 0; margin: 0 22px 0 0; cursor: pointer;
-          font-family: var(--font-body); font-weight: 300; font-size: 15px; line-height: 1; color: ${TEXT}; transition: opacity 150ms, color 250ms; }
+          font-family: var(--font-text); font-weight: 400; font-size: ${TEXT_MIN}px; letter-spacing: ${TEXT_TRACK}; line-height: 1; color: ${TEXT}; transition: opacity 150ms, color 250ms; }
         .po-option:hover:not([aria-pressed="true"]) { opacity: 0.5; }
         .po-option[aria-pressed="true"] { color: ${INK}; cursor: default; }
         .po-option::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 8px); height: 1px; background: ${GOLD}; opacity: 0; transition: opacity 250ms; }
         .po-option[aria-pressed="true"]::after { opacity: 1; }
         .po-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; margin: 0 8px 4px 0; }
-        .po-span { margin: 0 0 -2px auto; font-family: var(--font-body); font-weight: 300; font-size: 13px; line-height: 1; color: ${MUTED}; white-space: nowrap; }
+        .po-span { margin: 0 0 -2px auto; font-family: var(--font-text); font-weight: 400; font-size: ${TEXT_MIN}px; letter-spacing: ${TEXT_TRACK}; line-height: 1; color: ${MUTED}; white-space: nowrap; }
 
         .po-choice { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 450ms ease, opacity 450ms ease; }
         .po-choice[data-open] { grid-template-rows: 1fr; opacity: 1; }
@@ -238,36 +239,38 @@ export function PendantOrder({ name, materials, email }: { name: string; materia
 
         .po-price { margin-top: 28px; }
         .po-fade { display: inline-flex; align-items: baseline; animation: po-fade 260ms ease; }
-        .po-amount { font-family: var(--font-body); font-weight: 300; font-size: 32px; line-height: 1; color: ${INK}; }
-        .po-words { margin-left: 14px; font-family: var(--font-body); font-weight: 300; font-size: 13px; line-height: 1; color: ${MUTED}; }
+        /* The price is set like the rest of the panel (2026-11-16, the author's asking):
+           Manrope at the pendant's line's size, in the ivory of what is chosen.
+           Until then it was 30–40px, the largest type on the site. */
+        .po-amount { font-family: var(--font-text); font-weight: 400; font-size: ${TEXT_MIN}px; letter-spacing: ${TEXT_TRACK}; line-height: 1; color: ${INK}; }
+        .po-words { margin-left: 14px; font-family: var(--font-text); font-weight: 400; font-size: ${TEXT_MIN}px; letter-spacing: ${TEXT_TRACK}; line-height: 1; color: ${MUTED}; }
         @keyframes po-fade { from { opacity: 0; } to { opacity: 1; } }
 
         .po-order { display: flex; align-items: center; justify-content: center; height: 50px; margin-top: 24px; border: 1px solid rgba(198, 163, 107, 0.8);
-          font-family: var(--font-heading); font-size: 11px; letter-spacing: 0.48em; text-transform: uppercase; color: ${GOLD};
+          font-family: var(--font-heading); font-size: ${JULIUS_MIN}px; letter-spacing: ${TRACK}; text-transform: uppercase; color: ${GOLD};
           background-color: rgba(198, 163, 107, 0); transition: background-color 700ms ease; }
         .po-order:hover { background-color: rgba(198, 163, 107, 0.14); }
-        .po-order > span { margin-right: -0.48em; }
+        .po-order > span { margin-right: -${TRACK}; }
         .po-ask { display: flex; align-items: center; justify-content: center; margin-top: 20px;
-          font-family: var(--font-heading); font-size: 10px; letter-spacing: 0.3em; line-height: 1; text-transform: uppercase; color: ${TEXT}; transition: opacity 150ms; }
-        .po-ask > span:last-child { margin-right: -0.3em; }
+          font-family: var(--font-heading); font-size: ${JULIUS_MIN}px; letter-spacing: ${TRACK}; line-height: 1; text-transform: uppercase; color: ${TEXT}; transition: opacity 150ms; }
+        .po-ask > span:last-child { margin-right: -${TRACK}; }
         .po-ask:hover { opacity: 0.5; }
         .po-arrow { letter-spacing: 0; margin-right: 1.45em; }
 
         @media (min-width: 1024px) {
-          .po-label { font-size: ${fit(11, 10)}; }
+          .po-label { font-size: ${fit(11, JULIUS_MIN)}; }
           .po > .po-label { margin: ${u(44)} 0 ${u(1)}; }
           .po-row { height: ${u(65)}; padding-bottom: ${u(23.3)}; }
-          .po-option { font-size: ${fit(16, 14)}; margin-right: ${u(36)}; }
+          .po-option { margin-right: ${u(36)}; }
           .po-option::after { top: calc(100% + ${u(8.3)}); }
           .po-dot { width: max(5px, ${u(7)}); height: max(5px, ${u(7)}); margin: 0 ${u(10)} ${u(4.7)} 0; }
-          .po-span { font-size: ${fit(14, 12)}; margin-bottom: calc(-1 * ${u(2.7)}); }
+          .po-span { margin-bottom: calc(-1 * ${u(2.7)}); }
           .po-choice-row { padding: ${u(46.7)} 0 ${u(23.3)}; }
           .po-choice-row > .po-label { width: max(${u(91.5)}, 8em); }
           .po-price { margin-top: ${u(36.9)}; }
-          .po-amount { font-size: ${fit(40, 30)}; }
-          .po-words { font-size: ${fit(14, 12)}; margin-left: ${u(20)}; }
+          .po-words { margin-left: ${u(20)}; }
           .po-order { height: max(44px, ${u(54)}); margin-top: ${u(27.1)}; font-size: ${fit(12, 11)}; }
-          .po-ask { margin-top: ${u(24.5)}; font-size: ${fit(11, 10)}; }
+          .po-ask { margin-top: ${u(24.5)}; font-size: ${fit(11, JULIUS_MIN)}; }
         }
       `}</style>
     </div>

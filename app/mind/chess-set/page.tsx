@@ -265,8 +265,8 @@ export default async function ChessSetPage() {
            --------------------------------------------------------------- */
         .chess-line {
           font-family: 'Julius Sans One', sans-serif;
-          font-size: clamp(10px, 0.85vw, 12px);
-          letter-spacing: 0.3em;
+          font-size: clamp(11px, 0.85vw, 12px);
+          letter-spacing: 0.2em;
           text-transform: uppercase;
           font-weight: 400;
           margin: 0;

@@ -289,7 +289,9 @@ text.pfx-r{translate:none}
       }
       ctx.restore();
     };
-    if (!reduce) raf = requestAnimationFrame(tick);
+    // The homepage dust is off (2026-11-16, the author's asking: "scoate
+    // particulele"). The loop above is kept whole; starting it again is this
+    // one line: if (!reduce) raf = requestAnimationFrame(tick);
 
     // --- soft entrance as things scroll into view ---
     let queue = [], qt;

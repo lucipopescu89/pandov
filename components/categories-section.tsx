@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { NUDGE_PX, ease, heroUp, playBeat, ramp } from "@/lib/played-beat"
+import { JULIUS_MIN, TRACK } from "@/lib/type"
 
 /** Chess (Mind), figure (Body) and lamp (Space) all sit slightly back. */
 const CATEGORY_IMAGE_OPACITY = 0.85
@@ -230,7 +231,7 @@ function easeOut(t: number): number {
 
 const textStyle = {
   fontFamily: "'Julius Sans One', sans-serif",
-  letterSpacing: "0.2em",
+  letterSpacing: TRACK,
   textTransform: "uppercase" as const,
 }
 
@@ -261,7 +262,7 @@ function CategoryLabel({
       <p style={{ ...textStyle, fontSize: "clamp(11px, 2vw, 20px)", color, fontWeight: 400, margin: 0 }}>
         {title}
       </p>
-      <p style={{ ...textStyle, fontSize: "clamp(9px, 1vw, 12px)", color: exploreColor, fontWeight: 400, margin: 0, letterSpacing: "0.15em" }}>
+      <p style={{ ...textStyle, fontSize: `clamp(${JULIUS_MIN}px, 1vw, 12px)`, color: exploreColor, fontWeight: 400, margin: 0 }}>
         &rarr; Explore
       </p>
     </div>

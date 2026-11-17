@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { heroDoors } from "@/lib/played-beat"
+import { JULIUS_MIN, TRACK } from "@/lib/type"
 
 /**
  * The hint to scroll, without words (2026-11-10, the author's asking: the
@@ -172,8 +173,8 @@ export function ScrollHint() {
           textAlign: "center",
           paddingLeft: "0.25em",
           fontFamily: "'Julius Sans One', sans-serif",
-          fontSize: "clamp(9px, 0.75vw, 11px)",
-          letterSpacing: "0.25em",
+          fontSize: `${JULIUS_MIN}px`,
+          letterSpacing: TRACK,
           color: "#888",
           textTransform: "uppercase",
         }}

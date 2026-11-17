@@ -75,7 +75,10 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
+  /* Manrope (lib/type.ts), the face for text that is read; Geist was named
+     here but never loaded under that name, so anything unstyled fell back to
+     the browser's own face. */
+  --font-sans: var(--font-text), sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --font-heading: "Julius Sans One", "Geist", sans-serif;
   --color-background: var(--background);

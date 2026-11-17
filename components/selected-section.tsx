@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Assistant } from "next/font/google"
+import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK } from "@/lib/type"
 
 /**
  * SELECTED — laid out after the author's Figma frame "Selected" of
@@ -63,8 +63,7 @@ const HEADING_TOP = 297.2 - 0.085 * HEADING_PX
 const LINE_PX = 15
 const LINE_TOP = 378.2 - 0.31 * LINE_PX
 
-/** The line's face: Assistant, Regular, as the frame has it. */
-const assistant = Assistant({ weight: "400", subsets: ["latin"], display: "swap" })
+/** The line is in Manrope since 2026-11-16 (the frame has Assistant), never under TEXT_MIN. */
 
 /**
  * The phone's frame, in its own units: the cards' sizes and places as the
@@ -124,10 +123,10 @@ function SelectedPhone() {
       <div style={{ position: "absolute", left: `${(P_TEXT_X / PW) * 100}%`, top: `${(P_TEXT_Y / PH) * 100}%`, right: "12%" }}>
         <p
           style={{
-            fontFamily: "'Julius Sans One', sans-serif",
+            fontFamily: JULIUS,
             textTransform: "uppercase",
-            letterSpacing: "0.2em",
-            fontSize: "11px",
+            letterSpacing: TRACK,
+            fontSize: `${JULIUS_MIN}px`,
             lineHeight: 1,
             color: "#888",
             margin: 0,
@@ -137,11 +136,11 @@ function SelectedPhone() {
         </p>
         <p
           style={{
-            fontFamily: assistant.style.fontFamily,
+            fontFamily: TEXT_FONT,
             fontWeight: 400,
-            fontSize: "12.5px",
+            fontSize: `${TEXT_MIN}px`,
             lineHeight: 1.5,
-            letterSpacing: "0.025em",
+            letterSpacing: TEXT_TRACK,
             color: "#888",
             margin: "14px 0 0",
           }}
@@ -262,9 +261,10 @@ export function SelectedSection() {
         >
           <p
             style={{
-              fontFamily: "'Julius Sans One', sans-serif",
+              fontFamily: JULIUS,
               textTransform: "uppercase",
-              fontSize: `clamp(11px, ${vw(HEADING_PX)}, 32px)`,
+              letterSpacing: TRACK,
+              fontSize: `clamp(${JULIUS_MIN}px, ${vw(HEADING_PX)}, 32px)`,
               lineHeight: 1,
               color: "#888",
               margin: 0,
@@ -274,9 +274,10 @@ export function SelectedSection() {
           </p>
           <p
             style={{
-              fontFamily: assistant.style.fontFamily,
+              fontFamily: TEXT_FONT,
               fontWeight: 400,
-              fontSize: `clamp(9px, ${vw(LINE_PX)}, 16px)`,
+              letterSpacing: TEXT_TRACK,
+              fontSize: `${TEXT_MIN}px`,
               lineHeight: 1.35,
               color: "#888",
               // from the heading's line box to this one's, as in the frame

@@ -1,12 +1,11 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono, Julius_Sans_One } from "next/font/google"
+import { Julius_Sans_One } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
+import { manrope } from "@/lib/type"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 const _juliusSansOne = Julius_Sans_One({ weight: "400", subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -38,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={manrope.variable}>
       <head>
         {/* Register the literal "Julius Sans One" family so inline SVG <text> elements
             (exported from Figma) render in the correct font. */}

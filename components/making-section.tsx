@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { Assistant } from "next/font/google"
+import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK } from "@/lib/type"
 import { MakingDrawing } from "@/components/making-drawing"
 
 /**
@@ -107,6 +107,16 @@ const LINE_PX = 15
 const LINE_PITCH = 40
 const LINE_HEIGHT = 1.35
 const LINES_TOP = 120.2 - 0.31 * LINE_PX
+/**
+ * Since 2026-11-16 the lines are never under TEXT_MIN (14px), so on a laptop
+ * they are larger than the frame's 15 at 1893. To keep them where the frame
+ * has them, their cap tops still stand LINE_PITCH apart in the frame's units
+ * (the gap under each line is what gives), and the column reaches to
+ * WORDS_RIGHT, just short of The Creator's arm, rather than 45% from the
+ * right, so each line holds on one line from about 1200px up and the last
+ * stays above the drawn sheet of paper (y 295).
+ */
+const WORDS_RIGHT = 1170
 const LINES = [
   "Every Pandov object begins with a search.",
   "It can start in nature, among forms shaped by time, or in the quiet potential of discarded materials.",
@@ -139,16 +149,16 @@ const ph = (v: number) => `${+((v / PH) * 100).toFixed(4)}%`
  * these lines the column is wider than the frame's, up to x 603 on a 360px
  * phone, and it fits only because the words stand this high: the longest line
  * (the fourth) is above the trunk, which reaches x 600 from y 300, and the
- * ninth is above Siluet 1's head (y 607). The type is the other sections'
- * 12.5px from a 368px phone up, and a little smaller under it (`P_LINE_FIT`),
- * so the fourth line keeps clear of the trunk on a 360 and stays in the
- * window on a 320.
+ * ninth is above Siluet 1's head (y 607). Since 2026-11-16 the type is
+ * Manrope at the floor for read text, 14px, on every phone, at line-height
+ * 1.35 (it was Assistant 12.5 at 1.5) so the lines keep their heights; the
+ * fourth still clears the trunk on a 360, but not on a 320.
  */
 const P_TEXT_X = 56
 const P_AIR_PX = 56
 const P_HEADING_PX = 11
-const P_LINE_FIT = "clamp(11px, 3.4vw, 12.5px)"
-const P_LINE_HEIGHT = 1.5
+const P_LINE_FIT = `${TEXT_MIN}px`
+const P_LINE_HEIGHT = 1.35
 const P_HEADING_GAP_PX = 14
 const P_PARAGRAPH_GAP_EM = 1
 const P_LINES = [
@@ -166,8 +176,10 @@ const P_LINES = [
  */
 const AIR = 120
 
-/** The lines' face: Assistant, Regular, as the frame has it. */
-const assistant = Assistant({ weight: "400", subsets: ["latin"], display: "swap" })
+/*
+ * The lines are in Manrope since 2026-11-16 (the frame has Assistant), and
+ * never under TEXT_MIN; the heading carries the site's one TRACK.
+ */
 
 export function MakingSection() {
   return (
@@ -240,12 +252,13 @@ export function MakingSection() {
             The Creator's head, as in the frame (2026-11-05, the author's
             asking; for a while they kept the page's own left margin and went
             far off to the left of the drawing). */}
-        <div className="mk-words-desk" style={{ position: "absolute", left: pctX(TEXT_X), top: pctY(HEADING_TOP), right: "45%", zIndex: 2 }}>
+        <div className="mk-words-desk" style={{ position: "absolute", left: pctX(TEXT_X), top: pctY(HEADING_TOP), right: `${+((1 - WORDS_RIGHT / FW) * 100).toFixed(3)}%`, zIndex: 2 }}>
           <p
             style={{
-              fontFamily: "'Julius Sans One', sans-serif",
+              fontFamily: JULIUS,
               textTransform: "uppercase",
-              fontSize: `clamp(11px, ${vw(HEADING_PX)}, 30px)`,
+              letterSpacing: TRACK,
+              fontSize: `clamp(${JULIUS_MIN}px, ${vw(HEADING_PX)}, 30px)`,
               lineHeight: 1,
               color: "#888",
               margin: 0,
@@ -255,17 +268,18 @@ export function MakingSection() {
           </p>
           <div
             style={{
-              fontFamily: assistant.style.fontFamily,
+              fontFamily: TEXT_FONT,
               fontWeight: 400,
-              fontSize: `clamp(9px, ${vw(LINE_PX)}, 16px)`,
+              fontSize: `${TEXT_MIN}px`,
               lineHeight: LINE_HEIGHT,
+              letterSpacing: TEXT_TRACK,
               color: "#888",
               // from the heading's line box to the first line's, as in the frame
               marginTop: vw(LINES_TOP - HEADING_TOP - HEADING_PX),
             }}
           >
             {LINES.map((l) => (
-              <p key={l} style={{ margin: `0 0 ${(LINE_PITCH - LINE_HEIGHT * LINE_PX) / LINE_PX}em` }}>
+              <p key={l} style={{ margin: `0 0 max(4px, calc(${vw(LINE_PITCH)} - ${LINE_HEIGHT}em))` }}>
                 {l}
               </p>
             ))}
@@ -285,9 +299,9 @@ export function MakingSection() {
         >
           <p
             style={{
-              fontFamily: "'Julius Sans One', sans-serif",
+              fontFamily: JULIUS,
               textTransform: "uppercase",
-              letterSpacing: "0.2em",
+              letterSpacing: TRACK,
               fontSize: `${P_HEADING_PX}px`,
               lineHeight: 1,
               color: "#888",
@@ -298,8 +312,9 @@ export function MakingSection() {
           </p>
           <div
             style={{
-              fontFamily: assistant.style.fontFamily,
+              fontFamily: TEXT_FONT,
               fontWeight: 400,
+              letterSpacing: TEXT_TRACK,
               fontSize: P_LINE_FIT,
               lineHeight: P_LINE_HEIGHT,
               color: "#888",

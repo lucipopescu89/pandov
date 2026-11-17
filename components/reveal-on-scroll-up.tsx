@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { TO_TOP_EVENT, heroDoors } from "@/lib/played-beat"
 
 /**
- * Homepage only (2026-11-02, the author's asking): the page opens on the
- * handles filling the screen, with no top menu above them. The menu lies over
+ * Homepage only (2026-11-02, the author's asking; since 2026-11-16 it opens
+ * with the menu down, over the handles, and a page opened at the top shows
+ * it). Before that day the page opened on the handles with no menu above them. The menu lies over
  * the page, out of the flow, hidden above the top edge, and slides down only
  * when the reader scrolls up at the very top of the page (not on every scroll
  * up: the author's correction, the same day). A scroll down, or the page
@@ -29,6 +30,9 @@ import { TO_TOP_EVENT, heroDoors } from "@/lib/played-beat"
  */
 export function RevealOnScrollUp({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(false)
+  // No slide on the way in: a page opened at the top has the menu there from
+  // the first frame; the slide is for the hand moving it after.
+  const [moving, setMoving] = useState(false)
   const shownRef = useRef(false)
 
   useEffect(() => {
@@ -43,6 +47,8 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
       if (shownRef.current === v) return
       shownRef.current = v
       setShown(v)
+      // The hero's text 1 stands in the menu's place while it is away.
+      document.documentElement.dataset.heroMenu = v ? "shown" : "away"
     }
     const set = (v: boolean) => {
       up = v
@@ -138,6 +144,14 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
 
     const onToTop = () => set(true)
 
+    // The page opens with the menu down, over the handles (2026-11-16, the
+    // author's asking): a page opened at its top counts as a hand come up.
+    // The first scroll down sends it away, as before, and text 1 takes its
+    // place (see HeroAnimation).
+    document.documentElement.dataset.heroMenu = atTop() ? "shown" : "away"
+    set(atTop())
+    const settle = requestAnimationFrame(() => requestAnimationFrame(() => setMoving(true)))
+
     const opts = { passive: false, capture: true } as const
     window.addEventListener("wheel", onWheel, opts)
     window.addEventListener("keydown", onKey, true)
@@ -154,6 +168,8 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
       window.removeEventListener("touchmove", onTouchMove, opts)
       window.removeEventListener("touchend", onTouchEnd, true)
       window.removeEventListener(TO_TOP_EVENT, onToTop)
+      cancelAnimationFrame(settle)
+      delete document.documentElement.dataset.heroMenu
     }
   }, [])
 
@@ -166,7 +182,7 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
         right: 0,
         zIndex: 1000,
         transform: shown ? "translateY(0)" : "translateY(-100%)",
-        transition: "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
+        transition: moving ? "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)" : "none",
         pointerEvents: shown ? "auto" : "none",
       }}
       inert={!shown}

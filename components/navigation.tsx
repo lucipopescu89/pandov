@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import type React from "react"
+import { JULIUS_MIN } from "@/lib/type"
 
 /** Brand grey used for the logo and the menu links on every page. */
 const BRAND_GRAY = "#888888"
@@ -29,7 +30,7 @@ const MENU_TONES = {
   dark: { word: BRAND_GRAY, wordLit: "#e6e6e6", sub: "#6f6f6f", subLit: "#a8a8a8" },
   light: { word: BRAND_GRAY, wordLit: "#333333", sub: "#a2a2a2", subLit: "#666666" },
 }
-const SUB_FONT_SIZE = "10px"
+const SUB_FONT_SIZE = `${JULIUS_MIN}px`
 
 /** Whether a band colour is dark, read from a #rgb or #rrggbb value; anything else counts as light. */
 function isDark(color: string) {

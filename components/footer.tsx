@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { BirdRings } from "@/components/bird-rings"
 import { BodyFooter } from "@/components/body-footer"
+import { JULIUS_MIN, TRACK } from "@/lib/type"
 
 /** The hand sits a little back, so the ring and the words over it lead. */
 const HAND_OPACITY = 0.77
@@ -335,7 +336,7 @@ const PHONE_HAND_H = (PHONE_HAND_W * HAND_H) / HAND_W
 const LAYOUT = `
 .ft-canvas { padding-bottom: ${CANVAS_HEIGHT}; }
 .ft-hand { left: ${wide(22)}; top: ${wide(-2)}; width: ${wide(1720)}; }
-.ft-words { top: ${wide(WORDS_Y)}; font-size: clamp(9px, 0.75vw, 12px); }
+.ft-words { top: ${wide(WORDS_Y)}; font-size: clamp(${JULIUS_MIN}px, 0.75vw, 12px); }
 .ft-bird { top: calc(${wide(WORDS_Y)} + ${held(862 - WORDS_Y)}); width: ${held(360)}; }
 @media ${PHONE} {
   .ft-canvas { padding-bottom: ${PHONE_BIRD_Y + PHONE_BIRD_W / 2}%; }
@@ -515,7 +516,7 @@ export function Footer() {
             left: "50%",
             transform: "translate(-50%, -50%)",
             padding: "12px 16px",
-            letterSpacing: "0.05em",
+            letterSpacing: TRACK,
             textTransform: "uppercase",
             whiteSpace: "nowrap",
             color: "#444",

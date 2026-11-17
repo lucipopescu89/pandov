@@ -286,15 +286,15 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
         }
         .statement-lead {
           font-size: clamp(11px, 1.05vw, 14px);
-          letter-spacing: 0.12em;
+          letter-spacing: 0.2em;
           line-height: 2.2;
           color: #888;
           text-transform: uppercase;
           margin: 0;
         }
         .statement-note {
-          font-size: clamp(10px, 0.85vw, 12px);
-          letter-spacing: 0.08em;
+          font-size: clamp(11px, 0.85vw, 12px);
+          letter-spacing: 0.2em;
           line-height: 2.1;
           color: #aaa;
           margin: 48px 0 0;
