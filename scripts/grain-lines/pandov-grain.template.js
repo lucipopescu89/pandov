@@ -1,6 +1,8 @@
 /*
  * PANDOV — gold motes in the crevices of the burnt trunk, in the homepage's
- * MAKING photograph (making-sculpture.jpg, 2400 x 2287 since 2026-11-05).
+ * MAKING photograph (making-trunk.webp, the trunk cut out of its white
+ * ground, __W__ x __H__ since 2026-11-17; making-sculpture.jpg, 2400 x 2287,
+ * from 2026-11-05).
  *
  * The crevices are the author's own lines, drawn in Figma over the
  * photograph (2026-10-31). D.lines holds them in the photograph's pixels,
@@ -20,7 +22,10 @@
  * back down again when the pointer leaves it.
  *
  * A click on the photograph sends a train up every crevice at once, from the
- * lower ends, faster than the others. Up to two such waves at a time: a
+ * lower ends, faster than the others. Since 2026-11-17 a click anywhere on
+ * the Making section does (the photograph's nearest `[data-grain-click]`, the
+ * section, which also raises the sun's storm; the photograph is now only the
+ * trunk, cut out). Up to two such waves at a time: a
  * third click fades the oldest wave out and sends a new one. (The photograph
  * is no longer a link to /making: components/making-section.tsx.)
  * While a wave runs, the trains already rising speed up to the wave's speed
@@ -38,7 +43,7 @@
   if (window.__pfxGrain) window.__pfxGrain.remove();
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  const D = { w: 2400, h: 2287, lines: __LINES__ };
+  const D = { w: __W__, h: __H__, lines: __LINES__ };
 
   const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -97,6 +102,8 @@
   const onMove = e => { const r = box.getBoundingClientRect(); px = e.clientX - r.left; py = e.clientY - r.top; };
   const onLeave = () => { px = py = -1e9; };
   const onClick = () => wave();
+  // what takes the click and the pointer: the section, when it says so
+  let hit = null;
   // Find the photograph and lay the canvas over it. Checked twice a second:
   // the page can be left and come back to (the site moves between pages
   // without reloading), and then the photograph is a new element.
@@ -107,10 +114,11 @@
     if (b === box && cv.parentElement === b) return;
     unhook();
     box = b; box.appendChild(cv);
-    box.addEventListener('pointermove', onMove, { passive: true });
-    box.addEventListener('pointerleave', onLeave, { passive: true });
-    box.addEventListener('click', onClick);
-    box.style.cursor = 'pointer';
+    hit = box.closest('[data-grain-click]') || box;
+    hit.addEventListener('pointermove', onMove, { passive: true });
+    hit.addEventListener('pointerleave', onLeave, { passive: true });
+    hit.addEventListener('click', onClick);
+    hit.style.cursor = 'pointer';
     io && io.disconnect(); ro && ro.disconnect();
     io = new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { rootMargin: '100px' });
     io.observe(box);
@@ -119,9 +127,10 @@
   };
 
   function unhook() {
-    if (!box) return;
-    box.removeEventListener('pointermove', onMove); box.removeEventListener('pointerleave', onLeave);
-    box.removeEventListener('click', onClick); box.style.cursor = '';
+    if (!hit) return;
+    hit.removeEventListener('pointermove', onMove); hit.removeEventListener('pointerleave', onLeave);
+    hit.removeEventListener('click', onClick); hit.style.cursor = '';
+    hit = null;
   }
 
   // a crevice with room for another train; the longer ones more often

@@ -6,7 +6,7 @@ import { BodyFooter } from "@/components/body-footer"
 import { CenterFade } from "@/components/center-fade"
 import { MakingScroll } from "@/components/making-scroll"
 import { MakingVideo } from "@/components/making-video"
-import { MakingModel } from "@/components/making-model"
+import { MakingScan } from "@/components/making-scan"
 import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
 
 /**
@@ -23,11 +23,14 @@ import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
  *     (`drawing-wood.svg`) traced and untraced, line by line, then the bottom
  *     words. The drawing never moves against the photograph.
  *  5. The words come and go with the scroll, slowly (`CenterFade`).
- *  6. The fire video rises over the photograph, which holds still beneath it. The video loops, each loop
- *     opening and closing on a quick dip to black (`MakingVideo`).
+ *  6. The fire video rises over the photograph, which holds still beneath it. The video loops with
+ *     no seam, its end dissolving into its start (`MakingVideo`, `scripts/making-burn.py`).
  *  7. Scrolling on, the video goes to white.
- *  8. Under it, the 3D scan of the log end with the lamp made to fit it, turning
- *     slowly by itself and left to the visitor to turn and zoom (`MakingModel`).
+ *  8. Under it, the scan of the log end with the figure in it (`MakingScan`):
+ *     the photograph and its 3D scan either side of a line the visitor moves
+ *     (before and after), large on the left and moving faster than the page. (Until the author's asking
+ *     later the same day it was the 3D model itself, `making-model.tsx`, now
+ *     unused.)
  *  9. The sketches come up out of the white; Siluet 2 rises out of the paper,
  *     from its foot to its head.
  * 10. The sketches go down into #202020 until only the last words are left.
@@ -143,9 +146,7 @@ const CSS = `
 .mk-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .mk-fire{z-index:2;background:#000}
 .mk-white{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-/* 8. The scan. */
-.mk-c2{position:relative;height:${vw(1040)};background:#fff}
-.mk-model{position:absolute;left:${vw(150)};top:${vw(40)};width:${vw(900)};height:${vw(960)}}
+/* 8. The scan: its own styles, in making-scan.tsx. */
 /* 9–10. The sketches, and the dark they go into. */
 .mk-c3{position:relative;height:calc(var(--vh) + var(--s3));background:#fff}
 .mk-stage{position:sticky;top:0;height:var(--vh);overflow:hidden;background:#fff}
@@ -170,9 +171,6 @@ const CSS = `
   .mk-text{max-width:84vw !important;left:8vw !important}
   /* On a phone the bottom words on the wood stand where the top words stood, at the top, clear of the knot's circle (the author's asking). */
   .mk-words-low{top:${((658 - WOOD.top) / WOOD.h * 100).toFixed(2)}% !important}
-  .mk-c2{height:auto;padding:12vw 0 16vw}
-  .mk-model{position:relative;left:0;top:0;width:100vw;height:118vw}
-  .mk-c2 .mk-text{position:relative;top:auto !important;margin:6vw 8vw 0}
   .mk-staged{left:8vw !important;max-width:84vw !important}
 }
 `
@@ -259,9 +257,9 @@ export function MakingPage() {
         <div style={{ height: "var(--s1)" }} />
         <div className="mk-hold mk-fire" data-mk="fire">
           <MakingVideo
-            src="/videos/making-burn.mp4?v=1"
-            poster="/videos/making-burn-poster.jpg?v=1"
-            phone={{ src: "/videos/making-burn-phone.mp4?v=2", poster: "/videos/making-burn-phone-poster.jpg?v=2" }}
+            src="/videos/making-burn.mp4?v=2"
+            poster="/videos/making-burn-poster.jpg?v=2"
+            phone={{ src: "/videos/making-burn-phone.mp4?v=3", poster: "/videos/making-burn-phone-poster.jpg?v=3" }}
           />
           {/* Held with the fire, as the words on the wood are with it
               (2026-11-17, the author's asking): it comes and goes in opacity
@@ -288,16 +286,18 @@ export function MakingPage() {
         </div>
       </section>
 
-      {/* 3. The scan */}
-      <section className="mk-c2">
-        <MakingModel src="/models/making-scan.glb?v=1" className="mk-model" />
-        <p data-center-fade className="mk-text" style={{ left: vw(1129), top: vw(2669 - 2338), maxWidth: vw(470), color: INK.paper }}>
-          Most of the found pieces are 3D scanned.
-          <br />
-          Capturing their exact geometry reveals what works visually, while allowing new elements to be engineered for a
-          precise physical fit.
-        </p>
-      </section>
+      {/* 3. The scan: the photograph and its 3D scan, either side of a line */}
+      <MakingScan
+        color={INK.paper}
+        words={
+          <>
+            Most of the found pieces are 3D scanned.
+            <br />
+            Capturing their exact geometry reveals what works visually, while allowing new elements to be engineered for
+            a precise physical fit.
+          </>
+        }
+      />
 
       {/* 4. The sketches, Siluet 2 rising out of the paper, and the dark */}
       <section className="mk-c3" data-mk="paper">

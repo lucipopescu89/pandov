@@ -6,36 +6,48 @@ import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
 
 /**
  * The Making section's line drawings, drawn as if by hand (2026-11-05, the
- * author's brief):
+ * author's brief; the composition re-exported 2026-11-14 and 2026-11-17).
  *
- *  - The Creator, the figure with the tulnic on the left, stands as drawn, and
- *    so does the eye in the dark wood.
- *  - Fum and the Siluets (and Vector 89, a line of theirs outside any named
- *    figure) are never whole until the section is clicked. While it is
- *    on screen, a stroke two thirds of a line's length (`LOOP_SEGMENT`) travels
- *    slowly along one line after another, at random: it comes in at the line's
- *    start, glides its whole length (`LOOP_SPEED`) and goes out at its end,
- *    so nothing of the line is left behind. A new one starts every
- *    `LOOP_EVERY_MS`, never more than `LOOP_MAX` at once, and never on a line
- *    already in play. Off screen, no new one starts. (The author's asking the
- *    same day; before, each line was drawn whole, held and erased, and before
- *    that they stayed drawn, as many as the section had
- *    come up the screen.)
- *  - A click anywhere on the section (the author's asking, 2026-11-05: one
- *    click for all of Making, the same click that sends the gold motes' wave
- *    up the trunk; at first it was a click on The Creator alone) breathes them
- *    all out of The Creator's tulnic: whatever is
- *    already drawn fades away (`CLEAR_MS`), then every line is drawn from the
- *    tulnic's mouth outward. Fum first, the Siluets after it
- *    (`SILUET_AFTER_MS`); each line starts at its end nearer the mouth, and the
- *    further it lies from the mouth the later it starts (`FRONT_SPEED`), so the
- *    drawing travels from the smoke up into the figures.
- *    They stay whole for a few seconds (`FULL_HOLD_MS`), then are erased the
- *    way they came, from the smoke outward (`ERASE_FRONT_SPEED`,
- *    `ERASE_SPEED`), and the drawing and erasing at random begins again (the
- *    author's asking the same day).
- *  - Scrolled back up until the section is below the screen, it all goes
- *    again, and the drawing and erasing begins anew on the way down.
+ * Since 2026-11-17 (the author's ten-point brief, with the frame re-exported
+ * as Making_Homepage.svg):
+ *
+ *  - **A click no longer breathes the drawing out.** Until then a click
+ *    anywhere on the section faded what was drawn and breathed every line out
+ *    at once (the creators' pens filled first), held the whole drawing five
+ *    seconds and erased it. Now a click there plays the gold motes up the
+ *    trunk (`public/pandov-grain.js`), the sun's storm
+ *    (`components/making-sun.tsx`) and the sea's big wave
+ *    (`components/making-sea.tsx`); of the drawing only SILUET answers it
+ *    (2026-11-17, later, the author's asking): its lines are drawn whole
+ *    (`SILUET_DRAW_SPEED`), stay so a few seconds (`SILUET_HOLD_MS`; another
+ *    click keeps them longer) and are erased the way they came, and the
+ *    travelling strokes take them up again. The eye keeps its own click.
+ *  - **The lines are never whole.** While the section is on screen, a stroke
+ *    two thirds of a line's length (`LOOP_SEGMENT`) glides slowly along one
+ *    line after another, at random: it comes in at the line's start, glides
+ *    its whole length (`LOOP_SPEED`) and goes out at its end, so nothing of
+ *    the line is left behind. A new one starts every `LOOP_EVERY_MS`, never
+ *    more than `LOOP_MAX` at once, and never on a line already in play; more
+ *    run down the upper halves of the figures (`UPPER_*`, 2026-11-10).
+ *  - **CREATOR2, the trumpet player, and its three melodies are gone**
+ *    (2026-11-17, evening, the author's asking; `scripts/making-drawing.py`
+ *    skips them now). They had a window of their own in the scroll, and a
+ *    stroke down all three melodies on the click.
+ *  - **Scrolling down hurries SILUET** (the same day, later, the author's
+ *    asking): while the page goes down its strokes run `HURRY_RATE` times as
+ *    fast, easing back after (`HURRY_MS`, `HURRY_EASE_S`), and a scroll down
+ *    starts a stroke on one of its lines that is free.
+ *  - Of CREATOR1 only the head stands fixed; it still draws its four lines
+ *    as a plotter (`PLOT_SPEED`), the paper running under its pen.
+ *  - **The figures go as the reader goes on down** (`FADE_*`): once the words'
+ *    middle is up past the middle of the screen, every figure fades with the
+ *    scroll, gone when the words are near the top; scrolling back brings them
+ *    back. The eye in the dark wood stays. The figures are the file's
+ *    `mk-figures` group (the phone's older file has none: the figures are
+ *    gathered into one here). Only the computer's words carry
+ *    `data-mk-words`: on a phone the words stand at the top of the older
+ *    frame, over the figures, and the figures would be gone before they were
+ *    seen, so there they stay.
  *
  * The eye in the dark wood opens and shuts (2026-11-05, the author's asking).
  * It is shut at first; as the reader scrolls down and it comes up past
@@ -59,36 +71,22 @@ import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
  * Open, it blinks now and then, at random (`BLINK_EVERY_MS`), sometimes twice
  * (`BLINK_TWICE`): quick down, a little slower up, as an eye does. A click
  * on the eye blinks it and takes the reader to /seen, the hidden page of
- * every photograph on the site at once (2026-11-08, the author's asking; it
- * went to /making, the page of the film, until then, and /making is still in
- * the bottom menu); that click is the eye's alone, so it neither breathes the
- * figures out nor sends the motes' wave.
+ * every photograph on the site at once (2026-11-08, the author's asking); that
+ * click is the eye's alone, so it plays neither the motes' wave nor the sun.
  *
- * Nothing levitates (2026-11-14, the author's asking; until then The Creator
- * floated 9 units up and down, a breath every 7s). On the phone's drawing The
- * Creator still trembles a little for under a second on the click
- * (`CREATOR_SHAKE`, `CREATOR_SHAKE_MS`), as the smoke leaves the tulnic.
- *
- * On the computer's drawing (the author's frame of 2026-11-14) each creator
- * holds a pen and draws, as a plotter: the upper one the four short lines
- * across the words (`PLOT_SPEED`), the lower one the line that winds down to
- * Siluet2 (`WAVE_SPEED`). Of each creator only the head, arm and pen stand
- * fixed; its other lines, and Siluet2's and SILUET's, are travelled by
- * strokes and drawn whole on the click, from where the lower creator's line
- * reaches Siluet2.
+ * Since 2026-11-17 the eye is the author's flipped and smaller one, and far
+ * fainter, for the attentive only: at the strength the author gave it in Figma
+ * (`data-rest` on the eye's <g>, 20%; `EYE_REST` where the file has none), and
+ * under the pointer it comes up slowly to `EYE_HOVER`.
  *
  * How a line is drawn: the lines are Figma's outlined strokes, so each is
  * revealed through a mask holding its centre line, whose `stroke-dashoffset`
- * runs from 1 to 0 (pathLength 1); the mask is dropped once the line is
- * drawn, so a finished line costs nothing. All of it is prepared in the file,
+ * moves the stroke along it (pathLength 1). All of it is prepared in the file,
  * `public/images/home/making-drawing.svg`, by `scripts/making-drawing.py`: see
  * its header. The file is fetched and set inline, so its groups can be
- * reached; it is 70KB, and inlined by the server it would travel twice (HTML
+ * reached; it is 95KB, and inlined by the server it would travel twice (HTML
  * and the RSC payload).
  *
- * The section's photograph box takes a click for the gold motes' wave
- * (`public/pandov-grain.js`); this listens on the same box, so one click
- * plays both.
  * Under reduced motion every line is shown, drawn, and nothing moves.
  */
 
@@ -97,20 +95,20 @@ import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
  * old copy (2026-11-14: the old drawing stayed in the browser after the
  * re-export, even after a reload). Both files are fetched with it.
  */
-const SVG_VERSION = "2026-11-14h"
+const SVG_VERSION = "2026-11-17b"
 const SRC = `/images/home/making-drawing.svg?v=${SVG_VERSION}`
 /**
  * The phone's drawing (2026-11-05, the author's frame "Making - Mobile"): its
  * own figures, fewer lines and the eye moved, written by the same script with
- * `--mobile`. Its viewBox is the photograph's box in the phone frame's units,
- * so the page lays it over the photograph's box exactly as it lays the
- * computer's. Chosen by the same query as the phone's layout in
- * `making-section.tsx`, and swapped when the screen crosses it.
+ * `--mobile`. Its viewBox is the old photograph's box in the phone frame's
+ * units, so the page lays it over that box (`.mk-draw` in
+ * `making-section.tsx`). Chosen by the same query as the phone's layout, and
+ * swapped when the screen crosses it. Not re-exported on 2026-11-17.
  */
 const SRC_PHONE = `/images/home/making-drawing-mobile.svg?v=${SVG_VERSION}`
 const PHONE = "(max-width: 767px)"
 
-/** Before the click: the travelling stroke's length, as a share of its line's (a third until the author's asking, the same day). */
+/** The travelling stroke's length, as a share of its line's (a third until the author's asking, 2026-11-05). */
 const LOOP_SEGMENT = 2 / 3
 /**
  * …how fast it goes, frame units a second, and its shortest and longest
@@ -126,37 +124,83 @@ const LOOP_EVERY_MS = 650
 const LOOP_MAX = 5
 
 /**
- * Before the click, the upper part of the Siluets is busier (2026-11-10, the
- * author's asking): besides the strokes above, which go anywhere, more
- * travelling strokes run on the Siluet lines that start in the upper half of
- * the Siluets' height (`UPPER_SHARE`), coming down them from their upper end,
- * so that the figures up there seem to be being drawn. A new one starts every
- * `UPPER_EVERY_MS` while fewer than `UPPER_MAX` are in play there, and
- * scrolling down starts one at once (at most every `UPPER_SCROLL_MS`), so they
- * seem drawn as the reader comes down the page. Nothing of them stays: like
- * the others, each comes in and goes out. (A first try the same day drew the
- * upper part and left it standing; the author wanted movement, not lines.)
+ * The upper part of the figures is busier (2026-11-10, the author's asking):
+ * besides the strokes above, which go anywhere, more travelling strokes run on
+ * the lines that start in the upper half of the figures' height
+ * (`UPPER_SHARE`), coming down them from their upper end, so that the figures
+ * up there seem to be being drawn. A new one starts every `UPPER_EVERY_MS`
+ * while fewer than `UPPER_MAX` are in play there, and scrolling down starts
+ * one at once (at most every `UPPER_SCROLL_MS`). Nothing of them stays.
  */
-const UPPER_GROUPS = ["siluet-1", "siluet-2", "siluet-3", "creator-1", "creator-2"]
+const UPPER_GROUPS = ["siluet-1", "siluet-2", "siluet-3", "creator-1"]
 const UPPER_SHARE = 0.5
 const UPPER_EVERY_MS = 420
 const UPPER_MAX = 5
 const UPPER_SCROLL_MS = 260
 
-/** Click: how long what is drawn takes to fade before the birth. */
-const CLEAR_MS = 450
-/** Click: how fast the start of the drawing travels out from the mouth, units a second. */
-const FRONT_SPEED = 520
-/** Click: how fast each line is drawn, units a second, and its shortest time. */
-const DRAW_SPEED = 400
-const DRAW_MIN_MS = 500
-/** Click: the Siluets wait this long after the smoke has begun. */
-const SILUET_AFTER_MS = 500
-/** After the click: how long the whole drawing stays before it is erased. */
-const FULL_HOLD_MS = 5000
-/** …and how fast the erasing travels out from the mouth, and erases a line. */
-const ERASE_FRONT_SPEED = 700
-const ERASE_SPEED = 520
+/**
+ * Scrolling down hurries SILUET (2026-11-17, later, the author's asking; the
+ * melodies too, while there were any): its strokes run `HURRY_RATE` times as
+ * fast while the page goes down, and for `HURRY_MS` after the last step of
+ * it, easing in and out over about `HURRY_EASE_S`; a scroll down also starts
+ * a stroke on one of its free lines (at most every `UPPER_SCROLL_MS`, while
+ * fewer than `HURRY_MAX` of them are in play).
+ */
+const HURRY_GROUPS = ["siluet-3"]
+const HURRY_RATE = 3.5
+const HURRY_MS = 380
+const HURRY_EASE_S = 0.18
+const HURRY_MAX = 6
+
+/**
+ * A click draws SILUET whole (2026-11-17, later, the author's asking: "we
+ * leave it whole a few seconds after the click"): every line drawn along at
+ * `SILUET_DRAW_SPEED` units a second (never quicker than `SILUET_DRAW_MIN_MS`),
+ * held `SILUET_HOLD_MS`, then erased the way it came.
+ */
+const SILUET_GROUP = "siluet-3"
+const SILUET_DRAW_SPEED = 420
+const SILUET_DRAW_MIN_MS = 700
+const SILUET_HOLD_MS = 4000
+const EASE_DRAW = "cubic-bezier(.3,0,.2,1)"
+
+/**
+ * The figures fade out as the reader goes on down (2026-11-17, the author's
+ * asking: "the fade-out begins when the text is about halfway"): from the
+ * words' middle at `FADE_FROM` of the screen's height to `FADE_TO`, eased.
+ * Below `FADE_FROM` they are whole; the scroll alone sets it, either way.
+ * Quicker since the same afternoon (the author's asking): gone over 18% of
+ * the screen's height of scrolling, where it took 38% (`FADE_TO` was 0.12).
+ */
+const FADE_FROM = 0.5
+const FADE_TO = 0.32
+/**
+ * The words go too, once the trumpet player has gone and the sun is out (the
+ * author's sixth brief, the same afternoon: "you can take the text out with a
+ * fade-out and a movement up"): as their middle goes up from `WORDS_OUT_FROM`
+ * to `WORDS_OUT_TO` of the screen's height they fade and rise `WORDS_RISE_PX`
+ * over the page's own movement. Sooner and quicker at the author's asking
+ * ("make the text disappear faster"): 0.32 → 0.14 at first, 0.4 → 0.3 now,
+ * just after the trumpet player has gone at 0.42; and minutes later ("let it
+ * disappear together with the trumpet player") with CREATOR2 exactly, on the
+ * same window (0.5 → 0.42; CREATOR2 has since gone, the window stays). The
+ * box measured stays put (the inner `[data-mk-words-out]` is what moves), so
+ * nothing that reads the words' place is moved by it.
+ */
+const WORDS_OUT_FROM = 0.5
+const WORDS_OUT_TO = 0.42
+/**
+ * The point of the frame the scroll's fades are read off (frame units, y):
+ * where the words' middle stood until the same evening, when CREATOR2 was
+ * taken off and the words went up under the heading (the author's asking).
+ * The figures' fade (`FADE_*`), the words' going (`WORDS_OUT_*`) and the
+ * sun's rise (`making-sun.tsx`) are still read off it, so each keeps its
+ * time against the picture; read off the words where they stand now, the
+ * figures would be gone before the section was on screen. It is the same on
+ * every screen (measured: 666.3 at 1280, 1440, 1920 and 2560 wide).
+ */
+export const WORDS_MARK = 666.3
+const WORDS_RISE_PX = 60
 
 /** The eye opens as its middle comes up past this share of the screen… */
 const EYE_OPEN_AT = 0.85
@@ -180,52 +224,18 @@ const BLINK_TWICE = 0.18
 /** Where a click on the eye takes the reader, once it has blinked. */
 const EYE_HREF = "/seen"
 /**
- * The eye is subtler (2026-11-14, the author's asking): the whole of it at
- * 30% of its strength, and under the pointer it comes up slowly to 80% of
- * it, fading back when the pointer leaves. On a touch screen there is no
- * hover, so it stays at 30% there.
+ * The eye's strength (2026-11-17, the author's asking: "much more
+ * transparent, visible only to the attentive"): at rest, the file's
+ * `data-rest` (the author's 20% in Figma), or this; under the pointer it comes
+ * up slowly to `EYE_HOVER`, fading back when the pointer leaves. On a touch
+ * screen there is no hover, so it stays at rest there. (2026-11-14 to 17: 30%
+ * at rest, 80% under the pointer.)
  */
-const EYE_REST = 0.3
-const EYE_HOVER = 0.8
+const EYE_REST = 0.2
+const EYE_HOVER = 0.55
 const EYE_FADE_IN_MS = 1600
 const EYE_FADE_OUT_MS = 1000
 
-/** On the click (the phone's Creator): how long its trembling takes to swell, and how far it trembles (frame units). */
-const CREATOR_SETTLE_MS = 300
-const CREATOR_SHAKE = 1.1
-/** The trembling lasts this long from the click, swelling as it comes to rest and dying away after. */
-const CREATOR_SHAKE_MS = 800
-
-/**
- * The lower creator draws its line as a plotter too (2026-11-14, the
- * author's asking, the same evening). Since the author redrew the line and
- * drew three more beside it (the same evening): each of the three leaves the
- * pen's point with the line's bends and meets the line lower down, its bends a
- * little further along than the last's. The line here passes from one of the
- * three to the next, round and round, smoothly (`WAVE_PERIOD` for the whole
- * round), so its bends move along it and new ones come from the pen, and
- * below where they meet it the line is the line as drawn, climbing to
- * Siluet2. How strong the bends are wanders slowly (`WAVE_STRENGTH`, a new
- * aim every `WAVE_DRIFT` seconds). The pen sways across the line with them
- * (`WAVE_SWAY`), the arm turning at the shoulder and the pen `PLOT_WRIST` as
- * much at the wrist, as the upper creator's; the line near the point is bent
- * to leave from where it really is (`WAVE_LEAD`). The three are in the file
- * as how far each is from the line along it (`data-keys`, by
- * `scripts/making-drawing.py`, in the order whose bends run down the line
- * most); the line is drawn here as one shape, its width read from the drawing.
- * At first the line grows out of the pen (`WAVE_SPEED`).
- *
- * On the click the bends die away over `PEN_FILL_MS` (and the line, if it
- * has not reached its end yet, is drawn on to it), so it stands as drawn
- * while the drawing stands; they come back when it is erased.
- */
-const WAVE_SPEED = 45
-const WAVE_PERIOD = 7
-const WAVE_STRENGTH: [number, number] = [0.45, 1]
-const WAVE_DRIFT: [number, number] = [3, 6]
-const WAVE_SWAY = 4
-/** Near the pen's point the line is bent to leave from where it really is (units). */
-const WAVE_LEAD = 24
 /**
  * The upper creator draws as a pen on a plotter (2026-11-14, the author's
  * asking, with the frame re-exported: the long line across the words became
@@ -251,25 +261,17 @@ const WAVE_LEAD = 24
  * fades out while the next is being drawn, gone when that one is done (the
  * same evening): two at most on the paper, one fading, one coming.
  *
- * On the click the paper only moves `PLOT_CLICK` times as fast.
+ * (The lower creator's pen, which drew its line down to Siluet2 as a plotter
+ * too, became a trumpet on 2026-11-17, and its code went with it; and since
+ * then a click no longer hurries the paper.)
  */
 const PLOT_SPEED = 30
-const PLOT_CLICK = 1.5
 const PLOT_WRIST = -0.5
-const CLICK_BOOST = 2
-const BOOST_EASE_S = 0.5
-/**
- * On the click the pens' lines are made whole first (2026-11-14, the
- * author's asking), over `PEN_FILL_MS`, and only then are the other lines
- * drawn (their start waits as long); they stay so while the drawing stands.
- */
-const PEN_FILL_MS = 1400
 
 const EASE_LOOP = "cubic-bezier(.4,0,.6,1)"
-const EASE_BIRTH = "cubic-bezier(.3,0,.2,1)"
 
-type Stroke = { el: SVGPathElement; len: number; from: number }
-type Line = { path: SVGPathElement; mask: string; group: string; strokes: Stroke[]; anims: Animation[]; state: 0 | 1 | 2 }
+type Stroke = { el: SVGPathElement; len: number }
+type Line = { path: SVGPathElement; mask: string; group: string; strokes: Stroke[]; anims: Animation[]; busy: boolean }
 
 function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void): () => void {
   const lines: Line[] = []
@@ -280,11 +282,24 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     const strokes = Array.from(m.querySelectorAll<SVGPathElement>("path")).map((el) => ({
       el,
       len: Number(el.getAttribute("data-len")) || 100,
-      from: Number(el.getAttribute("data-from")) || 0,
     }))
     const group = path.closest("g[id]")?.id || ""
-    lines.push({ path, mask, group, strokes, anims: [], state: 0 })
+    lines.push({ path, mask, group, strokes, anims: [], busy: false })
   })
+
+  // Every figure in one group, to fade them together: the computer's file
+  // has it (`mk-figures`); the phone's older file does not, so its figures are
+  // gathered here, everything but the eye and the definitions.
+  let figures = svg.getElementById("mk-figures") as SVGGElement | null
+  if (!figures) {
+    figures = document.createElementNS("http://www.w3.org/2000/svg", "g")
+    figures.id = "mk-figures"
+    const eye = svg.getElementById("eye")
+    svg.insertBefore(figures, svg.firstChild)
+    Array.from(svg.children).forEach((c) => {
+      if (c !== figures && c !== eye && c.tagName.toLowerCase() !== "defs") figures!.appendChild(c)
+    })
+  }
 
   // The eye: its lid and cover, each a polygon eased from shut (1) to open (0).
   const nums = (v: string | null) => (v || "").trim().split(/\s+/).map(Number)
@@ -321,30 +336,31 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   const [hcx, hcy] = nums(eyeBox ? eyeBox.getAttribute("data-iris") : null)
   const hit = document.createElementNS("http://www.w3.org/2000/svg", "circle")
   const onEyeClick = (e: Event) => {
-    e.stopPropagation() // the eye's own click: no birth, no motes' wave
+    e.stopPropagation() // the eye's own click: no motes' wave, no storm
     onEye()
   }
   if (eyeBox && Number.isFinite(hcx)) {
     hit.setAttribute("cx", String(hcx))
     hit.setAttribute("cy", String(hcy))
-    hit.setAttribute("r", "90")
+    hit.setAttribute("r", String(Number(eyeBox.getAttribute("data-hit-r")) || 90))
     hit.setAttribute("fill", "none")
     hit.style.pointerEvents = "all"
     hit.style.cursor = "pointer"
     eyeBox.appendChild(hit)
     hit.addEventListener("click", onEyeClick)
   }
-  // Subtle at rest, coming up slowly under the pointer (`EYE_REST`, `EYE_HOVER`).
+  // Faint at rest, coming up slowly under the pointer (`EYE_REST`, `EYE_HOVER`).
+  const eyeRest = Number(eyeBox?.getAttribute("data-rest")) || EYE_REST
   const eyeStyle = (eyeBox as SVGGElement | null)?.style
   const fadeEye = (to: number, ms: number) => {
     if (!eyeStyle) return
     eyeStyle.transition = `opacity ${ms}ms cubic-bezier(0.4, 0, 0.2, 1)`
     eyeStyle.opacity = String(to)
   }
-  const onEyeEnter = () => fadeEye(EYE_HOVER, EYE_FADE_IN_MS)
-  const onEyeLeave = () => fadeEye(EYE_REST, EYE_FADE_OUT_MS)
+  const onEyeEnter = () => fadeEye(Math.max(eyeRest, EYE_HOVER), EYE_FADE_IN_MS)
+  const onEyeLeave = () => fadeEye(eyeRest, EYE_FADE_OUT_MS)
   if (eyeStyle) {
-    eyeStyle.opacity = String(EYE_REST)
+    eyeStyle.opacity = String(eyeRest)
     hit.addEventListener("pointerenter", onEyeEnter)
     hit.addEventListener("pointerleave", onEyeLeave)
   }
@@ -357,9 +373,8 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   // Under reduced motion: everything shown, drawn, at once, and the eye open.
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
     lines.forEach((l) => l.path.removeAttribute("mask"))
-    // the creators' lines too, whole (their masks would keep them hidden)
+    // the creator's lines too, whole (their masks would keep them hidden)
     svg.querySelectorAll('g[id^="paper-"] path[mask]').forEach((el) => el.removeAttribute("mask"))
-    svg.querySelectorAll('[id^="wave-"][id$="-line"]').forEach((el) => el.removeAttribute("visibility"))
     setEye(0)
     return unhookEye
   }
@@ -511,267 +526,103 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
       s.el.style.strokeDashoffset = "1"
       s.el.style.strokeDasharray = "" // the file's "1 2": a whole line
     })
-    l.path.setAttribute("mask", `url(#${l.mask})`)
-    l.state = 0
+    l.busy = false
   }
 
-  /** Draw a line, each of its strokes after `delay(s)` ms over `dur(s)` ms. */
-  const draw = (l: Line, delay: (s: Stroke) => number, dur: (s: Stroke) => number, easing: string) => {
-    hide(l)
-    l.state = 1
-    l.anims = l.strokes.map((s) =>
-      s.el.animate([{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }], {
-        duration: dur(s),
-        delay: delay(s),
-        easing,
-        fill: "both",
-      }),
-    )
-    const mine = l.anims
-    Promise.all(mine.map((a) => a.finished))
+  let onScreen = false
+  /** How much the figures are seen (1 whole, 0 gone): the scroll's fade. */
+  let shown = 1
+
+  // Scrolling down hurries SILUET (`HURRY_*`): the rate its
+  // strokes run at, eased towards `HURRY_RATE` while the page goes down.
+  const hurryLines = lines.filter((l) => HURRY_GROUPS.includes(l.group))
+  const hurried = new Set(hurryLines)
+  let rate = 1
+  let hurryUntil = 0
+  let hurryRaf = 0
+  let hurryAt = 0
+  const hurryFrame = (now: number) => {
+    const dt = hurryAt ? Math.min(0.1, (now - hurryAt) / 1000) : 1 / 60
+    hurryAt = now
+    const goal = now < hurryUntil ? HURRY_RATE : 1
+    rate += (goal - rate) * (1 - Math.exp(-dt / HURRY_EASE_S))
+    if (goal === 1 && Math.abs(rate - 1) < 0.01) rate = 1
+    for (const l of hurryLines) if (!siluetHeld.has(l)) l.anims.forEach((a) => (a.playbackRate = rate))
+    if (rate !== 1 || now < hurryUntil) hurryRaf = requestAnimationFrame(hurryFrame)
+    else {
+      hurryRaf = 0
+      hurryAt = 0
+    }
+  }
+  const hurry = (now: number) => {
+    hurryUntil = now + HURRY_MS
+    if (!hurryRaf && hurryLines.length) hurryRaf = requestAnimationFrame(hurryFrame)
+  }
+
+  // A click draws SILUET whole, holds it, erases it (`SILUET_*`).
+  const siluet = lines.filter((l) => l.group === SILUET_GROUP)
+  const siluetHeld = new Set<Line>()
+  let siluetState: "idle" | "drawing" | "whole" | "erasing" = "idle"
+  let siluetTimer = 0
+  const drawMs = (s: Stroke) => Math.max(SILUET_DRAW_MIN_MS, (s.len / SILUET_DRAW_SPEED) * 1000)
+  const eraseSiluet = () => {
+    siluetState = "erasing"
+    const anims = siluet.flatMap((l) => {
+      l.path.setAttribute("mask", `url(#${l.mask})`)
+      l.anims = l.strokes.map((s) =>
+        s.el.animate([{ strokeDashoffset: "0" }, { strokeDashoffset: "-1" }], { duration: drawMs(s), easing: EASE_DRAW, fill: "both" }),
+      )
+      return l.anims
+    })
+    Promise.all(anims.map((a) => a.finished))
       .then(() => {
-        if (l.anims !== mine) return
-        l.path.removeAttribute("mask")
-        l.state = 2
+        if (siluetState !== "erasing") return
+        siluet.forEach((l) => {
+          siluetHeld.delete(l)
+          hide(l)
+        })
+        siluetState = "idle"
       })
       .catch(() => {})
   }
+  const holdSiluet = () => {
+    window.clearTimeout(siluetTimer)
+    siluetTimer = window.setTimeout(eraseSiluet, SILUET_HOLD_MS)
+  }
+  const drawSiluet = () => {
+    if (!siluet.length) return
+    if (siluetState === "drawing") return // held once it is drawn
+    if (siluetState === "whole") {
+      holdSiluet()
+      return
+    }
+    siluetState = "drawing"
+    const anims = siluet.flatMap((l) => {
+      hide(l)
+      l.busy = true
+      siluetHeld.add(l)
+      l.path.setAttribute("mask", `url(#${l.mask})`)
+      l.anims = l.strokes.map((s) => {
+        s.el.style.strokeDasharray = "" // the file's "1 2": the whole line
+        return s.el.animate([{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }], { duration: drawMs(s), easing: EASE_DRAW, fill: "both" })
+      })
+      return l.anims
+    })
+    Promise.all(anims.map((a) => a.finished))
+      .then(() => {
+        if (siluetState !== "drawing") return
+        // drawn: the masks go, so the lines are whole to the last hair
+        siluet.forEach((l) => l.path.removeAttribute("mask"))
+        siluetState = "whole"
+        holdSiluet()
+      })
+      .catch(() => {})
+  }
+  // the section's click (the eye's own stops before it gets here): SILUET drawn whole
+  const onSectionClick = () => drawSiluet()
+  const clickBox = host.closest<HTMLElement>("[data-grain-click]")
+  clickBox?.addEventListener("click", onSectionClick)
 
-  let mode: "loop" | "clearing" | "birth" | "full" | "erasing" = "loop"
-  let fades: Animation[] = []
-  let timer = 0
-  let loopTimer = 0
-  let holdTimer = 0
-  let onScreen = false
-
-  // The phone's Creator: still, trembling a little as the click's birth begins.
-  const creatorG = svg.getElementById("the-creator")
-  let held = false
-  let holdAt = 0
-  let creatorRaf = 0
-  const ph = [0, 1, 2, 3].map(() => Math.random() * Math.PI * 2)
-  const creatorFrame = (now: number) => {
-    creatorRaf = 0
-    if (!creatorG) return
-    let shake = 0
-    if (held) {
-      const t = now - holdAt
-      const u = Math.min(1, t / CREATOR_SETTLE_MS)
-      shake = t < CREATOR_SETTLE_MS ? u : Math.max(0, 1 - (t - CREATOR_SETTLE_MS) / (CREATOR_SHAKE_MS - CREATOR_SETTLE_MS))
-    }
-    let x = 0
-    let y = 0
-    if (shake > 0) {
-      const t = now / 1000
-      const a = CREATOR_SHAKE * shake
-      x += a * (0.6 * Math.sin(t * 71 + ph[0]) + 0.4 * Math.sin(t * 112 + ph[1]))
-      y += a * (0.6 * Math.sin(t * 86 + ph[2]) + 0.4 * Math.sin(t * 45 + ph[3]))
-    }
-    creatorG.setAttribute("transform", `translate(${x.toFixed(2)} ${y.toFixed(2)})`)
-    // Done trembling, it stands still: no need to draw it again.
-    const still = !held || now - holdAt > CREATOR_SHAKE_MS
-    if (onScreen && !still) creatorRaf = requestAnimationFrame(creatorFrame)
-  }
-  const wakeCreator = () => {
-    if (!creatorRaf && onScreen && creatorG) creatorRaf = requestAnimationFrame(creatorFrame)
-  }
-  const holdCreator = () => {
-    if (held) return
-    held = true
-    holdAt = performance.now()
-    wakeCreator()
-  }
-  const releaseCreator = () => {
-    if (!held) return
-    held = false
-  }
-
-  const between = ([lo, hi]: [number, number]) => lo + Math.random() * (hi - lo)
-
-  // The lower creator's waves (see `WAVE_SPEED`).
-  type Wave = {
-    arm: SVGGElement
-    pen: SVGGElement
-    ink: SVGPathElement
-    sh: number[]
-    wr: number[]
-    tip: number[]
-    track: Float32Array // x y nx ny w, every `step` units from the pen's point
-    step: number
-    len: number
-    bottom: number
-    angs: Float32Array // the arm's turn…
-    across: Float32Array // …and how far across the line it puts the pen's point, ascending
-    angsByAcross: Float32Array
-    tx: Float32Array // …and where that point is, by angle
-    ty: Float32Array
-    keys: Float32Array // the author's waves: how far each is from the line, x y at its first `span` points
-    nk: number
-    span: number
-    written: number // how much ink has run out of the pen, units (only the line's first growth)
-    phase: number // where in the round of waves, 0…nk
-    strength: number
-    aim: number
-    drift: number // s until a new aim
-    mode: "run" | "still" | "hold"
-    gain: number // how strong what is on the line is, 1 but on the click
-    still: number // ms into the click's stilling
-    shownFrom: number // how much of the line was drawn when the click came
-    was: string[]
-  }
-  const waves: Wave[] = []
-  {
-    const g = svg.getElementById("wave-2")
-    const arm = svg.getElementById("creator-2-arm") as SVGGElement | null
-    const pen = svg.getElementById("creator-2-pen") as SVGGElement | null
-    const ink = svg.getElementById("wave-2-ink") as SVGPathElement | null
-    if (g && arm && pen && ink) {
-      const sh = nums(g.getAttribute("data-shoulder"))
-      const wr = nums(g.getAttribute("data-wrist"))
-      const tip = nums(g.getAttribute("data-tip"))
-      const track = Float32Array.from(nums(g.getAttribute("data-track")))
-      const step = Number(g.getAttribute("data-step")) || 2.5
-      const len = Number(g.getAttribute("data-len")) || 0
-      const bottom = Number(g.getAttribute("data-bottom")) || len
-      const kv = nums(g.getAttribute("data-keys"))
-      const nk = Math.max(0, Math.floor(kv[0] || 0))
-      const span = Math.max(0, Math.floor(kv[1] || 0))
-      const keys = Float32Array.from(kv.slice(2))
-      if (sh.length >= 2 && wr.length >= 2 && tip.length >= 2 && track.length >= 10 && len > 0 && nk >= 2 && keys.length === nk * span * 2) {
-        const n = 601
-        const angs = new Float32Array(n)
-        const across = new Float32Array(n)
-        const tx = new Float32Array(n)
-        const ty = new Float32Array(n)
-        const k = Math.PI / 180
-        for (let i = 0; i < n; i++) {
-          const a1 = -30 + (60 * i) / (n - 1)
-          const a2 = PLOT_WRIST * a1
-          let x = wr[0] + (tip[0] - wr[0]) * Math.cos(a2 * k) - (tip[1] - wr[1]) * Math.sin(a2 * k)
-          let y = wr[1] + (tip[0] - wr[0]) * Math.sin(a2 * k) + (tip[1] - wr[1]) * Math.cos(a2 * k)
-          const rx = x - sh[0]
-          const ry = y - sh[1]
-          x = sh[0] + rx * Math.cos(a1 * k) - ry * Math.sin(a1 * k)
-          y = sh[1] + rx * Math.sin(a1 * k) + ry * Math.cos(a1 * k)
-          angs[i] = a1
-          tx[i] = x
-          ty[i] = y
-          across[i] = (x - tip[0]) * track[2] + (y - tip[1]) * track[3]
-        }
-        const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => across[i] - across[j])
-        waves.push({
-          arm, pen, ink, sh, wr, tip, track, step, len, bottom, angs,
-          across: Float32Array.from(order.map((i) => across[i])),
-          angsByAcross: Float32Array.from(order.map((i) => angs[i])),
-          tx, ty,
-          keys, nk, span,
-          written: 0,
-          phase: Math.random() * nk,
-          strength: between(WAVE_STRENGTH), aim: between(WAVE_STRENGTH), drift: between(WAVE_DRIFT),
-          mode: "run", gain: 1, still: 0, shownFrom: 0,
-          was: ["", "", ""],
-        })
-      }
-    }
-  }
-  /** Catmull-Rom through the waves, round and round: how far from the line at point `i`, along x (c 0) or y (c 1). */
-  const waveAt = (w: Wave, i: number, c: number) => {
-    const f = w.phase
-    const k1 = Math.floor(f) % w.nk
-    const t = f - Math.floor(f)
-    const k0 = (k1 + w.nk - 1) % w.nk
-    const k2 = (k1 + 1) % w.nk
-    const k3 = (k1 + 2) % w.nk
-    const at = (k: number) => w.keys[(k * w.span + i) * 2 + c]
-    const p0 = at(k0)
-    const p1 = at(k1)
-    const p2 = at(k2)
-    const p3 = at(k3)
-    return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t)
-  }
-  const stepWave = (w: Wave, dt: number) => {
-    const s = dt / 1000
-    if (w.mode === "run") {
-      w.phase = (w.phase + (w.nk * s) / WAVE_PERIOD) % w.nk
-      w.drift -= s
-      if (w.drift <= 0) {
-        w.aim = between(WAVE_STRENGTH)
-        w.drift = between(WAVE_DRIFT)
-      }
-      w.strength += (w.aim - w.strength) * (1 - Math.exp(-s / 1.5))
-    }
-    w.written += WAVE_SPEED * boost * s
-    if (w.mode === "still") {
-      w.still += dt
-      const v = Math.min(1, w.still / PEN_FILL_MS)
-      w.gain = 1 - v * v * (3 - 2 * v)
-      if (v >= 1) {
-        w.gain = 0
-        w.written = Math.max(w.written, w.len)
-        w.mode = "hold"
-      }
-    }
-  }
-  const placeWave = (w: Wave) => {
-    const tr = w.track
-    const n = tr.length / 5
-    const amp = w.strength * w.gain
-    // the arm, so that the pen's point sways with the waves
-    const h = WAVE_SWAY * amp * Math.sin((2 * Math.PI * w.phase) / w.nk)
-    const a1 = lerpBy(w.across, w.angsByAcross, h)
-    const ai = ((a1 + 30) / 60) * (w.angs.length - 1)
-    const i0 = Math.max(0, Math.min(w.angs.length - 2, Math.floor(ai)))
-    const px = w.tx[i0] + (w.tx[i0 + 1] - w.tx[i0]) * (ai - i0)
-    const py = w.ty[i0] + (w.ty[i0 + 1] - w.ty[i0]) * (ai - i0)
-    // how far the real point is from the line's start
-    const ex = px - w.tip[0]
-    const ey = py - w.tip[1]
-    // how much of the line is drawn
-    let shown = Math.min(w.len, w.written)
-    if (w.mode === "still") {
-      const v = Math.min(1, w.still / PEN_FILL_MS)
-      shown = w.shownFrom + (w.len - w.shownFrom) * (v < 0.5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2)
-    } else if (w.mode === "hold") shown = w.len
-    const left: string[] = []
-    const right: string[] = []
-    const last = Math.min(n - 1, Math.floor(shown / w.step))
-    const put = (i: number, t: number) => {
-      // point i, or between i and i+1 by t
-      const j = Math.min(n - 1, i + 1)
-      const lerp = (c: number) => tr[5 * i + c] + (tr[5 * j + c] - tr[5 * i + c]) * t
-      let x = lerp(0)
-      let y = lerp(1)
-      const nx = lerp(2)
-      const ny = lerp(3)
-      const hw = lerp(4)
-      if (amp > 0 && i < w.span) {
-        const k = Math.min(w.span - 1, i + 1)
-        x += (waveAt(w, i, 0) + (waveAt(w, k, 0) - waveAt(w, i, 0)) * t) * amp
-        y += (waveAt(w, i, 1) + (waveAt(w, k, 1) - waveAt(w, i, 1)) * t) * amp
-      }
-      const sAt = (i + t) * w.step
-      if (sAt < WAVE_LEAD) {
-        const l = 1 - sAt / WAVE_LEAD
-        x += ex * l
-        y += ey * l
-      }
-      left.push(`${(x + nx * hw).toFixed(2)} ${(y + ny * hw).toFixed(2)}`)
-      right.push(`${(x - nx * hw).toFixed(2)} ${(y - ny * hw).toFixed(2)}`)
-    }
-    if (shown > 0.5) {
-      for (let i = 0; i <= last; i++) put(i, 0)
-      const rem = shown / w.step - last
-      if (rem > 0.01 && last < n - 1) put(last, rem)
-    }
-    const d = left.length > 1 ? `M${left.join(" L")} L${right.reverse().join(" L")}Z` : ""
-    const wv = [`rotate(${a1.toFixed(3)} ${w.sh[0]} ${w.sh[1]})`, `rotate(${(PLOT_WRIST * a1).toFixed(3)} ${w.wr[0]} ${w.wr[1]})`, d]
-    if (wv[0] !== w.was[0]) w.arm.setAttribute("transform", wv[0])
-    if (wv[1] !== w.was[1]) w.pen.setAttribute("transform", wv[1])
-    if (wv[2] !== w.was[2]) w.ink.setAttribute("d", wv[2])
-    w.was = wv
-  }
-
-  let boost = 1
   // The plotter (the upper creator; see `PLOT_SPEED`).
   type PlotLine = { el: SVGPathElement; u0: number; len: number; mask: string; dash: SVGPathElement | null; was: string }
   type Plot = {
@@ -784,7 +635,6 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     track: Float32Array // x y u
     cycle: number
     period: number
-    restU: number
     ys: Float32Array // the pen's point's height for each of `angs`, ascending
     angsByY: Float32Array
     xs: Float32Array // …and where it stands across, for each of `angs`
@@ -811,7 +661,6 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
       const track = Float32Array.from(nums(g.getAttribute("data-track")))
       const cycle = Number(g.getAttribute("data-cycle")) || 0
       const period = Number(g.getAttribute("data-period")) || 0
-      const restU = Number(g.getAttribute("data-rest-u")) || 0
       if (sh.length >= 2 && wr.length >= 2 && tip.length >= 2 && track.length >= 9 && cycle > 0 && period > 0) {
         // the copy before: whole, no masks
         const b = a.cloneNode(true) as SVGGElement
@@ -864,7 +713,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
         plots.push({
           copies: [a, b],
           lines: [linesA, read(b)],
-          arm, pen, sh, wr, track, cycle, period, restU,
+          arm, pen, sh, wr, track, cycle, period,
           ys: Float32Array.from(order.map((i) => yv[i])),
           angsByY: Float32Array.from(order.map((i) => angs[i])),
           xs, angs,
@@ -908,10 +757,6 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     }
     const w = (u - t[3 * lo + 2]) / (t[3 * hi + 2] - t[3 * lo + 2] || 1)
     return [t[3 * lo] + (t[3 * hi] - t[3 * lo]) * w, t[3 * lo + 1] + (t[3 * hi + 1] - t[3 * lo + 1]) * w]
-  }
-  const stepPlot = (p: Plot, dt: number) => {
-    const quick = 1 + ((boost - 1) / (CLICK_BOOST - 1)) * (PLOT_CLICK - 1)
-    p.x += PLOT_SPEED * quick * (dt / 1000)
   }
   /** Where the pen's point stands across for the arm turned `a1`. */
   const tipX = (p: Plot, a1: number) => {
@@ -983,61 +828,40 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
       }
     }
   }
-  /** The click: every pen's line made whole, the pen kept down. */
-  const fillPens = () => {
-    for (const w of waves) {
-      if (w.mode !== "run") continue
-      w.mode = "still"
-      w.still = 0
-      w.shownFrom = Math.min(w.len, w.written)
-    }
-    wakePens()
-  }
-  /** After it: each pen lifts again in its own time. */
-  const releasePens = () => {
-    for (const w of waves) {
-      if (w.mode !== "run") w.written = Math.max(w.written, w.len)
-      w.mode = "run"
-      w.gain = 1
-    }
-  }
-  let pensRaf = 0
-  let pensAt = 0
-  const pensFrame = (now: number) => {
-    pensRaf = 0
-    // time stands still while the section is off screen or the page hidden
-    const dt = pensAt ? Math.min(100, now - pensAt) : 0
-    pensAt = now
-    const goal = mode === "clearing" || mode === "birth" ? CLICK_BOOST : 1
-    boost += (goal - boost) * (1 - Math.exp(-dt / 1000 / BOOST_EASE_S))
-    for (const w of waves) {
-      stepWave(w, dt)
-      placeWave(w)
-    }
+  let plotRaf = 0
+  let plotAt = 0
+  // The paper moves only while the figures are seen: time stands still while
+  // the section is off screen, the page hidden, or the figures faded away.
+  const live = () => onScreen && shown > 0.001 && document.visibilityState === "visible"
+  const plotFrame = (now: number) => {
+    plotRaf = 0
+    const dt = plotAt ? Math.min(100, now - plotAt) : 0
+    plotAt = now
     for (const p of plots) {
-      stepPlot(p, dt)
+      p.x += PLOT_SPEED * (dt / 1000)
       placePlot(p)
     }
-    if (onScreen && document.visibilityState === "visible") pensRaf = requestAnimationFrame(pensFrame)
-    else pensAt = 0
+    if (live()) plotRaf = requestAnimationFrame(plotFrame)
+    else plotAt = 0
   }
-  const wakePens = () => {
-    if (!pensRaf && (waves.length || plots.length) && onScreen && document.visibilityState === "visible") pensRaf = requestAnimationFrame(pensFrame)
+  const wakePlot = () => {
+    if (!plotRaf && plots.length && live()) plotRaf = requestAnimationFrame(plotFrame)
   }
 
   /**
-   * Before the click: a stroke two thirds of the line long glides along it, from
-   * just before its start to just past its end. Dashes of LOOP_SEGMENT with a
-   * gap of 2 (longer than the line, so the next dash never shows): at offset
+   * A stroke two thirds of the line long glides along it, from just before
+   * its start to just past its end. Dashes of LOOP_SEGMENT with a gap of 2
+   * (longer than the line, so the next dash never shows): at offset
    * LOOP_SEGMENT the dash ends where the line starts, at -1 it begins where
    * the line ends.
    */
   const cycle = (l: Line, fromTop = false) => {
     hide(l)
-    l.state = 1
+    l.busy = true
     l.anims = l.strokes.map((s) => {
       s.el.style.strokeDasharray = `${LOOP_SEGMENT} 2`
-      const d = Math.min(LOOP_MAX_MS, Math.max(LOOP_MIN_MS, ((s.len * (1 + LOOP_SEGMENT)) / LOOP_SPEED) * 1000))
+      const way = s.len * (1 + LOOP_SEGMENT)
+      const d = Math.min(LOOP_MAX_MS, Math.max(LOOP_MIN_MS, (way / LOOP_SPEED) * 1000))
       const along = [{ strokeDashoffset: String(LOOP_SEGMENT) }, { strokeDashoffset: "-1" }]
       return s.el.animate(fromTop && goesUp.get(s.el) ? along.reverse() : along, {
         duration: d,
@@ -1045,6 +869,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
         fill: "both",
       })
     })
+    if (hurried.has(l)) l.anims.forEach((a) => (a.playbackRate = rate))
     const mine = l.anims
     Promise.all(mine.map((a) => a.finished))
       .then(() => {
@@ -1052,17 +877,23 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
       })
       .catch(() => {})
   }
-
-  const tick = () => {
-    loopTimer = window.setTimeout(tick, LOOP_EVERY_MS * (0.7 + Math.random() * 0.6))
-    if (mode !== "loop" || !onScreen) return
-    const free = lines.filter((l) => l.state === 0)
-    if (lines.length - free.length >= LOOP_MAX || !free.length) return
-    cycle(free[Math.floor(Math.random() * free.length)])
+  const lively = () => onScreen && shown > 0.05
+  const startOne = (pool: Line[], max: number, fromTop = false) => {
+    if (!lively()) return
+    const busy = pool.filter((l) => l.busy).length
+    const free = pool.filter((l) => !l.busy)
+    if (busy >= max || !free.length) return
+    cycle(free[Math.floor(Math.random() * free.length)], fromTop)
   }
 
-  // The upper Siluet lines: which they are, and whether each stroke's path
-  // runs upwards (so a stroke there travels it backwards, from its top down).
+  let loopTimer = 0
+  const tick = () => {
+    loopTimer = window.setTimeout(tick, LOOP_EVERY_MS * (0.7 + Math.random() * 0.6))
+    startOne(lines, LOOP_MAX)
+  }
+
+  // The upper lines: which they are, and whether each stroke's path runs
+  // upwards (so a stroke there travels it backwards, from its top down).
   const startY = new Map<SVGPathElement, number>()
   const goesUp = new Map<SVGPathElement, boolean>()
   let silTop = Infinity
@@ -1082,20 +913,11 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     }),
   )
   const upperFloor = silTop + UPPER_SHARE * (silBottom - silTop)
-  const upper = new Set(
-    silLines.filter((l) => l.strokes.some((s) => (startY.get(s.el) ?? Infinity) < upperFloor)),
-  )
-  const startUpper = () => {
-    if (mode !== "loop" || !onScreen) return
-    const busy = [...upper].filter((l) => l.state !== 0).length
-    const free = [...upper].filter((l) => l.state === 0)
-    if (busy >= UPPER_MAX || !free.length) return
-    cycle(free[Math.floor(Math.random() * free.length)], true)
-  }
+  const upper = silLines.filter((l) => l.strokes.some((s) => (startY.get(s.el) ?? Infinity) < upperFloor))
   let upperTimer = 0
   const upperTick = () => {
     upperTimer = window.setTimeout(upperTick, UPPER_EVERY_MS * (0.7 + Math.random() * 0.6))
-    startUpper()
+    startOne(upper, UPPER_MAX, true)
   }
   let lastY = window.scrollY
   let lastScrollStart = 0
@@ -1104,21 +926,66 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     const down = y > lastY
     lastY = y
     const now = performance.now()
+    if (down) hurry(now)
     if (down && now - lastScrollStart > UPPER_SCROLL_MS) {
       lastScrollStart = now
-      startUpper()
+      startOne(upper, UPPER_MAX, true)
+      startOne(hurryLines.filter((l) => !siluetHeld.has(l)), HURRY_MAX)
     }
   }
 
-  const reset = () => {
-    window.clearTimeout(timer)
-    window.clearTimeout(holdTimer)
-    fades.forEach((f) => f.cancel())
-    fades = []
-    lines.forEach(hide)
-    mode = "loop"
-    releaseCreator()
-    releasePens()
+  // The words: the computer's, when they are shown (none on a phone, where
+  // nothing fades); the fades are read off `WORDS_MARK`, a point of the frame.
+  const section = host.closest("section")
+  const words = () => {
+    let top = Infinity
+    let bottom = -Infinity
+    section?.querySelectorAll<HTMLElement>("[data-mk-words]").forEach((el) => {
+      if (!el.getClientRects().length) return
+      const r = el.getBoundingClientRect()
+      top = Math.min(top, r.top)
+      bottom = Math.max(bottom, r.bottom)
+    })
+    return top < bottom ? { top, bottom } : null
+  }
+  let wasShown = ""
+  const wordsOut = section?.querySelector<HTMLElement>("[data-mk-words-out]") ?? null
+  let wasWords = "-"
+  const fade = (vh: number) => {
+    const w = words()
+    if (!figures) return
+    if (!w) {
+      shown = 1
+      if (wasShown) {
+        figures.style.opacity = ""
+        figures.style.visibility = ""
+        wasShown = ""
+      }
+      return
+    }
+    const frame = svg.getBoundingClientRect()
+    const vb = svg.viewBox.baseVal
+    const mid = frame.top + ((WORDS_MARK - vb.y) * frame.height) / (vb.height || 1)
+    const u = Math.min(1, Math.max(0, (FADE_FROM * vh - mid) / ((FADE_FROM - FADE_TO) * vh)))
+    shown = 1 - u * u * (3 - 2 * u)
+    // the words themselves, once the sun is out
+    if (wordsOut) {
+      const t = Math.min(1, Math.max(0, (WORDS_OUT_FROM * vh - mid) / ((WORDS_OUT_FROM - WORDS_OUT_TO) * vh)))
+      const e = t * t * (3 - 2 * t)
+      const key = e.toFixed(3)
+      if (key !== wasWords) {
+        wordsOut.style.opacity = e > 0.0005 ? (1 - e).toFixed(3) : ""
+        wordsOut.style.transform = e > 0.0005 ? `translateY(${(-WORDS_RISE_PX * e).toFixed(1)}px)` : ""
+        wasWords = key
+      }
+    }
+    const op = shown > 0.999 ? "" : shown.toFixed(3)
+    if (op !== wasShown) {
+      figures.style.opacity = op
+      // gone: not drawn at all, so the strokes still running cost nothing
+      figures.style.visibility = shown < 0.001 ? "hidden" : ""
+      wasShown = op
+    }
   }
 
   const onScroll = () => {
@@ -1126,8 +993,8 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     const vh = window.innerHeight
     if (!r.height) return
     onScreen = r.top < vh && r.bottom > 0
-    wakeCreator()
-    wakePens()
+    fade(vh)
+    wakePlot()
     // The eye: open once its middle is up past EYE_OPEN_AT of the screen,
     // shut again once it is below the screen.
     const eyeY = Number.isFinite(icy) ? toScreen(r, icx, icy)[1] : r.bottom
@@ -1143,86 +1010,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     }
     if (mouse && onScreen) aim() // the page moved under a still pointer
     onScrollDown()
-    // Back up above the section: whatever the click drew goes, and the
-    // drawing and erasing begins again.
-    if (r.top > vh && mode !== "loop") reset()
   }
-
-  /** After the hold: every line erased as it was born, from the smoke outward. */
-  const erase = () => {
-    if (mode !== "full") return
-    mode = "erasing"
-    releasePens()
-    lines.forEach((l) => {
-      l.anims.forEach((a) => a.cancel())
-      l.path.setAttribute("mask", `url(#${l.mask})`)
-      l.state = 1
-      l.anims = l.strokes.map((s) =>
-        s.el.animate([{ strokeDashoffset: "0" }, { strokeDashoffset: "-1" }], {
-          duration: Math.max(DRAW_MIN_MS, (s.len / ERASE_SPEED) * 1000),
-          delay: (l.group === "fum" ? 0 : SILUET_AFTER_MS) + (s.from / ERASE_FRONT_SPEED) * 1000,
-          easing: EASE_BIRTH,
-          fill: "both",
-        }),
-      )
-    })
-    Promise.all(lines.flatMap((l) => l.anims.map((a) => a.finished)))
-      .then(() => {
-        if (mode !== "erasing") return
-        lines.forEach(hide)
-        mode = "loop"
-      })
-      .catch(() => {})
-  }
-
-  const birth = () => {
-    mode = "birth"
-    // the pens' lines first, then the rest from where the lower one ends
-    fillPens()
-    const first = waves.length || plots.length ? PEN_FILL_MS : 0
-    lines.forEach((l) =>
-      draw(
-        l,
-        (s) => first + (l.group === "fum" ? 0 : SILUET_AFTER_MS) + (s.from / FRONT_SPEED) * 1000,
-        (s) => Math.max(DRAW_MIN_MS, (s.len / DRAW_SPEED) * 1000),
-        EASE_BIRTH,
-      ),
-    )
-    Promise.all(lines.flatMap((l) => l.anims.map((a) => a.finished)))
-      .then(() => {
-        if (mode !== "birth") return
-        releaseCreator()
-        mode = "full"
-        holdTimer = window.setTimeout(erase, FULL_HOLD_MS)
-      })
-      .catch(() => {})
-  }
-
-  const onClick = () => {
-    if (mode === "clearing" || mode === "birth") return
-    window.clearTimeout(holdTimer)
-    holdCreator()
-    if (lines.some((l) => l.state !== 0)) {
-      mode = "clearing"
-      // the drawn lines alone fade (a creator's head, arm and pen stay)
-      fades = lines
-        .filter((l) => l.state !== 0)
-        .map((l) => l.path.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CLEAR_MS, easing: "ease", fill: "forwards" }))
-      timer = window.setTimeout(() => {
-        lines.forEach(hide)
-        fades.forEach((f) => f.cancel())
-        fades = []
-        birth()
-      }, CLEAR_MS)
-    } else {
-      birth()
-    }
-  }
-
-  // The whole section takes the click: the photograph's box, which the gold
-  // motes' script also listens on (and gives the pointer cursor).
-  const box = host.parentElement
-  box?.addEventListener("click", onClick)
 
   let raf = 0
   const onScrollRaf = () => {
@@ -1234,16 +1022,18 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   }
   window.addEventListener("scroll", onScrollRaf, { passive: true })
   window.addEventListener("resize", onScrollRaf)
-  document.addEventListener("visibilitychange", wakePens)
+  document.addEventListener("visibilitychange", wakePlot)
   onScroll()
   tick()
   upperTick()
 
   return () => {
-    if (creatorRaf) cancelAnimationFrame(creatorRaf)
-    if (pensRaf) cancelAnimationFrame(pensRaf)
-    document.removeEventListener("visibilitychange", wakePens)
+    if (plotRaf) cancelAnimationFrame(plotRaf)
+    document.removeEventListener("visibilitychange", wakePlot)
     window.clearTimeout(upperTimer)
+    window.clearTimeout(siluetTimer)
+    if (hurryRaf) cancelAnimationFrame(hurryRaf)
+    clickBox?.removeEventListener("click", onSectionClick)
     window.clearTimeout(blinkTimer)
     unhookEye()
     if (eyeRaf) cancelAnimationFrame(eyeRaf)
@@ -1253,11 +1043,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
     window.removeEventListener("scroll", onScrollRaf)
     window.removeEventListener("resize", onScrollRaf)
     if (raf) cancelAnimationFrame(raf)
-    window.clearTimeout(timer)
     window.clearTimeout(loopTimer)
-    window.clearTimeout(holdTimer)
-    box?.removeEventListener("click", onClick)
-    fades.forEach((f) => f.cancel())
     lines.forEach((l) => l.anims.forEach((a) => a.cancel()))
   }
 }
@@ -1280,7 +1066,8 @@ async function arrive(host: HTMLElement, svg: SVGSVGElement, y: number) {
   await frame()
   await new Promise((r) => window.setTimeout(r, 150))
   place()
-  const img = host.parentElement?.querySelector("img")
+  // the trunk's photograph (the gold motes find it by the same words)
+  const img = host.closest("section")?.querySelector<HTMLImageElement>('img[alt^="A white vase"]')
   if (img) {
     if (!img.complete) {
       await new Promise<void>((r) => {

@@ -1,9 +1,21 @@
 """
 The line drawings of the homepage's Making section, from the author's Figma
-frame "Making" (2026-11-05). Writes public/images/home/making-drawing.svg.
+frame "Making" (2026-11-05; re-exported 2026-11-14 and 2026-11-17). Writes
+public/images/home/making-drawing.svg.
 
     python3 scripts/making-drawing.py public/images/home/Making.svg [out.svg]
-    python3 scripts/making-drawing.py --mobile "public/images/home/Making - Mobile.svg" public/images/home/Making.svg [out.svg]
+    python3 scripts/making-drawing.py --mobile "public/images/home/Making - Mobile.svg" [out.svg]
+
+**Since 2026-11-17** the computer's frame is the author's Making_Homepage.svg
+(1893 x 1850), copied over public/images/home/Making.svg. Its figures are
+CREATOR1 by the trunk with its pen and the four lines it draws, SILUET right of
+the trunk, CREATOR2 on the left, now with a trumpet instead of a pen, and the
+three melodies out of the trumpet (`GROUPS`); the words lie among them in the
+layers and are skipped; the sea of drawings, the two photographs, the crevices
+and the sun are not figures (scripts/making-split.py reads those). The eye is
+the author's, flipped and smaller, at 20% (`data-rest`). The file's viewBox is
+the whole frame, and every figure is in one group, `mk-figures`, so the page
+can fade them all out as the reader goes on down (the eye stays).
 
 The second writes public/images/home/making-drawing-mobile.svg from the
 author's frame "Making - Mobile" (974 x 2046, 2026-11-05), the phone's
@@ -86,13 +98,34 @@ S = ff.S
 # same afternoon). Its other lines are drawn as the Siluets' are.
 # A gid named twice is one <g>. The old frame (node 4834:2) had Siluet 3 (6),
 # Siluet1 (5), Vector 89 (1), Siluet2 (7), The Creator (7), Fum (9), the eye last.
-GROUPS = [('creator-1', 'CREATOR1', 11), ('siluet-2', 'Siluet2', 8), ('creator-2', 'CREATOR2', 7),
-          ('siluet-3', 'SILUET', 7), ('creator-2', "CREATOR2's pen", 1), ('creator-2', 'DESEN1 and its waves', 4)]
+# (The frame of 2026-11-14 had: creator-1 11, Siluet2 8, CREATOR2 7, SILUET 7,
+# CREATOR2's pen 1, DESEN1 and its waves 4; FIXED {0, 1, 19, 21}.)
+#
+# The frame of 2026-11-17 (Making_Homepage.svg), after the eye:
+#   creator-1  CREATOR1, as before: head (Vector 80), hood (Vector 81), two
+#              lines, the arm, the four lines it draws, two lines, the pen
+#   siluet-3   SILUET, right of the trunk, six lines (it had seven)
+#   (words)    the heading and the two lines, outlined: set as text on the page
+#   creator-2  CREATOR2, on the left: the head outline down to the ground, four
+#              lines of the body, the hood, the two arms, and the trumpet
+#   melody     the three melodies out of the trumpet's bell (the author's
+#              brief: travelled by strokes as SILUET's lines are)
+# Siluet2 and DESEN1 are gone. A gid of None is skipped.
+# Since the author's asking the same evening CREATOR2 and the melodies are
+# skipped too: they are no longer on the page (their gids were 'creator-2'
+# and 'melody'; put them back to draw them again).
+GROUPS = [('creator-1', 'CREATOR1', 11), ('siluet-3', 'SILUET', 6), (None, 'the words', 2),
+          (None, 'CREATOR2', 9), (None, "the melodies out of CREATOR2's trumpet", 3)]
 EYE_FIRST = True
 EYE_COUNT = 7
-DRAWN = {'fum', 'siluet-1', 'siluet-2', 'siluet-3', 'vector-89', 'creator-1', 'creator-2'}
-# Elements of drawn groups that stand fixed, counted through `GROUPS` (the computer's frame).
-FIXED = {0, 1, 19, 21}
+DRAWN = {'fum', 'siluet-1', 'siluet-2', 'siluet-3', 'vector-89', 'creator-1', 'creator-2', 'melody'}
+# Elements of drawn groups that stand fixed, counted through `GROUPS` (the
+# computer's frame): CREATOR1's head and hood; CREATOR2's head outline, hood,
+# both arms and the trumpet (19, 24, 25, 26, 27).
+FIXED = {0, 1, 19, 24, 25, 26, 27}
+# CREATOR2's trumpet, counted the same way: the melodies' strokes leave from
+# its bell (`MOUTH` for the computer's frame is found from it in `main`).
+TRUMPET = 27
 # The hands that draw (2026-11-14, the author's asking): which of the figures'
 # elements, counted through `GROUPS`, are a creator's arm (the one line from
 # its shoulder to the pen), its pen and the line out of the pen's tip. The
@@ -110,7 +143,9 @@ FIXED = {0, 1, 19, 21}
 # s the way along the line), which the page draws itself, bent a little so the
 # line always leaves the pen's tip wherever the hand has moved it; the rest of
 # the outline shows through its mask from `LEAD` on, as the other lines do.
-PEN_PARTS = {3: ('arm', 1), 10: ('pen', 1), 25: ('arm', 2), 33: ('pen', 2), 37: ('line', 2)}
+PEN_PARTS = {3: ('arm', 1), 10: ('pen', 1)}
+# (2026-11-14: also {25: ('arm', 2), 33: ('pen', 2), 37: ('line', 2)}, CREATOR2's
+# pen and DESEN1; on 2026-11-17 the pen became a trumpet, so only CREATOR1 draws.)
 # The upper creator draws as a pen on a plotter (2026-11-14, the author's
 # re-export of the same afternoon: the long line across the words became four
 # shorter ones): the four lines run from right to left, appearing at the pen's
@@ -125,14 +160,14 @@ PAPER_GAP = 40.0
 # what reaches Siluet2 is the line as drawn. See `wave`. WAVE = the creators
 # drawn so; WAVE_AMP: the most the pen's point swings across (units, the
 # page's `WAVE_AMP`, only for the check of how near the pen comes to anything).
-WAVE = {2}
+WAVE = set()  # {2} until 2026-11-17, when CREATOR2's pen became a trumpet
 # …and the author's three drawings of the waves on it (2026-11-14, the frame
 # re-exported with DESEN1 redrawn and three more curves beside it): each leaves
 # the pen's point and meets DESEN1 lower down, the same bends a little further
 # along in each. The page passes from one to the next, so the bends run down
 # the line and a new one is born at the pen. Written as how far each is from
 # DESEN1 along it (`variants`); not drawn themselves.
-WAVE_VARIANTS = {2: [34, 35, 36]}
+WAVE_VARIANTS = {}  # {2: [34, 35, 36]} until 2026-11-17
 WAVE_AMP = (-8.0, 12.0)
 # Track points every this many units along the way the pen's point goes.
 TRACK_STEP = 1.5
@@ -165,7 +200,10 @@ INK = '#7B7B7B'
 # wood. (It was first cut at the top of the plank, 1347.6, which hid the lines
 # lying on its surface, so they seemed to go behind the wood.)
 GROUND_Y = 1370.2
-GROUNDED = {'siluet-1', 'siluet-2', 'siluet-3', 'vector-89', 'the-creator', 'fum', 'creator-1', 'creator-2'}
+# In the frame of 2026-11-17 the plank's dark face begins at y 1362.9
+# (making-trunk.webp's row 2927 of 2951; scripts/making-split.py prints it).
+GROUND_Y_2026_11_17 = 1362.9
+GROUNDED = {'siluet-1', 'siluet-2', 'siluet-3', 'vector-89', 'the-creator', 'fum', 'creator-1', 'creator-2', 'melody'}
 
 
 def shift(d, dx, dy):
@@ -219,16 +257,37 @@ def extend(p, e):
 # upper lid going to the n-th of the lower. The page eases every point between
 # the two (data-open, data-closed: x y pairs). The file draws it shut.
 EYE_N = 120
-# The shape's own top, as the author drew it: left, middle, right.
+# The shape's own top, as the author drew it: left, middle, right. Read off the
+# shape itself (`cover_top_of`): its top is two straight lines. These are the
+# values of the frame of 2026-11-14, whose shape the phone's eye borrows.
 COVER_TOP = [(541.059, 1583.0), (812.84, 1571.0), (999.77, 1606.5)]
+# That shape, as it was in the computer's frame of 2026-11-14: the phone's
+# export has none (`MOBILE_EYE_SHIFT`), and the computer's frame no longer has
+# this one (its eye was flipped and made smaller on 2026-11-17).
+COVER_2026_11_14 = 'M853.063 1627.53C809.99 1610.81 765.156 1598.96 719.203 1596.18C674.527 1593.47 630.932 1602.02 586.978 1609.41C572.002 1611.93 556.308 1615.16 541.059 1615.25C540.855 1615.25 541.262 1583 541.059 1583L812.84 1571L999.77 1606.5C999.77 1606.5 999.943 1661.76 999.77 1661.74C994.664 1661.15 915.543 1651.79 853.063 1627.53Z'
+
+
+def cover_top_of(d):
+    """The shape's top: the point its first straight line leaves from and the
+    ends of its two straight lines, left to right."""
+    m = re.search(r'([-\d.]+)[ ,]([-\d.]+)\s*L\s*([-\d.]+)[ ,]([-\d.]+)\s*L\s*([-\d.]+)[ ,]([-\d.]+)', d)
+    if not m:
+        sys.exit('the shape over the eyeball has no top of two straight lines: read the eye again')
+    v = list(map(float, m.groups()))
+    return sorted([(v[0], v[1]), (v[2], v[3]), (v[4], v[5])])
 
 
 def lid_edges(d):
     """A lid crescent's two edges, each sampled at EYE_N points from tip to tip:
     x0, x1 (the tips), the upper edge's y and the lower edge's y."""
     p = np.asarray(ff.subpaths(d, seg=40)[0], float)
-    i = int(np.argmax(p[:, 0]))
-    a, b = p[:i + 1], p[i:][::-1]
+    # The outline runs round from wherever Figma began it (at the left tip
+    # until 2026-11-14; the flipped eye of 2026-11-17 begins elsewhere): its
+    # two edges are the two ways round from the left tip to the right one.
+    lo, hi = int(np.argmin(p[:, 0])), int(np.argmax(p[:, 0]))
+    q = np.roll(p, -lo, axis=0)
+    i = (hi - lo) % len(p)
+    a, b = q[:i + 1], np.vstack([q[i:], q[:1]])[::-1]
     x0, x1 = p[:, 0].min(), p[:, 0].max()
     xs = np.linspace(x0, x1, EYE_N)
 
@@ -243,6 +302,9 @@ def lid_edges(d):
 # Where the eye stands against the computer's (0, 0 there; the phone's is
 # MOBILE_EYE_SHIFT): COVER_TOP was read off the computer's frame.
 EYE_AT = [0.0, 0.0]
+# The computer's frame reads the top off its own shape; the phone's keeps the
+# 2026-11-14 shape's, moved (`EYE_AT`).
+COVER_FROM_SHAPE = [False]
 
 
 def cover_top_pts():
@@ -273,13 +335,26 @@ RING_R = 85.0
 EDGE = 1.5
 
 
+def is_pupil(e):
+    """The pupil: the eye's one circle (an <ellipse> since 2026-11-17) that is not the masked gold ring."""
+    return (e.startswith('<circle') or e.startswith('<ellipse')) and 'mask=' not in e
+
+
+def ring_r(els):
+    """The gold ring's radius: its <ellipse>'s (the export of 2026-11-14 on), or `RING_R`."""
+    ring = next((e for e in els if e.startswith('<ellipse') and 'mask=' in e), None)
+    m = ring and re.search(r'\brx="([\d.]+)"', ring)
+    return float(m.group(1)) if m else RING_R
+
+
 def eye_limits(els):
     iris = next(e for e in els if 'paint1_radial' in e)
     pts = np.array([q for sp in ff.subpaths(re.search(r'\bd="([^"]+)"', iris).group(1)) for q in sp])
     c = (pts.min(0) + pts.max(0)) / 2
     r = np.hypot(*(pts - c).T)
-    pupil_r = float(re.search(r'\br="([\d.]+)"', next(e for e in els if e.startswith('<circle'))).group(1))
-    return c, RING_R - 1 - r.max() - EDGE, r.min() - pupil_r - EDGE
+    pupil = next(e for e in els if is_pupil(e))
+    pupil_r = float(re.search(r'\br(?:x)?="([\d.]+)"', pupil).group(1))
+    return c, ring_r(els) - 1 - r.max() - EDGE, r.min() - pupil_r - EDGE
 
 
 # The whole eyeball moves too, within the lids, as a real eye does (the
@@ -299,12 +374,14 @@ def eye(els):
     find = lambda key: next(i for i, e in enumerate(els) if key in e)
     up, lo, cov = find('paint2_linear'), find('paint0_linear'), find('fill="#202020"')
     iris = find('paint1_radial')
-    pupil = next(i for i, e in enumerate(els) if e.startswith('<circle'))
+    pupil = next(i for i, e in enumerate(els) if is_pupil(e))
     ring_mask = next(i for i, e in enumerate(els) if e.startswith('<mask'))
     ring = next(i for i, e in enumerate(els) if 'mask="url(#stroke' in e)
     d = lambda e: re.search(r'\bd="([^"]+)"', e).group(1)
     ux, utop, ubot = lid_edges(d(els[up]))
     lx, ltop, lbot = lid_edges(d(els[lo]))
+    if COVER_FROM_SHAPE[0]:
+        COVER_TOP[:] = cover_top_of(d(els[cov]))
 
     lid_open = list(zip(ux, utop)) + list(zip(ux[::-1], ubot[::-1]))[1:-1]
     lid_shut = list(zip(lx, ltop)) + list(zip(lx[::-1], lbot[::-1]))[1:-1]
@@ -317,7 +394,7 @@ def eye(els):
         return e.replace('<path ', f'<path id="{eid}" data-open="{flat(a)}" data-closed="{flat(b)}" ', 1)
     ball = [els[ring_mask], els[ring],
             els[iris].replace('<path ', '<path id="eye-iris" ', 1),
-            els[pupil].replace('<circle ', '<circle id="eye-pupil" ', 1)]
+            re.sub(r'^<(circle|ellipse) ', r'<\1 id="eye-pupil" ', els[pupil], count=1)]
     out = [f'<clipPath id="mk-eye-open" clipPathUnits="userSpaceOnUse"><path d="{poly(opening)}"/></clipPath>',
            '<g clip-path="url(#mk-eye-open)"><g id="eye-ball">', *ball, '</g></g>',
            els[lo],
@@ -628,8 +705,10 @@ def clearance(hands, others):
 # left of the frame and 242 down (read from the export's image fill), so the
 # phone's viewBox is that box in the phone frame's units.
 VARIANTS = {
-    'desktop': dict(groups=GROUPS, mouth=MOUTH, ground=GROUND_Y, viewbox=(0, 2, 1893, 1804), eye_first=EYE_FIRST, pens=PEN_PARTS, paper=PAPER, wave=WAVE, variants=WAVE_VARIANTS,
-                    out='making-drawing.svg', frame='"Making"'),
+    # Since 2026-11-17 the drawing is laid over the whole frame (it was laid over
+    # the photograph's box, y 2 to 1806, when the photograph was the frame).
+    'desktop': dict(groups=GROUPS, mouth=MOUTH, ground=GROUND_Y_2026_11_17, viewbox=(0, 0, 1893, 1850), eye_first=EYE_FIRST, pens=PEN_PARTS, paper=PAPER, wave=WAVE, variants=WAVE_VARIANTS,
+                    out='making-drawing.svg', frame='"Making" (2026-11-17)', drop_grey=False, wrap=True),
     'mobile': dict(groups=[('siluet-3', 'Siluet 3', 6), ('siluet-1', 'Siluet1', 5),
                            ('the-creator', 'The Creator', 7), ('fum', 'Fum', 6)],
                    # the foot of The Creator's long stroke, in the phone frame
@@ -637,21 +716,37 @@ VARIANTS = {
                    # the plank's front edge: the computer's 1370.2, moved down with the photograph
                    ground=GROUND_Y + 240,
                    viewbox=(-728, 242, 1893, 1804), eye_first=False,
-                   out='making-drawing-mobile.svg', frame='"Making - Mobile"'),
+                   out='making-drawing-mobile.svg', frame='"Making - Mobile"', drop_grey=True, wrap=False),
 }
 # The phone's eye stands this far from the computer's (its Group 59 at 245, 1804
 # against 517, 1582), and the shape over its eyeball is the computer's, moved.
 MOBILE_EYE_SHIFT = (-272.0, 222.0)
 
 
-def elements(path):
+def elements(path, drop_grey=True):
+    """The export's figures and eye, in order. Left out: the photographs, the
+    crevices (#FDA76A), the frame's white and its outline, the sea of drawings
+    (a clipped group of plain strokes, since 2026-11-17) and the sun (the one
+    path stroked with a linear gradient, since 2026-11-17); with `drop_grey`
+    the words, the #888888 outlines (the frames of 2026-11-05 and 2026-11-14,
+    where nothing else was #888888; in the frame of 2026-11-17 CREATOR2 is
+    #888888 too, and the words are skipped through `GROUPS` instead)."""
     svg = open(path, encoding='utf-8').read()
     body = svg[svg.index('>') + 1:svg.index('<defs>')]
+    body = re.sub(r'<g clip-path="url\(#[^)]+\)">\s*(?:<path [^>]*stroke="#[0-9A-Fa-f]{6}"[^>]*/>\s*)+</g>', '', body)
     # the eye's gold ring is an <ellipse> since the export of 2026-11-14 (a <path> before)
     els = re.findall(r'<mask[\s\S]*?</mask>|<(?:path|rect|circle|ellipse)[^>]*/>', body)
     els = [e for e in els if 'url(#pattern' not in e and 'fill="#FDA76A"' not in e
-           and 'fill="#888888"' not in e and not (e.startswith('<rect') and 'fill="white"' in e)]
+           and not (drop_grey and 'fill="#888888"' in e) and not e.startswith('<rect')
+           and not ('stroke="url(#paint' in e and '_linear' in e)]
     return svg, els
+
+
+def eye_opacity(path):
+    """The opacity the author gave the eye's group in Figma (1 if none)."""
+    svg = open(path, encoding='utf-8').read()
+    m = re.search(r'<g opacity="([\d.]+)">\s*<mask', svg)
+    return float(m.group(1)) if m else 1.0
 
 
 def main():
@@ -664,18 +759,17 @@ def main():
     vx, vy, vw, vh = V['viewbox']
     src = args[0]
     dst_default = os.path.join(ROOT, 'public', 'images', 'home', V['out'])
-    svg, els = elements(src)
+    svg, els = elements(src, V['drop_grey'])
     if variant == 'mobile':
-        dst = args[2] if len(args) > 2 else dst_default
-        # the computer's shape over the eyeball, moved to the phone's eye
-        _, desk = elements(args[1])
-        # the computer's figures are #7B7B7B, so the one #202020 shape is the cover
-        cover = next(e for e in desk if 'fill="#202020"' in e)
-        d = re.search(r'\bd="([^"]+)"', cover).group(1)
-        els.insert(len(els) - 1, cover.replace(d, shift(d, -MOBILE_EYE_SHIFT[0], -MOBILE_EYE_SHIFT[1])))
+        dst = args[1] if len(args) > 1 and args[1].endswith('.svg') and 'Making' not in os.path.basename(args[1]) else dst_default
+        # the computer's shape over the eyeball (as it was in the frame of
+        # 2026-11-14), moved to the phone's eye
+        d = COVER_2026_11_14
+        els.insert(len(els) - 1, f'<path d="{shift(d, -MOBILE_EYE_SHIFT[0], -MOBILE_EYE_SHIFT[1])}" fill="#202020"/>')
         EYE_AT[:] = MOBILE_EYE_SHIFT
     else:
         dst = args[1] if len(args) > 1 else dst_default
+        COVER_FROM_SHAPE[0] = True
     need = sum(n for _, _, n in GROUPS_)
     eye_els = None
     if V.get('eye_first'):
@@ -733,13 +827,22 @@ def main():
     for n in sorted(hands):
         hands[n]['masks'] = []
         (paper if 'paper' in hands[n] else wave if n in waves else hand)(n, hands[n], trace, mask_of, hands[n]['masks'])
-    if 2 in hands:
+    if 2 in hands and 'end' in hands[2]:
         MOUTH_ = hands[2]['end']
         print(f'the click draws from {MOUTH_[0]:.0f}, {MOUTH_[1]:.0f}, where the line of creator 2 ends')
+    if variant == 'desktop':
+        # the trumpet's bell: the lowest fifth of its outline, where the melodies leave it
+        q = np.vstack(outline(els[TRUMPET]))
+        bell = q[q[:, 1] >= q[:, 1].max() - 0.2 * (q[:, 1].max() - q[:, 1].min())]
+        MOUTH_ = (float(bell[:, 0].mean()), float(bell[:, 1].mean()))
+        print(f"the strokes leave from {MOUTH_[0]:.0f}, {MOUTH_[1]:.0f}, the trumpet's bell")
 
     parts, masks, k = [], [], 0
     merged = {}  # gid -> (names, items), in the order first met
     for gid, name, n in GROUPS_:
+        if gid is None:                       # not a figure (the words): skipped
+            k += n
+            continue
         names, items = merged.setdefault(gid, ([], []))
         names.append(name)
         for j in range(n):
@@ -763,19 +866,35 @@ def main():
         parts.append(hands[n]['drawn']); masks += hands[n]['masks']
     if hands:
         skip = set(pen_parts) | {i for v in paper_parts.values() for i in v} | {i for v in wave_variants.values() for i in v}
-        clearance(hands, [recolour(els[i]) for i in range(need) if i not in skip])
+        words = set()
+        at = 0
+        for gid, _, n in GROUPS_:
+            if gid is None: words |= set(range(at, at + n))
+            at += n
+        clearance(hands, [recolour(els[i]) for i in range(need) if i not in skip and i not in words])
+    if V.get('wrap'):
+        # every figure in one group, which the page fades out as the reader goes on down
+        parts = ['<g id="mk-figures">'] + parts + ['</g>']
     eye_src = eye_els if eye_els is not None else els[k:]
     c, iris_max, pupil_max = eye_limits(eye_src)
     print(f'eye: rhombi round {c[0]:.1f},{c[1]:.1f}, free to move {iris_max:.1f}; pupil free to move {pupil_max:.1f}')
+    # The eye's own size against the frame of 2026-11-05's (its gold ring was
+    # 85 there; 59.2 since 2026-11-17, the author made it smaller): how far the
+    # eyeball may roam and the click's disc go with it.
+    k_eye = ring_r(eye_src) / RING_R
+    ball = (BALL_MAX[0] * k_eye, BALL_MAX[1] * k_eye)
+    rest = eye_opacity(src) if variant == 'desktop' else 1.0
+    print(f'eye: ring {ring_r(eye_src):.1f} ({k_eye:.3f} of the first), the eyeball roams {ball[0]:.1f} by {ball[1]:.1f}, at {rest:g} of its strength')
     parts.append(f'<g id="eye" data-name="the eye (Group 59, Vector 49, Ellipse 8)" data-iris="{c[0]:.2f} {c[1]:.2f}" '
-                 f'data-iris-max="{iris_max:.1f}" data-pupil-max="{pupil_max:.1f}" data-ball-max="{BALL_MAX[0]:g} {BALL_MAX[1]:g}">\n'
+                 f'data-iris-max="{iris_max:.1f}" data-pupil-max="{pupil_max:.1f}" data-ball-max="{ball[0]:.1f} {ball[1]:.1f}" '
+                 f'data-hit-r="{90 * k_eye:.0f}"' + (f' data-rest="{rest:g}"' if rest < 1 else '') + '>\n'
                  + '\n'.join(eye(eye_src)) + '\n</g>')
     masks.append(f'<clipPath id="mk-ground" clipPathUnits="userSpaceOnUse"><rect x="-3000" y="-3000" width="8000" height="{GROUND_ + 3000}"/></clipPath>')
     defs = defs.replace('<defs>', '<defs>\n' + '\n'.join(masks), 1)
 
     out = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{vw}" height="{vh}" viewBox="{vx} {vy} {vw} {vh}" fill="none">\n'
            f'<!-- Written by scripts/making-drawing.py from the Figma frame {V["frame"]}: the figures and the eye,\n'
-           '     without the photograph, the words or the crevices. The drawn lines (fum, the siluets) are\n'
+           '     without the photographs, the words, the crevices, the sea or the sun. The drawn lines are\n'
            '     masked shut until components/making-drawing.tsx draws them. -->\n'
            + '\n'.join(parts) + '\n' + defs + '\n</svg>\n')
     open(dst, 'w', encoding='utf-8').write(out)

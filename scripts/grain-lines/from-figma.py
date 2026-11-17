@@ -5,7 +5,9 @@ The gold motes' crevices, from the author's own lines drawn in Figma
     python3 scripts/grain-lines/from-figma.py "<export.svg>" [out.js]
 
 The export is the Figma frame with the Making photograph and the author's
-lines over it, exported as SVG with the photograph in it. The photograph's
+lines over it, exported as SVG with the photograph in it. Since 2026-11-17
+that is the homepage's frame "Making" itself (Making_Homepage.svg), whose
+photograph is the trunk cut out (making-trunk.webp, `PHOTO_W` x `PHOTO_H`). The photograph's
 own place in the export (the <pattern> matrix on the frame's image fill) is
 what puts the lines on making-sculpture.jpg, so the frame need not be the
 photograph's size, and the photograph need not sit at 0,0: Figma's frame was
@@ -51,7 +53,10 @@ from skimage.morphology import skeletonize
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-PHOTO_W, PHOTO_H = 2400, 2287          # making-sculpture.jpg as served (since 2026-11-05)
+# The photograph the lines are put on, as served: making-trunk.webp since
+# 2026-11-17 (the trunk cut out of its white ground, scripts/making-split.py);
+# making-sculpture.jpg, 2400 x 2287, from 2026-11-05 until then.
+PHOTO_W, PHOTO_H = 2400, 1729
 S = 4                                    # mask resolution, x the export's px
 
 
@@ -104,10 +109,12 @@ def photo_place(svg):
     # The Figma frame "Making" of 2026-11-05 (public/images/home/Making.svg)
     # fills a <rect> with the photograph, and making-sculpture.jpg is cut from
     # it to exactly that rect (the image overhangs it by 16 units on the left),
-    # so there the rect itself is the photograph's place.
+    # so there the rect itself is the photograph's place. The frame of
+    # 2026-11-17 fills two, the trunk first (at -2, 9: the sign is read) and
+    # the dark wood under it; the trunk's is the first.
     r = re.search(r'<rect ([^>]*)fill="url\(#pattern[^>]*>', svg)
     if r:
-        g = lambda k, dflt: float((re.search(r'\b' + k + r'="([\d.]+)"', r.group(1)) or [None, dflt])[1])
+        g = lambda k, dflt: float((re.search(r'\b' + k + r'="(-?[\d.]+)"', r.group(1)) or [None, dflt])[1])
         return g('x', 0), g('y', 0), g('width', 0), g('height', 0)
     m = re.search(r'<use[^>]*transform="matrix\(([^)]+)\)"', svg)
     im = re.search(r'<image[^>]*width="([\d.]+)" height="([\d.]+)"', svg)
@@ -281,7 +288,8 @@ def main():
 
     body = '[\n' + '\n'.join('    ' + json.dumps(l, separators=(',', ':')) + ',' for l in lines) + '\n  ]'
     tpl = open(os.path.join(HERE, 'pandov-grain.template.js'), encoding='utf-8').read()
-    open(out_js, 'w', encoding='utf-8').write(tpl.replace('__LINES__', body))
+    js = tpl.replace('__LINES__', body).replace('__W__', str(PHOTO_W)).replace('__H__', str(PHOTO_H))
+    open(out_js, 'w', encoding='utf-8').write(js)
     print('wrote', out_js)
 
 
