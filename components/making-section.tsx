@@ -45,16 +45,11 @@ import { MakingSea } from "@/components/making-sea"
  * `scripts/grain-lines/from-figma.py` (the crevices). Run all three on a new
  * export of the frame, and bump `SVG_VERSION` in `making-drawing.tsx`.
  *
- * On a phone (under 768px) it is still the author's frame "Making - Mobile"
- * of 2026-11-05 (974 × 2046; not re-exported with the new frame): a tall,
- * narrow window onto the trunk, which stands at the right; the words over the
- * figures at the top left; its own fewer figures (`making-drawing-mobile.svg`);
- * the dark wood under the plank's front edge. The new trunk is the old
- * photograph cut out and unmoved (measured, `scripts/making-split.py`), so it
- * is laid exactly where the old photograph's trunk stood there (`PHONE_TRUNK`),
- * and the motes' crevices fit it on both layouts. No sun and no sea there: the
- * phone frame has none. The two layouts' differences are in the stylesheet at
- * the foot, since only a stylesheet holds a media query.
+ * On a phone (under 768px), since 2026-11-18, the same frame seen through a
+ * window round the trunk (`P_CROP`), the heading and the words centred over
+ * it as For Space's are; the sun smaller and nearer the trunk there
+ * (`PHONE_*` in `making-sun.tsx`). The two layouts' differences are in the
+ * stylesheet at the foot, since only a stylesheet holds a media query.
  */
 
 /**
@@ -169,41 +164,48 @@ const HEADING_SIZE = `clamp(${JULIUS_MIN}px, ${vw(HEADING_PX)}, 30px)`
 const WORDS_TOP =
   `calc(${pctY(2 * DRAWN_MID - HEADING_TOP)} - ${HEADING_SIZE} - ${EXPLORE_GAP_PX}px` +
   ` - ${EXPLORE_SIZE} * ${1 - EXPLORE_FOOT} - ${+((LINE_HEIGHT - 1) / 2 + 0.135).toFixed(3)} * ${TEXT_MIN}px)`
-const LINES = ["Every Pandov piece is born from raw nature,", "reclaimed objects,", "and an endless sea of drawings."]
+/*
+ * 2026-11-18, the author's new words, five lines broken as the author broke
+ * them, standing where the three stood (the same first cap top, the same
+ * pitch); the lines under the first go down with them.
+ */
+const LINES = [
+  "Pandov pieces are born from",
+  "reimagining reclaimed objects,",
+  "treating found natural forms,",
+  "and an endless sea of drawings",
+  "brought to life through technology.",
+]
 
 /**
- * The phone's frame, in its own units. The old photograph's box there (the
- * box the computer's frame was until 2026-11-17, and the phone's drawing's
- * viewBox): 1893 × 1804 from (-728, 242). Below `FOOT_Y`, the plank's front
- * edge, the dark wood.
+ * The phone (2026-11-18, the author's brief: "let's make this version of
+ * Making for the phone too; it should be simpler now the drawing is
+ * narrower"). It is the computer's frame, the same trunk, sun, sea, figures
+ * and eye, seen through a window cut out of it (`P_CROP`, frame units: from
+ * x, that wide, from y down to the frame's foot), as wide as the phone: the
+ * trunk large, CREATOR1 at its left and SILUET at its right. The frame is
+ * laid out whole, only larger and moved, so everything on it keeps its place
+ * on it (the gold motes' crevices, the sun's and the sea's frame units, the
+ * eye). Until then the phone had the author's older frame "Making - Mobile"
+ * of 2026-11-05, its own drawing (`making-drawing-mobile.svg`, no longer
+ * used) and no sun or sea.
+ *
+ * The heading and the words are no longer on the picture: they stand over
+ * it, centred, as For Space's do (`CategoryLabel` in
+ * `categories-section.tsx`: Julius at clamp(11px, 2vw, 20px), #555, "→
+ * Explore" 18px under it, #888), the words `P_WORDS_GAP_PX` under Explore,
+ * near as Selected's are under its heading, and the picture
+ * `P_PICTURE_GAP_PX` under the words.
  */
-const PW = 974
-const PH = 2046
-const P_PHOTO = { x: -728, y: 242, w: 1893, h: 1804 }
-/**
- * The trunk on the phone: the new file where the old photograph's trunk
- * stood. The old photograph lay in its box at 0.467783 units a pixel from x
- * −16.0 and 0.46768 from y −0.155; the new file is that photograph from its
- * pixel 557 across and its first row down (`scripts/making-split.py`), so in
- * the phone's units it stands at (−483.44, 241.84), 1916.04 × 1380.1.
- */
-const PHONE_TRUNK = { x: -483.44, y: 241.84, w: 1916.04, h: 1380.1 }
-const FOOT_Y = 1611
-const pw = (v: number) => `${+((v / PW) * 100).toFixed(4)}%`
-const ph = (v: number) => `${+((v / PH) * 100).toFixed(4)}%`
-/**
- * The phone's words, broken into lines by phrase, as the author broke the
- * phone's words before (2026-11-05), each line held whole. They stand at the
- * top of the composition, with `P_AIR_PX` of white over it, above the trunk.
- */
-const P_TEXT_X = 56
-const P_AIR_PX = 56
-const P_HEADING_PX = 11
-const P_LINE_FIT = `${TEXT_MIN}px`
-const P_LINE_HEIGHT = LINE_HEIGHT
-const P_HEADING_GAP_PX = 14
-const P_PARAGRAPH_GAP_EM = 1
-const P_LINES = LINES.map((l) => [l])
+const P_CROP = { x: 700, w: 880, y: 20 }
+const P_TOP_PX = 100
+const P_WORDS_GAP_PX = 22
+const P_LINE_HEIGHT = 2
+const P_PICTURE_GAP_PX = 36
+/** The phone's composition box: the whole frame, `FW / P_CROP.w` of the phone's width, moved so the window shows. */
+const P_COMP_W = `${+((FW / P_CROP.w) * 100).toFixed(4)}%`
+const P_COMP_LEFT = `${+((-P_CROP.x / P_CROP.w) * 100).toFixed(4)}%`
+const P_COMP_TOP = `${+((-P_CROP.y / P_CROP.w) * 100).toFixed(4)}%`
 
 /**
  * White over the composition on a computer, so For Space stands further up
@@ -226,8 +228,41 @@ export function MakingSection() {
         background: "#fff",
       }}
     >
+      {/* The phone's heading and words, centred over the picture, as For
+          Space's (none on a computer, where they stand on the picture). */}
+      <div className="mk-phone-words">
+        <a href={MAKING_HREF} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: `${EXPLORE_GAP_PX}px`, textDecoration: "none" }}>
+          <span style={{ fontFamily: JULIUS, textTransform: "uppercase", letterSpacing: TRACK, fontSize: `clamp(${JULIUS_MIN}px, 2vw, 20px)`, lineHeight: 1, color: "#555" }}>
+            Making
+          </span>
+          <span style={{ fontFamily: JULIUS, textTransform: "uppercase", letterSpacing: TRACK, fontSize: EXPLORE_SIZE, lineHeight: 1, color: "#888" }}>
+            &rarr; Explore
+          </span>
+        </a>
+        <p
+          style={{
+            margin: `${P_WORDS_GAP_PX}px 0 0`,
+            fontFamily: TEXT_FONT,
+            fontWeight: 400,
+            fontSize: `${TEXT_MIN}px`,
+            lineHeight: P_LINE_HEIGHT,
+            letterSpacing: TEXT_TRACK,
+            color: "#888",
+            textAlign: "center",
+          }}
+        >
+          {LINES.map((l, i) => (
+            <span key={l} style={{ whiteSpace: "nowrap" }}>
+              {i > 0 && <br />}
+              {l}
+            </span>
+          ))}
+        </p>
+      </div>
+
       {/* The composition: the page's width up to MAX_ASPECT of the screen's
-          height, in the middle; on a phone the author's narrow frame. */}
+          height, in the middle; on a phone the same frame, larger, seen
+          through a window as wide as the phone (`P_CROP`). */}
       <div className="mk-comp">
         {/* Past the frame on a very wide screen: the plank's ends beside their
             mirrors, and the dark wood mirrored, either side. */}
@@ -253,12 +288,12 @@ export function MakingSection() {
 
         {/* The trunk and the plank, cut out: its box is the gold motes' too. */}
         <div className="mk-trunk">
-          <Image src="/images/home/making-trunk.webp" alt={ALT} fill sizes="(max-width: 767px) 200vw, 100vw" style={{ objectFit: "fill" }} />
+          <Image src="/images/home/making-trunk.webp" alt={ALT} fill sizes="(max-width: 767px) 240vw, 100vw" style={{ objectFit: "fill" }} />
         </div>
 
         {/* The dark wood under the plank, with the eye on it. */}
         <div aria-hidden className="mk-wood">
-          <Image src="/images/home/making-wood.avif" alt="" fill sizes="100vw" />
+          <Image src="/images/home/making-wood.avif" alt="" fill sizes="(max-width: 767px) 240vw, 100vw" />
         </div>
 
         {/* The line drawings and the eye, over all of it. */}
@@ -323,57 +358,6 @@ export function MakingSection() {
           </div>
         </div>
 
-        {/* The phone's words, the heading over them at Selected's distance. */}
-        <div
-          className="mk-words-phone"
-          style={{
-            position: "absolute",
-            left: pw(P_TEXT_X),
-            top: 0,
-            whiteSpace: "nowrap",
-            zIndex: 3,
-          }}
-        >
-          <a href={MAKING_HREF} style={{ display: "flex", flexDirection: "column", gap: `${EXPLORE_GAP_PX}px`, textDecoration: "none" }}>
-            <span
-              style={{
-                fontFamily: JULIUS,
-                textTransform: "uppercase",
-                letterSpacing: TRACK,
-                fontSize: `${P_HEADING_PX}px`,
-                lineHeight: 1,
-                color: "#888",
-              }}
-            >
-              Making
-            </span>
-            <span style={{ fontFamily: JULIUS, textTransform: "uppercase", letterSpacing: TRACK, fontSize: EXPLORE_SIZE, lineHeight: 1, color: "#888" }}>
-              &rarr; Explore
-            </span>
-          </a>
-          <div
-            style={{
-              fontFamily: TEXT_FONT,
-              fontWeight: 400,
-              letterSpacing: TEXT_TRACK,
-              fontSize: P_LINE_FIT,
-              lineHeight: P_LINE_HEIGHT,
-              color: "#888",
-              marginTop: `${P_HEADING_GAP_PX}px`,
-            }}
-          >
-            {P_LINES.map((lines, i) => (
-              <p key={i} style={{ margin: i ? `${P_PARAGRAPH_GAP_EM}em 0 0` : 0 }}>
-                {lines.map((l, j) => (
-                  <span key={j}>
-                    {j > 0 && <br />}
-                    {l}
-                  </span>
-                ))}
-              </p>
-            ))}
-          </div>
-        </div>
       </div>
 
       <style>{`
@@ -392,16 +376,14 @@ export function MakingSection() {
         .mk-wood img { object-fit: fill; }
         .mk-draw { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
         .mk-head { display: flex; flex-direction: column; gap: ${EXPLORE_GAP_PX}px; }
-        .mk-words-phone { display: none; }
+        .mk-phone-words { display: none; }
         @media (max-width: 767px) {
-          .mk-comp { width: 100%; aspect-ratio: ${PW} / ${PH}; margin-top: ${P_AIR_PX}px; }
-          .mk-side, .mk-sun, .mk-sea, .mk-words-desk { display: none; }
-          .mk-dark { left: 0; width: 100%; top: ${ph(FOOT_Y)}; }
-          .mk-words-phone { display: block; }
-          .mk-trunk { left: ${pw(PHONE_TRUNK.x)}; top: ${ph(PHONE_TRUNK.y)}; width: ${pw(PHONE_TRUNK.w)}; height: ${ph(PHONE_TRUNK.h)}; }
-          .mk-wood { left: 0; top: ${ph(FOOT_Y)}; width: 100%; height: auto; bottom: 0; }
-          .mk-wood img { object-fit: cover; object-position: center; }
-          .mk-draw { inset: auto; left: ${pw(P_PHOTO.x)}; top: ${ph(P_PHOTO.y)}; width: ${pw(P_PHOTO.w)}; height: ${ph(P_PHOTO.h)}; }
+          .mk-phone-words { display: flex; flex-direction: column; align-items: center; padding: ${P_TOP_PX}px 24px 0; }
+          .mk-comp { width: ${P_COMP_W}; aspect-ratio: ${FW} / ${FH}; margin: calc(${P_PICTURE_GAP_PX}px + ${P_COMP_TOP}) 0 0 ${P_COMP_LEFT}; }
+          .mk-side, .mk-words-desk { display: none; }
+          /* the band, the sea and the dark wood across the window, not the frame's middle */
+          .mk-dark { left: ${pctX(P_CROP.x)}; width: ${pctX(P_CROP.w)}; }
+          .mk-sea { left: ${pctX(P_CROP.x)} !important; width: ${pctX(P_CROP.w)} !important; }
         }
       `}</style>
     </section>

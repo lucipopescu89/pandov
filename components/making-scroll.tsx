@@ -49,24 +49,29 @@ const STAGE = {
   // The top words come as the photograph arrives (by its arrival, `pIn`),
   // and go early once it is held.
   top: { in: [0.5, 0.95], out: [0.35, 0.57] },
-  // The drawing is not set here: it is begun when its circle stands well in
-  // the frame, which depends on the screen's shape (`CIRCLE`, below).
-  bottom: { in: [1.1, 1.25], out: [1.55, 1.72] },
+  // They come as the drawing begins to be drawn back.
+  bottom: { in: [1.3, 1.45], out: [1.7, 1.85] },
 } as const
 
 /**
- * The drawing's circle on the photograph, as shares of its height (the knot's
- * hollow, `DRAWING_AT` + the circle in `drawing-wood.svg`: centre 908, radius
- * 38 of 1280), and how high in the frame its foot must stand before the
- * drawing begins. Then it is traced over `TRACE_FOR` windows of scroll, stands
- * `TRACE_STAND`, and is untraced over `UNTRACE_FOR` (in reverse, the last
- * drawn first), never before `STAGE_TRACE_FROM`.
+ * The drawing (2026-11-18, the author's asking: no empty scroll between the
+ * top words and the drawing, the way down a little quicker, the drawing drawn
+ * more slowly): it begins at `TRACE_FROM`, as the top words finish going, and
+ * the photograph is brought down so that its circle has just come into the
+ * frame by then (its foot at `CIRCLE.seenAt` of the frame's height; see the
+ * pan, below). It is traced over `TRACE_FOR` windows of scroll (0.4 until
+ * then), stands `TRACE_STAND`, and is untraced over `UNTRACE_FOR` (in
+ * reverse, the last drawn first). `CIRCLE` is the knot's hollow on the plate,
+ * as shares of its height: centre 908 and radius 37.5 (+1 of stroke) on the
+ * whole photograph, less the 90 cut from its top (`WOOD_CROP` in
+ * `making-page.tsx`), of 1190.
  */
-const CIRCLE = { y: 908 / 1280, r: 40 / 1280, seenAt: 0.85 }
-const STAGE_TRACE_FROM = 0.6
-const TRACE_FOR = 0.4
-const TRACE_STAND = 0.12
-const UNTRACE_FOR = 0.3
+const PLATE_H = 1190
+const CIRCLE = { y: (908 - 90) / PLATE_H, r: 38.5 / PLATE_H, seenAt: 0.9 }
+const TRACE_FROM = 0.55
+const TRACE_FOR = 0.65
+const TRACE_STAND = 0.15
+const UNTRACE_FOR = 0.4
 
 /**
  * Its leaving (the author's asking: not held while the page goes on, but going
@@ -82,8 +87,13 @@ const EXIT_FADE = 0.45
 /**
  * The photograph is drawn larger than its frame (`--zoom` in
  * `making-page.tsx`) and travels through it straight down, top to bottom
- * (2026-11-17, the author's asking: only vertically, quickly, and at an even
- * pace from the moment its frame settles, without a pause), until `PAN_END`.
+ * (2026-11-17, the author's asking: only vertically, quickly, from the moment
+ * its frame settles, without a pause), until `PAN_END`. Not at one pace since
+ * 2026-11-18 (the author's asking): quicker on the way down to the knot (about
+ * 1.15 times the even pace it had), bringing the circle in by `TRACE_FROM`,
+ * then slower while the drawing is drawn, the change of pace eased over
+ * `KNEE` windows; where the circle is in the frame from the start (a phone),
+ * one pace throughout (`panAt`).
  * Sideways it stands still, the branch towards the right (`PAN_LEFT`, the
  * plate's left edge as a share of the frame's width), so the top words on the
  * left and the bottom words on the right both stand clear of it: measured on
@@ -93,13 +103,38 @@ const EXIT_FADE = 0.45
  * is kept at the frame's middle (`PHONE_BRANCH_X`).
  */
 /** In windows of scroll since the frame settled. */
-const PAN_END = 1.75
+const PAN_END = 1.85
+const KNEE = 0.3
 const PAN_LEFT = -0.16
 const PHONE_BRANCH_X = 0.48
 const PHONE = "(max-width: 767px)"
 /** The page's own words, held in the sketches' passage, rise this far as they come, px. */
 const RISE_PX = 18
 const DARK = [0x20, 0x20, 0x20]
+
+/**
+ * The paces of the pan, as shares of its travel per window of scroll: `fast`
+ * until `TRACE_FROM`, `slow` after it, so that by `TRACE_FROM` it has come
+ * `vIn` of its way (where the circle has just come into the frame) and by
+ * `PAN_END` all of it. Never slower before than after.
+ */
+function panPaces(vIn: number) {
+  const even = 1 / PAN_END
+  const fast = Math.min(Math.max(vIn / TRACE_FROM, even), 0.9 / TRACE_FROM)
+  const slow = (1 - fast * TRACE_FROM) / (PAN_END - TRACE_FROM)
+  return { fast, slow }
+}
+
+/** How far the pan has come at `u`, 0–1: the two paces, eased one into the other across `KNEE`. */
+function panAt(u: number, fast: number, slow: number) {
+  const a = TRACE_FROM - KNEE / 2
+  if (u <= a) return clamp01(fast * u)
+  const t = Math.min(1, (u - a) / KNEE)
+  // The pace eases by a smoothstep; this is its integral (t³ − t⁴/2).
+  let v = fast * a + KNEE * (fast * t + (slow - fast) * (t * t * t - (t * t * t * t) / 2))
+  if (u > a + KNEE) v += slow * (u - a - KNEE)
+  return clamp01(v)
+}
 
 export function MakingScroll() {
   useEffect(() => {
@@ -160,9 +195,17 @@ export function MakingScroll() {
         // from below and out of full transparency (the page opens without it).
         const from = Math.min(vh * 0.92, r.top + window.scrollY)
         const pIn = clamp01((from - r.top) / Math.max(1, from - settle))
+        // The pan's two paces, from where the circle stands on the plate: the
+        // share of the travel that brings its foot up to `CIRCLE.seenAt` of
+        // the frame.
+        const fh = hold.height
+        const ph = plate ? plate.offsetHeight : fh
+        const travel = Math.max(0, ph - fh)
+        const vIn = travel > 0 ? clamp01(((CIRCLE.y + CIRCLE.r) * ph - CIRCLE.seenAt * fh) / travel) : 0
+        const { fast, slow } = panPaces(vIn)
         // And its leaving: up with the page, out of opacity, setting off at
         // the pace the photograph was travelling through the frame.
-        const pace = plate ? Math.max(0, plate.offsetHeight - hold.height) / (PAN_END * vh) : 0
+        const pace = (slow * travel) / vh
         const x = Math.max(0, held - PAN_END * vh)
         const d = EXIT_EASE * vh
         const lift = x < d ? pace * x + ((1 - pace) * x * x) / (2 * d) : pace * d + ((1 - pace) * d) / 2 + (x - d)
@@ -170,14 +213,15 @@ export function MakingScroll() {
         set(holdEl, "opacity", (smooth(pIn / ARRIVE_BY) * leave).toFixed(3))
         set(holdEl, "transform", `translateY(${((1 - smooth(pIn)) * vh * ARRIVE_RISE - lift).toFixed(1)}px)`)
 
-        // The photograph travels straight down through its frame, at an even
-        // pace from the moment it settles; its drawing is on it.
+        // The photograph travels straight down through its frame from the
+        // moment it settles, quicker to the knot, slower while it is drawn
+        // (`panAt`); its drawing is on it.
         if (plate) {
-          const fw = hold.width, fh = hold.height
-          const pw = plate.offsetWidth, ph = plate.offsetHeight
-          const v = clamp01(u / PAN_END)
+          const fw = hold.width
+          const pw = plate.offsetWidth
+          const v = panAt(u, fast, slow)
           const x = window.matchMedia(PHONE).matches ? fw / 2 - PHONE_BRANCH_X * pw : PAN_LEFT * fw
-          const y = (fh - ph) * v
+          const y = -travel * v
           set(plate, "transform", `translate3d(${Math.min(0, Math.max(fw - pw, x)).toFixed(1)}px, ${y.toFixed(1)}px, 0)`)
         }
 
@@ -186,17 +230,9 @@ export function MakingScroll() {
           (ramp(u, w.in[0], w.in[1]) * (1 - ramp(u, w.out[0], w.out[1]))).toFixed(3)
         set(woodWords1, "opacity", (ramp(pIn, STAGE.top.in[0], STAGE.top.in[1]) * (1 - ramp(u, STAGE.top.out[0], STAGE.top.out[1]))).toFixed(3))
         set(woodWords2, "opacity", turn(STAGE.bottom))
-        // The drawing begins once its circle stands well in the frame (the
-        // author's asking: on a wide screen it had been drawn before the knot
-        // came in): the scroll at which the travelling photograph brings the
-        // circle's foot up to `CIRCLE.seenAt` of the frame's height.
-        let u0 = STAGE_TRACE_FROM
-        if (plate) {
-          const ph = plate.offsetHeight, fh = hold.height
-          const foot = (CIRCLE.y + CIRCLE.r) * ph
-          const v0 = ph > fh ? (foot - CIRCLE.seenAt * fh) / (ph - fh) : 0
-          u0 = Math.max(STAGE_TRACE_FROM, clamp01(v0) * PAN_END)
-        }
+        // The drawing begins as the top words finish going, the pan having
+        // brought its circle into the frame by then.
+        const u0 = TRACE_FROM
         const pTrace = clamp01((u - u0) / TRACE_FOR)
         const pOut = clamp01((u - u0 - TRACE_FOR - TRACE_STAND) / UNTRACE_FOR)
         traces.forEach((t, i) => {

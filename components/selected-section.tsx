@@ -88,6 +88,24 @@ const P_OFFSET = [-P_BLEED, PW - P_CARDS[1].w + P_BLEED - P_START[1]]
 /** A sideways drag at least this long (px) is a swipe. */
 const SWIPE_PX = 40
 
+/**
+ * On a phone Selected goes into white as the reader goes on down (2026-11-18,
+ * the author's asking: the hand with the ring came straight under the dark
+ * and looked cramped; "let Selected be lost in a white fade"). A white veil
+ * over the whole of it, the cards and the words alike, rises from nothing as
+ * the cards' frame's foot goes up from `P_OUT_FROM` of the screen's height to
+ * full by `P_OUT_TO`, on a smootherstep, as For Space washes out under
+ * Making (`useWhiteOut` in `categories-section.tsx`); back up, it lifts. It
+ * is written to the veil's style on each frame of scroll, not through React.
+ * Under the cards, `P_WHITE_PX` of white before the hand (a static gradient
+ * from the dark to white stood there for a moment; the author had it taken
+ * out).
+ */
+const P_OUT_FROM = 0.85
+const P_OUT_TO = 0.3
+// 230 at first; less the same morning (the author's asking: with Selected going white, it left too much white over the hand)
+const P_WHITE_PX = 30
+
 const CARD_OPACITY = 0.85
 const CARD_OPACITY_HOVER = 0.95
 
@@ -196,6 +214,35 @@ function SelectedPhone() {
 export function SelectedSection() {
   const ref = useRef<HTMLDivElement>(null)
   const [fade, setFade] = useState(0)
+  const cardsRef = useRef<HTMLDivElement>(null)
+  const veilRef = useRef<HTMLDivElement>(null)
+
+  // The phone's white veil (`P_OUT_*`).
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const el = cardsRef.current
+      const v = veilRef.current
+      if (!el || !v || !el.getClientRects().length) return
+      const vh = window.innerHeight
+      const foot = el.getBoundingClientRect().bottom
+      const t = (P_OUT_FROM * vh - foot) / ((P_OUT_FROM - P_OUT_TO) * vh)
+      const u = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0
+      v.style.opacity = String(u * u * u * (u * (u * 6 - 15) + 10))
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    update()
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -214,9 +261,25 @@ export function SelectedSection() {
   }, [])
 
   return (
-    <section style={{ position: "relative", width: "100%", background: "#202020" }}>
-      <div className="sel-phone">
-        <SelectedPhone />
+    <section className="sel-sec" style={{ position: "relative", width: "100%", background: "#202020" }}>
+      <div className="sel-phone" style={{ position: "relative" }}>
+        {/* a pixel up over Making's dark wood, so the white of Making's section
+            never shows as a hairline between the two */}
+        {/* over the hand (`zIndex`), whose photograph's white top reaches up under it */}
+        <div ref={cardsRef} style={{ position: "relative", zIndex: 1, background: "#202020", marginTop: "-1px", paddingTop: "1px" }}>
+          <SelectedPhone />
+        </div>
+        {/* white before the hand, a pixel over the cards' frame and over the
+            hand's white top (`zIndex`); on a phone the section has no dark
+            ground of its own (the cards' frame has it), so none can show as
+            a hairline where a box ends between two pixels */}
+        <div aria-hidden style={{ position: "relative", zIndex: 1, height: `${P_WHITE_PX + 1}px`, marginTop: "-1px", background: "#fff" }} />
+        {/* the white veil over all of it, raised by the scroll */}
+        <div
+          ref={veilRef}
+          aria-hidden
+          style={{ position: "absolute", inset: 0, background: "#fff", opacity: 0, pointerEvents: "none", zIndex: 2, willChange: "opacity" }}
+        />
       </div>
       <div ref={ref} className="sel-desk" style={{ position: "relative", width: "100%", aspectRatio: `${FW} / ${FH}` }}>
         {/* The cards and the words come in together as the section rises; the
@@ -300,6 +363,7 @@ export function SelectedSection() {
         .sel-phone { display: none; }
         @media (max-width: 767px) {
           .sel-phone { display: block; }
+          .sel-sec { background: transparent !important; }
           .sel-desk { display: none; }
         }
       `}</style>

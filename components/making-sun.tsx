@@ -91,8 +91,8 @@ import { canvasDpr, isLite, skipFrame, type Gate } from "@/lib/satori-lights"
  * its flares with it; the white over the horizon stays where it is.
  *
  * Drawn on a canvas behind the sea and the trunk, in frame units; it runs only
- * while on screen. On a phone the section is the older phone frame, which has
- * no sun: the canvas is not shown there. Under reduced motion the author's
+ * while on screen. On a phone, smaller and nearer the trunk (`PHONE_*`).
+ * Under reduced motion the author's
  * eight lines are drawn still, where they were drawn.
  */
 
@@ -130,6 +130,20 @@ const BOX_H = SCENE.sun.to + 4 - BOX_Y
 const FW = SCENE.frame.w
 const FH = SCENE.frame.h
 
+
+/**
+ * On a phone (2026-11-18, the author's asking: "the sun stays fairly large,
+ * but may be made smaller so the screen holds more of it"), the section is a
+ * window onto the frame round the trunk (`P_CROP` in `making-section.tsx`),
+ * and the sun, where it is drawn, would stand mostly off its left edge. So
+ * there its canvas is `PHONE_SCALE` of its size and its centre at
+ * `PHONE_CX`, scaled about its foot, so the white over the horizon still
+ * ends just over the sea. Its motion, its rise and its storm are the same.
+ */
+// 900 and 0.5 at first; the same morning, the author's asking: further right and larger
+const PHONE_CX = 1060
+const PHONE_SCALE = 0.7
+const PHONE = "(max-width: 767px)"
 
 /** The canvas's pixels, capped (Satori 4's caps; 2000 until the sun grew to twice its size, which made the canvas half as wide again: raised so its lines stay as sharp). */
 const MAX_PX = 2800
@@ -417,19 +431,22 @@ export function MakingSun({ className }: { className?: string }) {
     }
   }, [])
 
+  const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(4)}%`
+  const f = PHONE_SCALE
   return (
-    <canvas
-      ref={ref}
-      className={className}
-      aria-hidden
-      style={{
-        position: "absolute",
-        left: `${((BOX_X / FW) * 100).toFixed(4)}%`,
-        top: `${((BOX_Y / FH) * 100).toFixed(4)}%`,
-        width: `${((BOX_W / FW) * 100).toFixed(4)}%`,
-        height: `${((BOX_H / FH) * 100).toFixed(4)}%`,
-        pointerEvents: "none",
-      }}
-    />
+    <>
+      <canvas
+        ref={ref}
+        className={`mk-sun-c${className ? ` ${className}` : ""}`}
+        aria-hidden
+        style={{ position: "absolute", pointerEvents: "none" }}
+      />
+      <style>{`
+        .mk-sun-c { left: ${pct(BOX_X, FW)}; top: ${pct(BOX_Y, FH)}; width: ${pct(BOX_W, FW)}; height: ${pct(BOX_H, FH)}; }
+        @media ${PHONE} {
+          .mk-sun-c { left: ${pct(PHONE_CX - (CX - BOX_X) * f, FW)}; top: ${pct(BOX_Y + BOX_H * (1 - f), FH)}; width: ${pct(BOX_W * f, FW)}; height: ${pct(BOX_H * f, FH)}; }
+        }
+      `}</style>
+    </>
   )
 }

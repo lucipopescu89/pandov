@@ -43,11 +43,10 @@ import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
  *    middle is up past the middle of the screen, every figure fades with the
  *    scroll, gone when the words are near the top; scrolling back brings them
  *    back. The eye in the dark wood stays. The figures are the file's
- *    `mk-figures` group (the phone's older file has none: the figures are
- *    gathered into one here). Only the computer's words carry
- *    `data-mk-words`: on a phone the words stand at the top of the older
- *    frame, over the figures, and the figures would be gone before they were
- *    seen, so there they stay.
+ *    `mk-figures` group (a file without one has its figures gathered into
+ *    one here). Only the computer's words carry `data-mk-words`: on a phone
+ *    the words stand over the picture, not on it, and nothing fades there;
+ *    the figures stay.
  *
  * The eye in the dark wood opens and shuts (2026-11-05, the author's asking).
  * It is shut at first; as the reader scrolls down and it comes up past
@@ -98,15 +97,11 @@ import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
 const SVG_VERSION = "2026-11-17b"
 const SRC = `/images/home/making-drawing.svg?v=${SVG_VERSION}`
 /**
- * The phone's drawing (2026-11-05, the author's frame "Making - Mobile"): its
- * own figures, fewer lines and the eye moved, written by the same script with
- * `--mobile`. Its viewBox is the old photograph's box in the phone frame's
- * units, so the page lays it over that box (`.mk-draw` in
- * `making-section.tsx`). Chosen by the same query as the phone's layout, and
- * swapped when the screen crosses it. Not re-exported on 2026-11-17.
+ * The phone had its own drawing until 2026-11-18 (the author's frame "Making
+ * - Mobile" of 2026-11-05, `making-drawing-mobile.svg`, written by the script
+ * with `--mobile`); since then it shows the computer's, through its window
+ * onto the frame (`P_CROP` in `making-section.tsx`).
  */
-const SRC_PHONE = `/images/home/making-drawing-mobile.svg?v=${SVG_VERSION}`
-const PHONE = "(max-width: 767px)"
 
 /** The travelling stroke's length, as a share of its line's (a third until the author's asking, 2026-11-05). */
 const LOOP_SEGMENT = 2 / 3
@@ -1146,7 +1141,6 @@ export function MakingDrawing() {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    const phone = matchMedia(PHONE)
     let turn = 0 // which load is current: a swap while one is in flight drops it
     let stop = () => {}
     const load = () => {
@@ -1154,7 +1148,7 @@ export function MakingDrawing() {
       stop()
       stop = () => {}
       host.innerHTML = ""
-      fetch(phone.matches ? SRC_PHONE : SRC)
+      fetch(SRC)
         .then((r) => r.text())
         .then((text) => {
           if (mine !== turn) return
@@ -1174,10 +1168,8 @@ export function MakingDrawing() {
         .catch(() => {})
     }
     load()
-    phone.addEventListener("change", load)
     return () => {
       turn++
-      phone.removeEventListener("change", load)
       stop()
       host.innerHTML = ""
     }

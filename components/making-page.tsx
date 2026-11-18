@@ -56,8 +56,15 @@ const GROUND = "#202020"
 /** The frame's boxes, px. */
 const WOOD = { top: 571, h: 957 } // image 30, the found wood
 const SKETCH = { top: 3378, h: 1201 } // image 31, the sketches
-/** The found wood's photograph (4752 × 3168), in the drawing's units: 1920 × 1280. */
-const WOOD_FULL_H = 1280
+/**
+ * The found wood's photograph (the author's Found_RawWood.jpg, 4752 × 3168,
+ * retouched on 2026-11-18), in the drawing's units: 1920 × 1280 whole. Its
+ * top `WOOD_CROP` is cut off (the author's asking, 2026-11-18: only blurred
+ * forest there, and the knot's circle came into view too late), so the plate
+ * is 1920 × 1190 and everything on it is measured from the cut.
+ */
+const WOOD_CROP = 90
+const WOOD_FULL_H = 1280 - WOOD_CROP
 /** The sketches (3565 × 2344) drawn 1920 wide: 1262 tall, cropped to 1201. */
 const SKETCH_FULL_H = 1262
 const SKETCH_CROP = (SKETCH_FULL_H - SKETCH.h) / 2
@@ -65,10 +72,13 @@ const SKETCH_CROP = (SKETCH_FULL_H - SKETCH.h) / 2
  * The drawing on the found wood, in the photograph's own coordinates (1920 ×
  * 1280), at its own size: its circle stands in the hollow under the knot. Set
  * from the author's screenshot of 2026-11-17 (matched against the photograph:
- * the circle's centre at 746, 908); it is the frame's place for it too, with
- * the photograph aligned to its bottom.
+ * the circle's centre at 746.5, 908 of the whole photograph); it is the
+ * frame's place for it too, with the photograph aligned to its bottom. The
+ * author's redrawing of 2026-11-18 ("desen pe lemn gasit.svg", 716 × 949, its
+ * circle at 139.5, 587.5) is placed by its circle on the same spot, less the
+ * crop.
  */
-const DRAWING_AT = { x: 662, y: 374 }
+const DRAWING_AT = { x: 746.5 - 139.5, y: 908 - 587.5 - WOOD_CROP }
 /** Where the frame places Siluet 2, px, frame coordinates. */
 const SILUET_AT = { x: 886.26, y: 3753.21 }
 
@@ -110,7 +120,7 @@ function woodDrawing() {
     }
     const d = s.match(/\sd="([^"]+)"/)?.[1] ?? ""
     return (
-      `<mask id="mk-tr-${i}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="740" height="880">` +
+      `<mask id="mk-tr-${i}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="820" height="1050">` +
       `<path d="${d}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="0 1" data-trace="mask" data-i="${i}"/>` +
       `</mask>` +
       s.replace("<path", `<path mask="url(#mk-tr-${i})"`)
@@ -120,7 +130,7 @@ function woodDrawing() {
 
 const CSS = `
 .mk{--h1:min(${vw(WOOD.h)},100vh);--h1:min(${vw(WOOD.h)},100svh);--vh:100vh;--vh:100svh;
-  --t1:calc((var(--vh) - var(--h1)) / 2);--zoom:1.3;--s1:200vh;--s2:165vh;--s3:260vh;
+  --t1:calc((var(--vh) - var(--h1)) / 2);--zoom:1.3;--s1:210vh;--s2:165vh;--s3:260vh;
   background:${GROUND};overflow-x:clip;font-family:${TEXT_FONT};font-size:${TEXT_SIZE}px;letter-spacing:${TEXT_TRACK};line-height:1.7;font-weight:400}
 .mk p{margin:0}
 .mk-text{position:absolute;z-index:4;max-width:${vw(837)}}
@@ -140,8 +150,9 @@ const CSS = `
 .mk-c1{position:relative;height:calc(var(--h1) * 2 + var(--s1) + var(--s2));background:${GROUND}}
 .mk-hold{position:sticky;top:var(--t1);height:var(--h1);overflow:hidden}
 .mk-c1>.mk-hold:first-child{opacity:0;will-change:opacity,transform}
-/* The found wood's plate: the photograph (3:2) covering its frame, then --zoom larger, so it has room to travel. */
-.mk-plate{position:absolute;left:0;top:0;width:calc(var(--zoom) * max(100%, var(--h1) * 1.5));aspect-ratio:3/2;will-change:transform}
+/* The found wood's plate: the photograph drawn as large as its whole (3:2) would cover the frame, then --zoom larger, so it has
+   room to travel; its top is cropped (WOOD_CROP), so it is a little less tall than that. */
+.mk-plate{position:absolute;left:0;top:0;width:calc(var(--zoom) * max(100%, var(--h1) * 1.5));aspect-ratio:${FRAME_W}/${WOOD_FULL_H};will-change:transform}
 .mk-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .mk-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .mk-fire{z-index:2;background:#000}
@@ -167,7 +178,7 @@ const CSS = `
 .mk-hint-p{display:none}
 @media (hover:none){.mk-hint-d{display:none}.mk-hint-p{display:inline}}
 @media (max-width:767px){
-  .mk{--h1:78vh;--h1:78svh;--s1:200vh;--s2:150vh;--s3:240vh;--zoom:1.35}
+  .mk{--h1:78vh;--h1:78svh;--s1:210vh;--s2:150vh;--s3:240vh;--zoom:1.35}
   .mk-text{max-width:84vw !important;left:8vw !important}
   /* On a phone the bottom words on the wood stand where the top words stood, at the top, clear of the knot's circle (the author's asking). */
   .mk-words-low{top:${((658 - WOOD.top) / WOOD.h * 100).toFixed(2)}% !important}
@@ -212,7 +223,7 @@ export function MakingPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 className="mk-cover"
-                src="/images/making/found-wood-plate.avif"
+                src="/images/making/found-wood-plate.avif?v=2"
                 alt="A weathered branch standing in a bare autumn wood"
               />
             </picture>
