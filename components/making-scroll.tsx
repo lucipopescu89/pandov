@@ -1,6 +1,22 @@
 "use client"
 
 import { useEffect } from "react"
+import {
+  clamp01,
+  smooth,
+  ramp,
+  words,
+  FADE,
+  ARRIVE,
+  arriveOpacity,
+  fireTravel,
+  fireSlowFrom,
+  FIRE_EASE,
+  FIRE_HOLD,
+  PHONE_FIRE_ARRIVE,
+  PHONE_FIRE_DRIFT,
+  PHONE_FIRE_EXIT,
+} from "@/lib/making-rhythm"
 
 /* --------------------------------------------------------------------------
    The scroll on /making (`making-page.tsx`), written onto the page as it moves.
@@ -12,23 +28,25 @@ import { useEffect } from "react"
      top words, its drawing traced and then untraced (each line drawn back
      from its end, the last drawn first), the bottom words. The drawing lives
      on the photograph's plate and never moves against it.
-   - The fire: once it has risen over the found wood and holds there too, a
-     white veil comes over it as the page goes on.
+   - The fire: since 2026-11-19 not held: its own passage (`.mk-fs`) begins
+     as the found wood is nearly gone, and it goes up the window all the way,
+     slower about the middle where its words are (`fireTravel`). (Until then
+     it rose over the found wood, was held, and a veil of the dark came over
+     it.)
    - The sketches: they come up out of the white as their passage rises into
      the window; held, the first words come, Siluet 2 rises out of the paper
-     from its foot, the words go; then the picture goes down into #202020
-     and the last words come up out of it.
+     from its foot, the words go, and the page moves on to Heavy Light
+     (`making-heavy.tsx`, which has the last words since 2026-11-19, on
+     white).
 
    Every change follows the scroll, so it goes back the way it came.
-   -------------------------------------------------------------------------- */
 
-const clamp01 = (t: number) => (t > 0 ? (t < 1 ? t : 1) : 0)
-const smooth = (t: number) => {
-  const c = clamp01(t)
-  return c * c * (3 - 2 * c)
-}
-/** 0 before `a`, 1 after `b`, eased between. */
-const ramp = (x: number, a: number, b: number) => smooth((x - a) / (b - a))
+   Since 2026-11-19 every passage keeps the page's one rhythm
+   (`lib/making-rhythm.ts`): the words come and go over `FADE` (`words`), the
+   fire comes up out of transparency as the found wood does, and the turning
+   piece comes in over its end (`making-harag.tsx`).
+   The sketches are held in the found wood's frame (`--h1`), not the window.
+   -------------------------------------------------------------------------- */
 
 /** The drawing: each stroke takes this share of the tracing, the next starting `TRACE_STEP` later. */
 const TRACE_SPAN = 0.42
@@ -46,12 +64,34 @@ const ARRIVE_RISE = 0.12
  * and it can leave without waiting.
  */
 const STAGE = {
-  // The top words come as the photograph arrives (by its arrival, `pIn`),
-  // and go early once it is held.
-  top: { in: [0.5, 0.95], out: [0.35, 0.57] },
+  // The top words come as the photograph settles (from a quarter of a window
+  // before it), and go early once it is held, before the drawing.
+  top: [-0.25, 0.57],
   // They come as the drawing begins to be drawn back.
-  bottom: { in: [1.3, 1.45], out: [1.7, 1.85] },
+  bottom: [1.15, 1.85],
 } as const
+/**
+ * The fire's words, in windows of scroll: they come this far before its slowing
+ * begins, and are gone this far before it stands in the middle of the window.
+ */
+const FIRE_WORDS_LEAD = 0.25
+const FIRE_WORDS_CLEAR = 0.05
+/**
+ * The last words and the menu: they come in from this share of the last
+ * screen's way up (Heavy Light's white then nearly done), and rise together
+ * this share of the window (the words from about its middle to 30% down).
+ */
+const LAST_IN = 0.15
+const LAST_RISE = 0.2
+/**
+ * While the page flows: Heavy Light goes into the white as it rises
+ * (`RISE_WHITE`, 0.4 of a window, making-heavy.tsx), and the last words come
+ * only once it is nearly white (2026-11-19, the author's asking).
+ */
+const LAST_IN_FLOW = 0.32
+/** The sketches, in windows since their frame settled: the words, and Siluet 2 rising. */
+const PAPER_WORDS = [0.55, 1.85] as const
+const PAPER_GROW = [0.6, 1.9] as const
 
 /**
  * The drawing (2026-11-18, the author's asking: no empty scroll between the
@@ -107,10 +147,30 @@ const PAN_END = 1.85
 const KNEE = 0.3
 const PAN_LEFT = -0.16
 const PHONE_BRANCH_X = 0.48
+/** The knot's circle across the plate (746.5 of 1920), and how far from the frame's left edge it is kept at least on a phone. */
+const CIRCLE_X = 746.5 / 1920
+const CIRCLE_MIN_X = 0.3
 const PHONE = "(max-width: 767px)"
-/** The page's own words, held in the sketches' passage, rise this far as they come, px. */
-const RISE_PX = 18
-const DARK = [0x20, 0x20, 0x20]
+
+/**
+ * The found wood's gearing (2026-11-19, the author's asking: on a narrow
+ * screen the photograph went down its frame slowly). Its frame and plate are
+ * sized by the window's width (vw) but its passage was measured in windows of
+ * height, so a narrower window gave the photograph less to travel over the
+ * same scroll: about 34px of picture per 100px of scroll at 1920 × 950, 15px
+ * at 800 × 900. Now the passage is measured in a shorter "window" there, in
+ * proportion to the photograph's travel (`REF_TRAVEL` of the window's height,
+ * a 1440–1920 desktop's), so it goes at about the same pace everywhere; every
+ * turn (`STAGE`, the drawing, the leaving) keeps its place along the way, and
+ * the stretch before the fire (`--s1`, `S1_VH` in the CSS) is shortened with
+ * it. A wide screen is unchanged (`f` is 1); never below `MIN_GEAR`, so the
+ * words still have time to be read; the phone keeps its own (the author's
+ * call still to make).
+ */
+const REF_TRAVEL = 0.6
+const MIN_GEAR = 0.45
+/** `--s1` in `making-page.tsx` (210vh, the phone's too): keep the two in step. */
+const S1_VH = 210
 
 /**
  * The paces of the pan, as shares of its travel per window of scroll: `fast`
@@ -146,14 +206,17 @@ export function MakingScroll() {
     const woodWords2 = $("wood-words-2")
     const plate = $("plate")
     const fireWords = $("fire-words")
-    const white = $("white")
+    const fireSec = $("fire-sec")
     const paper = $("paper")
     const stage = $("stage")
     const sketches = $("sketches")
     const siluet = $("siluet")
     const rise = document.querySelector<SVGRectElement>('[data-mk="rise"]')
     const paperWords = $("paper-words")
-    const lastWords = $("last-words")
+    const end = $("end")
+    const bgVeil = $("bg-veil")
+    const flowing = !!wood?.closest(".mk-flow")
+    const endIn = $("end-in")
     if (!wood || !drawing || !paper || !stage) return
 
     // The strokes, in the order the export lists them; the circle is the knot.
@@ -177,20 +240,155 @@ export function MakingScroll() {
       else (el as HTMLElement).style.setProperty(prop, value)
     }
 
+    /**
+     * A phone, to try (2026-11-19, the author's asking: "it runs very heavy;
+     * take off all the holding to the screen and let us see how the page
+     * flows"): the found wood, the fire and the sketches are not held; they
+     * go up with the page, and what they do is read off how far each has
+     * come through the window (`passing`: 0 as it comes in at the foot, or
+     * where it first stands, to 1 as it leaves at the top). Only the turning
+     * piece and Heavy Light, which play sequences, are still held.
+     */
+    const passing = (el: HTMLElement, vh: number) => {
+      const r = el.getBoundingClientRect()
+      const docTop = r.top + window.scrollY
+      const from = Math.min(vh, docTop)
+      return { p: clamp01((from - r.top) / Math.max(1, from + r.height)), first: docTop < vh }
+    }
+    const lastScreen = (vh: number) => {
+    // ── The last screen: the last words with the bottom menu (2026-11-19) ──
+    // The words and the menu are one (`.mk-end-in`): they come out of
+    // transparency together, the words about the middle of the window,
+    // Heavy Light nearly gone into the white (`LAST_IN` of the last
+    // screen's way up), and rise together, only `LAST_RISE` of the window,
+    // reaching their places as the page ends. (Earlier that day the words
+    // came alone, or the two came up with the page from its foot.)
+    if (end && endIn) {
+      const top = end.getBoundingClientRect().top
+      const p = clamp01(1 - top / vh)
+      const from = flowing ? LAST_IN_FLOW : LAST_IN
+      const l = ramp(p, from, from + FADE)
+      set(endIn, "opacity", l.toFixed(3))
+      set(endIn, "transform", `translate3d(0, ${((1 - p) * LAST_RISE * vh - Math.max(0, top)).toFixed(1)}px, 0)`)
+      set(endIn, "pointer-events", l > 0.5 ? "auto" : "none")
+    }
+    }
+    const phoneFlow = (vh: number) => {
+      // ── The found wood ──
+      const holdEl = wood.firstElementChild as HTMLElement
+      set(holdEl, "transform", "none")
+      const w = passing(holdEl, vh)
+      const fadeIn = w.first ? 1 : ramp(w.p, 0.02, 0.2)
+      set(holdEl, "opacity", (fadeIn * (1 - ramp(w.p, 0.8, 0.97))).toFixed(3))
+      if (plate) {
+        const fw = holdEl.offsetWidth
+        const pw = plate.offsetWidth
+        const fhh = holdEl.offsetHeight
+        const phh = plate.offsetHeight
+        const travel = Math.max(0, phh - fhh)
+        // The branch in the middle, unless that would take the knot's circle
+        // (the drawing's centre of interest, `CIRCLE_X` of the plate's width)
+        // nearer the left edge than `CIRCLE_MIN_X` of the frame: then the
+        // circle is kept there (2026-11-19, the author's asking).
+        const xBranch = fw / 2 - PHONE_BRANCH_X * pw
+        const xCircle = CIRCLE_MIN_X * fw - CIRCLE_X * pw
+        // A computer: the branch towards the right, as when it was held (`PAN_LEFT`).
+        const xWant = window.matchMedia(PHONE).matches ? Math.max(xBranch, xCircle) : PAN_LEFT * fw
+        const x = Math.min(0, Math.max(fw - pw, xWant))
+        // It starts as far down the photograph as needs be for the knot's
+        // circle to be in the frame (its foot at 85% of it) by the time the
+        // drawing begins (`w.p` 0.25): on a wide screen the frame shows less of
+        // the photograph's height, and the circle came in already drawn
+        // (2026-11-19, the author's asking).
+        const vIn = travel > 0 ? clamp01(((CIRCLE.y + CIRCLE.r) * phh - 0.85 * fhh) / travel) : 0
+        const k0 = 0.25 / 0.85
+        const v0 = clamp01((vIn - k0) / (1 - k0))
+        const v = v0 + (1 - v0) * clamp01(w.p / 0.85)
+        set(plate, "transform", `translate3d(${x.toFixed(1)}px, ${(-travel * v).toFixed(1)}px, 0)`)
+      }
+      const pTrace = clamp01((w.p - 0.25) / 0.25)
+      const pOut = clamp01((w.p - 0.55) / 0.15)
+      traces.forEach((t, i) => {
+        const drawn = smooth((pTrace - i * step) / TRACE_SPAN)
+        const gone = smooth((pOut - (n - 1 - i) * step) / TRACE_SPAN)
+        set(t, "attr:stroke-dasharray", `${(Math.min(drawn, 1 - gone) * reach[i]).toFixed(4)} 1`)
+      })
+      set(woodWords1, "opacity", ((w.first ? 1 : ramp(w.p, 0.08, 0.18)) * (1 - ramp(w.p, 0.2, 0.28))).toFixed(3))
+      // The second words (2026-11-19, the author's asking: "they pass too
+      // quickly"): lower on the wood (77%, 65% before) and much sooner, as
+      // they come up into the lower part of the window while the circle is
+      // being drawn; they stay until near the top (0.36 … 0.84 of the way,
+      // 0.58 … 0.84 until then).
+      set(woodWords2, "opacity", (ramp(w.p, 0.36, 0.46) * (1 - ramp(w.p, 0.74, 0.84))).toFixed(3))
+
+      // ── The fire ──
+      if (fire) {
+        set(fire, "transform", "none")
+        const f = passing(fire, vh)
+        // Out of transparency over its first third, as the found wood came; its
+        // words high on it, gone before it fills the window (its middle is
+        // there at about half its way).
+        set(fire, "opacity", (ramp(f.p, 0, 0.32) * (1 - ramp(f.p, 0.78, 0.97))).toFixed(3))
+        set(fireWords, "opacity", (ramp(f.p, 0.1, 0.2) * (1 - ramp(f.p, 0.3, 0.4))).toFixed(3))
+      }
+
+      // ── The sketches ──
+      const band = paper.querySelector<HTMLElement>(".mk-band")
+      if (band) {
+        const k = passing(band, vh)
+        const picture = ramp(k.p, 0.02, 0.25).toFixed(3)
+        set(sketches, "opacity", picture)
+        set(siluet, "opacity", picture)
+        if (rise) set(rise, "attr:y", (868 - ramp(k.p, 0.25, 0.65) * 978).toFixed(1))
+        set(paperWords, "opacity", (ramp(k.p, 0.12, 0.25) * (1 - ramp(k.p, 0.6, 0.72))).toFixed(3))
+      }
+      // ── The white after the scan (2026-11-19, the author's asking: "it goes
+      // straight into white, no grey or black under it") ──
+      if (bgVeil) {
+        const sc = document.querySelector<HTMLElement>('[data-mk="scan"]')
+        // White as its words reach the top of the window (the author's asking,
+        // later: 0.3–0.48 turned white with them only half way up), nearly so
+        // as the picture's foot comes in.
+        set(bgVeil, "opacity", sc ? ramp(passing(sc, vh).p, 0.38, 0.54).toFixed(3) : "0")
+      }
+      lastScreen(vh)
+    }
+
     const update = () => {
       raf = 0
       const vh = window.innerHeight
+      // The page flows (nothing held but the turning piece and Heavy Light)
+      // on a phone, and on a computer while <main> carries `.mk-flow`
+      // (2026-11-19, the author's asking, to see it there too; take the class
+      // off in making-page.tsx and the held passages come back).
+      if (flowing || window.matchMedia(PHONE).matches) {
+        phoneFlow(vh)
+        return
+      }
 
       // ── The found wood ──
       {
-        const r = wood.getBoundingClientRect()
         const holdEl = wood.firstElementChild as HTMLElement
+        // The gearing first (it sets `--s1`, so before anything is measured):
+        // from the frame and plate, which do not depend on it.
+        const fh0 = holdEl.offsetHeight
+        const travel0 = Math.max(0, (plate ? plate.offsetHeight : fh0) - fh0)
+        const phone = window.matchMedia(PHONE).matches
+        // A phone too since 2026-11-19 (its plate was made larger for it,
+        // `--zoom` 1.6): it went at a ninth of the page's pace there.
+        const f = Math.min(1, Math.max(MIN_GEAR, travel0 / (REF_TRAVEL * vh)))
+        // On the page, not the found wood alone: the fire's passage is placed by it too.
+        set(wood.parentElement, "--s1", f < 1 ? `${(S1_VH * f).toFixed(2)}vh` : "")
+        // The passage's "window" of scroll: the window's height, or less (`f`).
+        const win = vh * f
+
+        const r = wood.getBoundingClientRect()
         const hold = holdEl.getBoundingClientRect()
         const settle = (vh - hold.height) / 2
         // How far the page has gone since the photograph settled and held, in
-        // windows.
+        // windows of the passage.
         const held = Math.max(0, settle - r.top)
-        const u = held / vh
+        const u = held / win
         // Its arrival, from where it first stands to its settling: it comes up
         // from below and out of full transparency (the page opens without it).
         const from = Math.min(vh * 0.92, r.top + window.scrollY)
@@ -205,11 +403,11 @@ export function MakingScroll() {
         const { fast, slow } = panPaces(vIn)
         // And its leaving: up with the page, out of opacity, setting off at
         // the pace the photograph was travelling through the frame.
-        const pace = (slow * travel) / vh
-        const x = Math.max(0, held - PAN_END * vh)
-        const d = EXIT_EASE * vh
+        const pace = (slow * travel) / win
+        const x = Math.max(0, held - PAN_END * win)
+        const d = EXIT_EASE * win
         const lift = x < d ? pace * x + ((1 - pace) * x * x) / (2 * d) : pace * d + ((1 - pace) * d) / 2 + (x - d)
-        const leave = 1 - smooth(lift / (vh * EXIT_FADE))
+        const leave = 1 - smooth(lift / (win * EXIT_FADE))
         set(holdEl, "opacity", (smooth(pIn / ARRIVE_BY) * leave).toFixed(3))
         set(holdEl, "transform", `translateY(${((1 - smooth(pIn)) * vh * ARRIVE_RISE - lift).toFixed(1)}px)`)
 
@@ -225,11 +423,11 @@ export function MakingScroll() {
           set(plate, "transform", `translate3d(${Math.min(0, Math.max(fw - pw, x)).toFixed(1)}px, ${y.toFixed(1)}px, 0)`)
         }
 
-        // In turns: the top words, the drawing, the bottom words.
-        const turn = (w: { in: readonly number[]; out: readonly number[] }) =>
-          (ramp(u, w.in[0], w.in[1]) * (1 - ramp(u, w.out[0], w.out[1]))).toFixed(3)
-        set(woodWords1, "opacity", (ramp(pIn, STAGE.top.in[0], STAGE.top.in[1]) * (1 - ramp(u, STAGE.top.out[0], STAGE.top.out[1]))).toFixed(3))
-        set(woodWords2, "opacity", turn(STAGE.bottom))
+        // In turns: the top words, the drawing, the bottom words (`x` is `u`
+        // but goes on below 0 before it settles).
+        const xs = (settle - r.top) / win
+        set(woodWords1, "opacity", words(xs, STAGE.top[0], STAGE.top[1]).toFixed(3))
+        set(woodWords2, "opacity", words(u, STAGE.bottom[0], STAGE.bottom[1]).toFixed(3))
         // The drawing begins as the top words finish going, the pan having
         // brought its circle into the frame by then.
         const u0 = TRACE_FROM
@@ -241,58 +439,66 @@ export function MakingScroll() {
           const q = Math.min(drawn, 1 - gone) * reach[i]
           set(t, "attr:stroke-dasharray", `${q.toFixed(4)} 1`)
         })
-        // The white over the fire, through the last part of the stretch it
-        // is held: from when it settles over the found wood until both go.
-        if (fire && white) {
+        // The fire (2026-11-19, later, the author's asking): its own
+        // passage, not held; it goes up the window all the way, slower about
+        // the middle where its words are (`fireTravel`), out of transparency
+        // as it comes up from the foot and into it again as it goes out at
+        // the top, as the found wood comes and goes.
+        if (fire && fireSec && phone) {
+          // A phone (2026-11-19, the author's asking): it comes where the
+          // found wood stands and as it came, drifts up slowly while it is
+          // watched, and goes up and out as the found wood goes.
+          const z = -fireSec.getBoundingClientRect().top / vh
+          const a = clamp01(z / PHONE_FIRE_ARRIVE)
+          const drift = PHONE_FIRE_DRIFT * Math.min(Math.max(0, z), PHONE_FIRE_EXIT)
+          const xo = Math.max(0, z - PHONE_FIRE_EXIT)
+          const pace = PHONE_FIRE_DRIFT
+          const lift =
+            xo < EXIT_EASE
+              ? pace * xo + ((1 - pace) * xo * xo) / (2 * EXIT_EASE)
+              : pace * EXIT_EASE + ((1 - pace) * EXIT_EASE) / 2 + (xo - EXIT_EASE)
+          const T = settle + (1 - smooth(a)) * vh * ARRIVE_RISE - (drift + lift) * vh
+          set(fire, "transform", `translate3d(0, ${T.toFixed(1)}px, 0)`)
+          set(fire, "opacity", (smooth(a / ARRIVE_BY) * (1 - smooth(lift / EXIT_FADE))).toFixed(3))
+          set(fireWords, "opacity", words(z, 0.1, 1.0).toFixed(3))
+        } else if (fire && fireSec) {
           const h1 = hold.height
-          const s1 = (fire.previousElementSibling as HTMLElement | null)?.offsetHeight ?? 0
-          const s2 = r.height - 2 * h1 - s1
-          const t = s2 > 0 ? 1 - (r.bottom - settle - h1) / s2 : 0
-          const w = ramp(t, 0.55, 0.9)
-          // Its words, held with it: they come once it has settled and go
-          // before the white, by opacity alone.
-          set(fireWords, "opacity", (ramp(t, 0.04, 0.16) * (1 - ramp(t, 0.36, 0.5))).toFixed(3))
-          set(white, "opacity", w.toFixed(3))
-          // Its own ground goes white with it, so no hairline of black is left
-          // at its edges where it meets the white page on a fractional pixel;
-          // and the found wood under it goes once it is covered for good.
-          const g = Math.round(255 * w)
-          set(fire, "background-color", `rgb(${g},${g},${g})`)
-          // The passage's dark ground (#202020) goes white with it, so the
-          // page is white by the time the scan comes.
-          const k = Math.round(0x20 + (255 - 0x20) * w)
-          set(wood, "background-color", `rgb(${k},${k},${k})`)
-          set(wood.firstElementChild, "visibility", w >= 0.999 ? "hidden" : "visible")
+          const z = -fireSec.getBoundingClientRect().top / vh
+          const T = vh - fireTravel(z, h1 / vh) * vh // its top, in the window
+          set(fire, "transform", `translate3d(0, ${T.toFixed(1)}px, 0)`)
+          const reach = Math.max(1, vh * 0.92 - settle)
+          const pIn = clamp01((vh * 0.92 - T) / reach)
+          const pOut = clamp01((settle - T) / reach)
+          set(fire, "opacity", (smooth(pIn / ARRIVE_BY) * smooth((1 - pOut) / ARRIVE_BY)).toFixed(3))
+          // Its words: early, as it comes up, and gone by the time it stands
+          // in the middle of the window, so the fire is then seen with
+          // nothing over it (2026-11-19, the author's asking; they stood
+          // through the slow stretch until then).
+          const z1 = fireSlowFrom(h1 / vh)
+          const zMid = z1 + FIRE_EASE + FIRE_HOLD / 2
+          set(fireWords, "opacity", words(z, z1 - FIRE_WORDS_LEAD, zMid - FIRE_WORDS_CLEAR).toFixed(3))
         }
       }
 
       // ── The sketches ──
+      // Since 2026-11-19 they begin under the scan's white end: their window
+      // is held from the moment the scan's white is done; until then it is
+      // transparent and empty, then white, and the picture comes out of
+      // transparency in the found wood's frame (`ARRIVE`), its words and
+      // Siluet 2 after it. Timed in windows since the window was held.
       {
         const r = paper.getBoundingClientRect()
-        const held = Math.max(1, r.height - vh)
-        // Coming up into the window: out of the white.
-        const come = smooth((vh - r.top) / vh)
-        // Held: 0 → 1 across the stretch it stays.
-        const q = clamp01(-r.top / held)
-        const words = ramp(q, 0.02, 0.12) * (1 - ramp(q, 0.42, 0.52))
-        const grow = ramp(q, 0.06, 0.55)
-        const dusk = ramp(q, 0.58, 0.8)
-        const last = ramp(q, 0.78, 0.93)
-        const picture = (come * (1 - dusk)).toFixed(3)
+        const y = -r.top / vh
+        set(stage, "background-color", y >= 0 ? "#fff" : "transparent")
+        const picture = arriveOpacity(y / ARRIVE).toFixed(3)
         set(sketches, "opacity", picture)
         set(siluet, "opacity", picture)
+        const grow = ramp(y, PAPER_GROW[0], PAPER_GROW[1])
         if (rise) set(rise, "attr:y", (868 - grow * 978).toFixed(1))
-        const c = DARK.map((d) => Math.round(255 + (d - 255) * dusk))
-        set(stage, "background-color", `rgb(${c[0]},${c[1]},${c[2]})`)
-        // The passage under it too: where the held stage meets its ends on a
-        // fractional pixel, the page's white would show as a hairline.
-        set(paper, "background-color", `rgb(${c[0]},${c[1]},${c[2]})`)
-        set(paperWords, "opacity", words.toFixed(3))
-        set(paperWords, "transform", `translateY(${((1 - ramp(q, 0.02, 0.12)) * RISE_PX).toFixed(1)}px)`)
-        set(lastWords, "opacity", last.toFixed(3))
-        set(lastWords, "transform", `translateY(calc(-50% + ${((1 - last) * RISE_PX).toFixed(1)}px))`)
-        set(lastWords, "pointer-events", last > 0.5 ? "auto" : "none")
+        set(paperWords, "opacity", words(y, PAPER_WORDS[0], PAPER_WORDS[1]).toFixed(3))
       }
+
+      lastScreen(vh)
     }
 
     const onScroll = () => {

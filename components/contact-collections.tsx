@@ -46,6 +46,12 @@ const INSTAGRAM_URL = "https://www.instagram.com/pandov.studio/"
  * piece, then, asked again, a block at a time). The hairlines between them
  * fade on their own. See CenterFade. The menus are not faded.
  *
+ * The three texts under the titles are broken into lines by hand (2026-11-19,
+ * the author's asking), for an editorial feel: each line a unit of sense, cut
+ * at the strongest pause, never ending on a weak word (and, the, for), long
+ * and short lines alternating, none over ~39 characters so that at 12px the
+ * lines fit an iPhone 8 and never wrap a second time. The spacing is unchanged.
+ *
  * The form writes the message into the visitor's own mail app, addressed to
  * the studio, as ORDER does on the pendant pages: the author chose mailto over
  * a form service on 2026-09-23, and nothing here needs a server. The subscribe
@@ -160,7 +166,11 @@ export function ContactCollections() {
             Get in Touch
           </h2>
           <p className="ct-t ct-read" style={{ margin: "28px 0 0", maxWidth: 420 }}>
-            For commissions, object enquiries, collaborations, wholesale and gallery representation:
+            For commissions, object enquiries,
+            <br />
+            collaborations, wholesale
+            <br />
+            and gallery representation:
           </p>
           <a
             href={`mailto:${STUDIO_EMAIL}`}
@@ -251,14 +261,21 @@ export function ContactCollections() {
             Studio &amp; Shipping
           </h2>
           <p className="ct-t ct-read" style={{ margin: "28px 0 0", maxWidth: 440 }}>
-            We are based in Padeș, Gorj, Romania, and ship throughout the European Union. For destinations outside
-            the EU, please contact us to discuss individual shipping options.
+            We are based in Padeș, Gorj, Romania
+            <br />
+            and ship throughout the European Union.
+            <br />
+            For destinations outside the EU,
+            <br />
+            please contact us to discuss
+            <br />
+            individual shipping options.
           </p>
           <div className="ct-2col" style={{ width: "100%", maxWidth: 440, marginTop: 40 }}>
             <div className="flex flex-col items-center" style={{ gap: 10 }}>
               <span className="ct-label">In stock</span>
               <span className="ct-t" style={{ fontSize: TEXT_SIZE, color: "#e6e6e6" }}>
-                Dispatched within 1 business day
+                Dispatched within 1–3 business days
               </span>
             </div>
             <div className="flex flex-col items-center" style={{ gap: 10 }}>
@@ -281,7 +298,9 @@ export function ContactCollections() {
             Stay in the Loop
           </h2>
           <p className="ct-t ct-note" style={{ margin: "20px 0 0", maxWidth: 380 }}>
-            Occasional updates on new objects, collections and ongoing explorations.
+            Occasional updates on new objects,
+            <br />
+            collections and ongoing explorations.
           </p>
           <form
             onSubmit={(e) => e.preventDefault()}

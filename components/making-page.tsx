@@ -7,6 +7,9 @@ import { CenterFade } from "@/components/center-fade"
 import { MakingScroll } from "@/components/making-scroll"
 import { MakingVideo } from "@/components/making-video"
 import { MakingScan } from "@/components/making-scan"
+import { MakingHarag } from "@/components/making-harag"
+import { MakingHeavy } from "@/components/making-heavy"
+import { FIRE_SECTION_EXTRA, FIRE_FROM_S1, PHONE_FIRE_Z, PHONE_FIRE_FROM_S1 } from "@/lib/making-rhythm"
 import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
 
 /**
@@ -25,7 +28,10 @@ import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
  *  5. The words come and go with the scroll, slowly (`CenterFade`).
  *  6. The fire video rises over the photograph, which holds still beneath it. The video loops with
  *     no seam, its end dissolving into its start (`MakingVideo`, `scripts/making-burn.py`).
- *  7. Scrolling on, the video goes to white.
+ *  7. Scrolling on, the video goes into the dark (#202020; it went to white
+ *     until 2026-11-18), and the piece on its branch turns once round with the
+ *     scroll (`MakingHarag`, the render "Secvente Harag"); the white comes
+ *     over it at its end.
  *  8. Under it, the scan of the log end with the figure in it (`MakingScan`):
  *     the photograph and its 3D scan either side of a line the visitor moves
  *     (before and after), large on the left and moving faster than the page. (Until the author's asking
@@ -33,7 +39,28 @@ import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
  *     unused.)
  *  9. The sketches come up out of the white; Siluet 2 rises out of the paper,
  *     from its foot to its head.
- * 10. The sketches go down into #202020 until only the last words are left.
+ * 10. Heavy Light (2026-11-19, `MakingHeavy`): the wooden piece and its four
+ *     3D models turning beside it, then the page goes into white until only
+ *     the last words are left (they came over the sketches until that day; the
+ *     white was #202020 until later that day).
+ *
+ * **One rhythm** (2026-11-19, the author's asking: the page seemed chaotic):
+ * every passage now follows `lib/making-rhythm.ts`. Every picture is held in
+ * the found wood's frame (`--h1`; the turning piece alone keeps the window's
+ * height), comes out of transparency with a small glide, and has its words
+ * only once it has come, fading over the same length of scroll. The ground is
+ * the site's dark from the top through the scan, then white to the foot. On
+ * the dark the passages follow each other with no empty scroll between them:
+ * the turning piece begins under the fire's end, the scan under the turning
+ * piece's.
+ *
+ * **The fire is no longer held** (later that day, the author's asking: it
+ * lacked fluency): it has its own passage (`.mk-fs`), beginning as the found
+ * wood is nearly gone, and goes up the window all the way, out of
+ * transparency and into it again, only slower about the middle, where its
+ * words are (`fireTravel` in `lib/making-rhythm.ts`). **The last words** stand
+ * with the bottom menu on one last screen (`.mk-end`, a little above the
+ * middle), coming up together over Heavy Light's white.
  *
  * Every position is the frame's, in vw of its 1920 (`vw()`); the phone has its
  * own (under 768px), since the frame has none.
@@ -48,8 +75,9 @@ const vw = (px: number) => `${+((px / FRAME_W) * 100).toFixed(3)}vw`
 
 /**
  * The ground from the very top, behind the top menu, down to under the fire
- * (the author's asking, 2026-11-17: the site's dark, #202020); it goes white
- * with the fire.
+ * (the author's asking, 2026-11-17: the site's dark, #202020), and on under
+ * the turning piece; it goes white at the end of that (since 2026-11-18; with
+ * the fire before).
  */
 const GROUND = "#202020"
 
@@ -88,12 +116,12 @@ const INK = {
   paper: "#6e6a65",
   /** The first line, on the dark ground (the author's colour, 2026-11-17). */
   search: "#888888",
-  /** On the found wood (the author's asking, 2026-11-17: white). */
-  onWood: "#ffffff",
+  /** On the found wood (the author's asking, 2026-11-17: white; greyer since 2026-11-19, "too strident"). */
+  onWood: "#d9d5cf",
   /** On the light, blurred forest of the found wood. */
   wood: "#3b3835",
-  /** On the fire. */
-  fire: "#e6e0d8",
+  /** On the fire (greyer since 2026-11-19, with the found wood's). */
+  fire: "#cdc8c0",
   /** On #202020. */
   night: "#a7a29b",
 }
@@ -130,7 +158,7 @@ function woodDrawing() {
 
 const CSS = `
 .mk{--h1:min(${vw(WOOD.h)},100vh);--h1:min(${vw(WOOD.h)},100svh);--vh:100vh;--vh:100svh;
-  --t1:calc((var(--vh) - var(--h1)) / 2);--zoom:1.3;--s1:210vh;--s2:165vh;--s3:260vh;
+  --t1:calc((var(--vh) - var(--h1)) / 2);--zoom:1.3;--s1:210vh;--s2:165vh;--s3:230vh;--s4:330vh;--s5:420vh;
   background:${GROUND};overflow-x:clip;font-family:${TEXT_FONT};font-size:${TEXT_SIZE}px;letter-spacing:${TEXT_TRACK};line-height:1.7;font-weight:400}
 .mk p{margin:0}
 .mk-text{position:absolute;z-index:4;max-width:${vw(837)}}
@@ -147,7 +175,8 @@ const CSS = `
 @keyframes mk-dots{from{transform:translateX(-1.1em)}to{transform:none}}
 @media (prefers-reduced-motion:reduce){.mk-dots span{animation:none}}
 /* 4–7. The found wood, held still while the fire rises over it. */
-.mk-c1{position:relative;height:calc(var(--h1) * 2 + var(--s1) + var(--s2));background:${GROUND}}
+/* The found wood, held until it has gone (its leaving is written by MakingScroll). */
+.mk-c1{position:relative;height:calc(var(--h1) + var(--s1) * 1.25);background:${GROUND}}
 .mk-hold{position:sticky;top:var(--t1);height:var(--h1);overflow:hidden}
 .mk-c1>.mk-hold:first-child{opacity:0;will-change:opacity,transform}
 /* The found wood's plate: the photograph drawn as large as its whole (3:2) would cover the frame, then --zoom larger, so it has
@@ -155,34 +184,109 @@ const CSS = `
 .mk-plate{position:absolute;left:0;top:0;width:calc(var(--zoom) * max(100%, var(--h1) * 1.5));aspect-ratio:${FRAME_W}/${WOOD_FULL_H};will-change:transform}
 .mk-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .mk-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
-.mk-fire{z-index:2;background:#000}
-.mk-white{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+/* The fire's passage (2026-11-19): it begins ${FIRE_FROM_S1} of --s1 into the found wood's (2.2 windows, as the wood is nearly gone), over
+   it, its window held, and the fire going up through it (MakingScroll). */
+.mk-fs{position:relative;z-index:2;height:calc(2 * var(--vh) + var(--h1) + ${FIRE_SECTION_EXTRA} * var(--vh));
+  margin-top:calc(${(FIRE_FROM_S1 - 1.25).toFixed(4)} * var(--s1) - var(--t1) - var(--h1));background:transparent}
+.mk-fs-stage{position:sticky;top:0;height:var(--vh);overflow:hidden}
+.mk-fire{position:absolute;left:0;right:0;top:0;height:var(--h1);overflow:hidden;background:${GROUND};opacity:0;
+  transform:translate3d(0,100vh,0);will-change:transform,opacity}
 /* 8. The scan: its own styles, in making-scan.tsx. */
 /* 9–10. The sketches, and the dark they go into. */
-.mk-c3{position:relative;height:calc(var(--vh) + var(--s3));background:#fff}
-.mk-stage{position:sticky;top:0;height:var(--vh);overflow:hidden;background:#fff}
+/* The sketches (2026-11-19): they begin under the scan's end, as its white is done (z-index above it, a negative
+   margin, transparent until their window is held; then white), and come out of transparency in the found wood's
+   frame (--h1, .mk-band), so there is no empty white between the two. */
+.mk-c3{position:relative;z-index:4;margin-top:calc(-1 * var(--vh));height:calc(var(--vh) + var(--s3));background:transparent}
+.mk-stage{position:sticky;top:0;height:var(--vh);overflow:hidden;background:transparent}
+/* Nothing in it takes a hand, and it lies over the scan's end (whose line does). */
+.mk-c3,.mk-c3 *{pointer-events:none}
+.mk-band{position:absolute;left:0;right:0;top:var(--t1);height:var(--h1);overflow:hidden}
 .mk-stage .mk-cover,.mk-stage svg{opacity:0}
-.mk-staged{position:absolute;z-index:3;opacity:0;will-change:opacity,transform}
-.mk-last a{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.25em;text-decoration-color:rgba(167,162,155,.45);transition:text-decoration-color .3s}
-.mk-last a:hover{text-decoration-color:rgba(167,162,155,1)}
-.mk-end{background:#202020}
+.mk-staged{position:absolute;z-index:3;opacity:0;will-change:opacity}
+/* The last screen: the last words, a little above the middle, and the bottom menu at its foot, coming up
+   together over Heavy Light's white (its last window, under them). */
+.mk-end{position:relative;z-index:3;margin-top:calc(-1 * var(--vh));background:transparent}
+/* The words and the menu as one, moved and faded as one by MakingScroll: they come out of transparency with the
+   words about the middle of the window, and rise together, slower than the page, to their places. */
+.mk-end-in{min-height:var(--vh);display:flex;flex-direction:column;opacity:0;will-change:opacity,transform}
+.mk-end-fill{flex:1}
+/* The last words: set as the others (airy lines, line-height 3, each line whole), 30% down the last screen, or
+   higher on a short window so the bottom menu stays clear of them; MakingScroll brings them from about the middle. */
+.mk-last{margin:0;padding:clamp(40px, calc(var(--vh) - 450px), 30vh) 0 0 ${vw(805)};line-height:3}
+.mk-last>span{display:block;white-space:nowrap}
+.mk-last a{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.25em;text-decoration-color:rgba(110,106,101,.4);transition:text-decoration-color .3s}
+.mk-last a:hover{text-decoration-color:rgba(110,106,101,1)}
+
 .mk-on-wood{text-shadow:0 0 14px rgba(0,0,0,.35)}
 .mk-held-words{opacity:0}
 /* The top words on the wood: airy, a blank line between the sentences, each line kept whole. */
 .mk-lines{display:block;line-height:1.9}
 .mk-lines>span{display:block;white-space:nowrap}
 .mk-wrap>span{white-space:normal}
+.mk-pbr{display:none}
+/* The page's white behind everything, on a phone only (MakingScroll fades it in as the scan goes). */
+.mk-bg-veil{display:none;position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:0}
 .mk-lines>.mk-gap{height:1.9em}
 .mk-short{display:none}
 @media (max-width:1399px){.mk-long{display:none}.mk-short{display:block}}
 .mk-hint-p{display:none}
 @media (hover:none){.mk-hint-d{display:none}.mk-hint-p{display:inline}}
+@keyframes mk-in{from{opacity:0}to{opacity:1}}
+/* The page flowing: Heavy Light is held only while its models turn and then goes up with the page, and the last
+   screen comes after it (2026-11-19, the author's asking, to see). */
+.mk-flow{--s5:275vh}
+.mk-flow .mk-end{margin-top:0}
+/* The flow on a computer (on a phone it is set below, and wins there). */
+@media (min-width:768px){
+  .mk-flow .mk-c1{height:auto;padding:0 0 12vh}
+  .mk-flow .mk-c1>.mk-hold{position:relative;top:auto}
+  .mk-flow .mk-c1 .mk-plate{animation:mk-in 1.6s ease-out .15s both}
+  .mk-flow .mk-fs{height:auto;margin-top:0;padding:6vh 0 12vh}
+  .mk-flow .mk-fs-stage{position:relative;height:var(--h1)}
+  .mk-flow .mk-fire{transform:none}
+  .mk-flow .mk-c3{margin-top:0;height:auto;padding:12vh 0;background:transparent}
+  .mk-flow .mk-stage{position:relative;height:auto;overflow:visible;background:transparent}
+  .mk-flow .mk-band{position:relative;top:auto}
+  .mk-flow .mk-bg-veil{display:block}
+}
 @media (max-width:767px){
-  .mk{--h1:78vh;--h1:78svh;--s1:210vh;--s2:150vh;--s3:240vh;--zoom:1.35}
+  /* --zoom 1.6 on a phone since 2026-11-19 (1.35 before): the found wood has more to travel, so its passage can be
+     geared to a pace like a computer's (MakingScroll). --s5 shorter: Heavy Light has two models here. */
+  .mk{--h1:78vh;--h1:78svh;--s1:210vh;--s2:150vh;--s3:230vh;--s4:290vh;--s5:280vh;--zoom:1.6}
+  .mk-flow{--s5:170vh}
+  /* A phone, to try (2026-11-19, the author's asking: "take off all the holding to the screen"): the found wood, the
+     fire and the sketches go up with the page (MakingScroll's phoneFlow); only the turning piece and Heavy Light are
+     held. */
+  /* More room round the first line, and the found wood comes in out of transparency as the page opens. */
+  .mk-search{padding:14vh 0 12vh !important}
+  /* The first line in the middle, its dots on a line of their own under it (2026-11-19, the author's asking). */
+  .mk-search>p{left:0 !important;max-width:none !important;width:100%;text-align:center;white-space:normal !important}
+  .mk-search .mk-dots{display:block;margin:1.4em auto 0}
+  .mk-c1{height:auto;padding:0 0 8vh}
+  .mk-c1 .mk-plate{animation:mk-in 1.6s ease-out .15s both}
+  /* The fire's words higher, gone before it fills the screen (MakingScroll). */
+  [data-mk="fire-words"]{top:9% !important}
+  .mk-pbr{display:inline}
+  [data-mk="fire-words"] .mk-wrap>span{white-space:nowrap}
+  .mk-bg-veil{display:block}
+  .mk-c1>.mk-hold{position:relative;top:auto}
+  .mk-fs{height:auto;margin-top:0;padding:4vh 0 8vh}
+  .mk-fs-stage{position:relative;height:var(--h1)}
+  .mk-fire{transform:none}
+  /* The sketches come straight in on the dark, as the pictures above (no gradient); Heavy Light's window then goes
+     from the dark to white as it comes (making-heavy.tsx). */
+  .mk-c3{margin-top:0;height:auto;padding:6vh 0 10vh;background:transparent}
+  .mk-stage{position:relative;height:auto;overflow:visible;background:transparent}
+  .mk-band{position:relative;top:auto}
   .mk-text{max-width:84vw !important;left:8vw !important}
-  /* On a phone the bottom words on the wood stand where the top words stood, at the top, clear of the knot's circle (the author's asking). */
-  .mk-words-low{top:${((658 - WOOD.top) / WOOD.h * 100).toFixed(2)}% !important}
+  /* On a phone the bottom words on the wood stand at the foot of the picture (2026-11-19, the author's asking). */
+  .mk-words-low{top:auto !important;bottom:9%}
   .mk-staged{left:8vw !important;max-width:84vw !important}
+  /* The last words centred, in the middle of what the menu leaves, "Subscribe for more." two lines lower. */
+  .mk-end-in::before{content:"";flex:1}
+  .mk-last{padding:0 8vw;text-align:center}
+  .mk-last>span{white-space:normal;line-height:2;margin-bottom:.6em}
+  .mk-last>span:last-child{margin-top:2.4em}
 }
 `
 
@@ -191,12 +295,16 @@ export function MakingPage() {
   const siluet = svgInner("siluet-2.svg")
   const woodTop = (px: number) => `calc(var(--h1) * ${((px - WOOD.top) / WOOD.h).toFixed(4)})`
   return (
-    <main className="mk w-full">
+    <main className="mk mk-flow w-full">
+      {/* `mk-flow`: the page flows, held only for the turning piece and Heavy Light (2026-11-19, the author's asking,
+          on a phone first, then on a computer to see). Without it, a computer has the held passages again. */}
       <style>{CSS}</style>
+      {/* A phone: the white the page goes into after the scan, behind everything (MakingScroll). */}
+      <div className="mk-bg-veil" data-mk="bg-veil" aria-hidden="true" />
       <Navigation bgColor={GROUND} />
 
       {/* 1. The search */}
-      <div style={{ position: "relative", padding: `${vw(135)} 0 ${vw(150)}`, background: GROUND }}>
+      <div className="mk-search" style={{ position: "relative", padding: `${vw(135)} 0 ${vw(150)}`, background: GROUND }}>
         <p data-center-fade className="mk-text" style={{ position: "relative", left: vw(489), color: INK.search, whiteSpace: "nowrap" }}>
           Every Pandov piece begins with a search
           <span className="mk-dots" aria-hidden="true">
@@ -259,22 +367,26 @@ export function MakingPage() {
           <p
             className="mk-text mk-on-wood mk-held-words mk-words-low"
             data-mk="wood-words-2"
-            style={{ left: vw(1190), top: "65%", color: INK.onWood }}
+            style={{ left: vw(1190), top: "77%", color: INK.onWood }}
           >
             Or anywhere there is a quiet potential.
           </p>
         </div>
 
-        <div style={{ height: "var(--s1)" }} />
-        <div className="mk-hold mk-fire" data-mk="fire">
+      </section>
+
+      {/* The fire: its own passage since 2026-11-19, going up the window all the way */}
+      <section className="mk-fs" data-mk="fire-sec">
+        <div className="mk-fs-stage">
+        <div className="mk-fire" data-mk="fire">
           <MakingVideo
             src="/videos/making-burn.mp4?v=2"
             poster="/videos/making-burn-poster.jpg?v=2"
             phone={{ src: "/videos/making-burn-phone.mp4?v=3", poster: "/videos/making-burn-phone-poster.jpg?v=3" }}
           />
-          {/* Held with the fire, as the words on the wood are with it
-              (2026-11-17, the author's asking): it comes and goes in opacity
-              alone, while the fire is held (`MakingScroll`). */}
+          {/* With the fire, as the words on the wood are with it (2026-11-17,
+              the author's asking): it comes and goes in opacity alone, while
+              the fire goes slowly about the middle (`MakingScroll`). */}
           <p
             className="mk-text mk-held-words"
             data-mk="fire-words"
@@ -288,24 +400,43 @@ export function MakingPage() {
           >
             {/* Set as the words on the wood are: airy, a blank line between the sentences. */}
             <span className="mk-lines mk-wrap">
-              <span>Through careful cleaning and surface treatment.</span>
+              {/* On a phone in four lines, the author's breaks (2026-11-19). */}
+              <span>
+                Through careful cleaning <br className="mk-pbr" />
+                and surface treatment.
+              </span>
               <span className="mk-gap" />
-              <span>The excess is stripped away to reveal its raw, organic beauty.</span>
+              <span>
+                The excess is stripped away <br className="mk-pbr" />
+                to reveal its raw, organic beauty.
+              </span>
             </span>
           </p>
-          <div className="mk-white" data-mk="white" />
+        </div>
         </div>
       </section>
 
-      {/* 3. The scan: the photograph and its 3D scan, either side of a line */}
-      <MakingScan
-        color={INK.paper}
+      {/* 2b. The piece on its branch, coming in from the right and turning with the scroll, on the dark; its
+          words only while its lamp is out (2026-11-19); the white comes at its end */}
+      <MakingHarag
+        color={INK.night}
         words={
           <>
-            Most of the found pieces are 3D scanned.
-            <br />
-            Capturing their exact geometry reveals what works visually, while allowing new elements to be engineered for
-            a precise physical fit.
+            <span>Most of the found pieces are 3D scanned.</span>
+            <span>Hundreds of photographs are captured</span>
+            <span>to digitally reconstruct every detail.</span>
+          </>
+        }
+      />
+
+      {/* 3. The scan: the photograph and its 3D scan, either side of a line */}
+      <MakingScan
+        color={INK.night}
+        words={
+          <>
+            {/* "Most of the found pieces are 3D scanned." went to the turning piece's words (2026-11-19). */}
+            <span>Capturing their exact geometry reveals what works visually,</span>
+            <span>while allowing new elements to be engineered for a precise physical fit.</span>
           </>
         }
       />
@@ -313,6 +444,7 @@ export function MakingPage() {
       {/* 4. The sketches, Siluet 2 rising out of the paper, and the dark */}
       <section className="mk-c3" data-mk="paper">
         <div className="mk-stage" data-mk="stage">
+          <div className="mk-band">
           <picture>
             <source media="(max-width: 767px)" srcSet="/images/making/sketches-phone.avif" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -352,24 +484,42 @@ export function MakingPage() {
             style={{ left: vw(805), top: "11%", maxWidth: vw(600), color: INK.wood }}
           >
             Another way to search for a form is on a blank sheet of paper. Here, an imagined silhouette gradually takes
-            shape. Once drawn, the form is modeled digitally and brought into the physical world through 3D printing, CNC
-            milling and hand finishing.
+            shape.
           </p>
-          <p
-            className="mk-staged mk-last"
-            data-mk="last-words"
-            style={{ left: vw(805), top: "50%", maxWidth: vw(462), color: INK.night }}
-          >
-            We don&apos;t follow a fixed formula. Every material brings its own questions, every process opens new
-            possibilities, and every object teaches us something for the next.
-            <br />
-            <Link href="/contact">Subscribe for more.</Link>
-          </p>
+          </div>
         </div>
       </section>
 
-      <div className="mk-end">
+      {/* 5. Heavy Light: the wooden piece and its four models turning beside it,
+          then the dark and the last words (until 2026-11-19 they came over the
+          sketches; the sentence on the models was the end of the words above). */}
+      <MakingHeavy
+        words={
+          <>
+            Once drawn, the form is modeled digitally
+            <br />
+            and brought into the physical world
+            <br />
+            through 3D printing, CNC milling and hand finishing.
+          </>
+        }
+      />
+
+      {/* The last screen: the last words and the bottom menu, together */}
+      <div className="mk-end" data-mk="end">
+        <div className="mk-end-in" data-mk="end-in">
+        <p className="mk-last" data-mk="last" style={{ color: INK.paper }}>
+          <span>We don&apos;t follow a fixed formula.</span>
+          <span>Every material brings its own questions,</span>
+          <span>every process opens new possibilities,</span>
+          <span>and every object teaches us something for the next.</span>
+          <span>
+            <Link href="/contact">Subscribe for more.</Link>
+          </span>
+        </p>
+        <div className="mk-end-fill" />
         <BodyFooter activeLabel="making" />
+        </div>
       </div>
 
       <CenterFade />
