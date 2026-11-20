@@ -20,5 +20,11 @@ export const viewport: Viewport = {
 }
 
 export default function ContactPage() {
-  return <ContactCollections />
+  return (
+    <>
+      {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
+      <h1 className="sr-only">Contact Pandov</h1>
+      <ContactCollections />
+    </>
+  )
 }

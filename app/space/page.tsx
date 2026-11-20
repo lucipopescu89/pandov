@@ -12,5 +12,11 @@ export const metadata = {
  * as on Mind and Body: `Heart`, `CollectionName`, the picture.
  */
 export default function SpacePage() {
-  return <CollectionPage theme="light" intro={SPACE_INTRO} />
+  return (
+    <>
+      {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
+      <h1 className="sr-only">Space — lighting and interior objects by Pandov</h1>
+      <CollectionPage theme="light" intro={SPACE_INTRO} />
+    </>
+  )
 }

@@ -258,6 +258,8 @@ export default async function ChessSetPage() {
 
   return (
     <main style={{ width: "100%", backgroundColor: "#fff", minHeight: "100vh" }}>
+      {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
+      <h1 className="sr-only">Chess Set — a sculptural chess set by Pandov</h1>
       <style>{`
         /* ---------------------------------------------------------------
            Shared type — the page speaks in one voice: Julius Sans One,

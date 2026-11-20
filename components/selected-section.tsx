@@ -181,6 +181,7 @@ function SelectedPhone() {
           <Link
             key={i}
             href={p.href}
+            prefetch={false}
             className="selected-card"
             aria-current={i === active ? "true" : undefined}
             onClick={(e) => {
@@ -293,6 +294,7 @@ export function SelectedSection() {
           <Link
             key={i}
             href={p.href}
+            prefetch={false}
             className="selected-card"
             style={{
               position: "absolute",

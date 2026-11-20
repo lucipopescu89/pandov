@@ -5,6 +5,7 @@ import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
 import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
 import { NUDGE_PX, TO_TOP_EVENT, finish, heroDoors, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
+import { hasScrollTimeline } from "@/lib/scroll-timeline"
 
 /**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
@@ -1020,6 +1021,9 @@ export function HeroAnimation() {
     // A narrow screen takes the phone's frames (see PHONE_FRAME_URLS), unless
     // it has once been turned wider than they cover.
     const phone = !wide && window.matchMedia(PHONE_MEDIA).matches
+    // Where the browser scrolls the page by itself (see `holdScroll`'s effect
+    // below): the doors open at their own pace once the page is past the pin.
+    const native = !hasScrollTimeline()
     const urls = phone ? PHONE_FRAME_URLS : FRAME_URLS
     const budget = phone ? PHONE_BITMAP_BUDGET_PX : BITMAP_BUDGET_PX
     // A frame's whole width, in its own file's pixels, and where the file
@@ -1052,6 +1056,11 @@ export function HeroAnimation() {
       window.clearTimeout(giveUpTimer)
       giveUpTimer = 0
       if (disposed || ready || askedAt <= 0 || heroUp.on) return
+      // Not where the page scrolls by itself: nothing holds the reader at the
+      // doors there, so there is nothing to skip, and the skip's jump down the
+      // page would only take the scroll out of their hand. The doors open
+      // when their frames arrive.
+      if (native) return
       skipRef.current()
     }
     let raf = 0
@@ -1115,17 +1124,22 @@ export function HeroAnimation() {
             })
           : Promise.resolve(null)
       try {
-        // On a phone one at a time, so that a touch can still be answered
-        // between two of them (see PHONE_FRAME_URLS) and the memory rises
-        // gradually rather than all at once.
-        let made: (ImageBitmap | null)[] = []
-        if (phone) {
-          for (let i = 0; i < imgs.length; i++) {
-            if (disposed || gen !== generation) break
-            made.push(await cut(imgs[i], i))
-          }
-        } else {
-          made = await Promise.all(imgs.map(cut))
+        // One at a time on every screen, each first decoded by the browser
+        // off the page's own thread (`img.decode()`), with a pause between two
+        // so that a touch or a turn of the wheel is answered in between, and
+        // the memory rises gradually rather than all at once. Until 2026-11-20
+        // a computer cut all 38 at once, and each cut decoded its frame on the
+        // page's thread: the page froze for 477ms as the last frame arrived,
+        // measured on a fast desktop (the audit). A phone already went one at
+        // a time (see PHONE_FRAME_URLS), but without the decode first or the
+        // pause, and still froze for 143ms.
+        const made: (ImageBitmap | null)[] = []
+        for (let i = 0; i < imgs.length; i++) {
+          if (disposed || gen !== generation) break
+          await imgs[i].decode().catch(() => {})
+          if (disposed || gen !== generation) break
+          made.push(await cut(imgs[i], i))
+          await new Promise((r) => window.setTimeout(r, 0))
         }
         if (disposed || gen !== generation) {
           made.forEach((b) => b?.close())
@@ -1334,6 +1348,9 @@ export function HeroAnimation() {
       }
       // Above the pin they go shut, as they always have.
       if (!open && top > SETTLED_PX) target = aim = 0
+      // Where the page scrolls by itself, back at the pin they close all the
+      // way: there is no held scroll up there to close them step by step.
+      if (!open && native) target = aim = 0
       if (wait && !waiting) {
         waiting = requestAnimationFrame(() => {
           waiting = 0
@@ -1570,6 +1587,14 @@ export function HeroAnimation() {
     }
     window.addEventListener(TO_TOP_EVENT, toTop)
 
+    // Where the page scrolls by itself (see `holdScroll`'s effect below),
+    // nothing here moves the page while the reader scrolls: on the way back up
+    // the hero is neither folded away nor the page set back at the pin. Each
+    // was a scrollTo in the middle of a phone's own fling, and that is where
+    // an iPhone 8 jumped. The reader simply scrolls back through the open
+    // doors, and at the top they close.
+    const native = !hasScrollTimeline()
+
     const back = () => {
       const y = window.scrollY
       const up = y < lastY
@@ -1594,7 +1619,7 @@ export function HeroAnimation() {
       // is out of sight anyway, and the page is left to scroll undisturbed.
       const screen = stickyRef.current?.offsetHeight || window.innerHeight
       const atMind = mindAt(stickyRef.current)
-      if (up && wasX >= atMind && wasX < atMind + NUDGE_PX + screen && section) {
+      if (!native && up && wasX >= atMind && wasX < atMind + NUDGE_PX + screen && section) {
         layOutUp()
         // Already at the pin or above it (a page scrolled up a long way in
         // one go): back as it was at once.
@@ -1611,7 +1636,7 @@ export function HeroAnimation() {
       }
       if (x < presenceAt(stickyRef.current)) rewind("mind")
 
-      if (up && x > PAST_PIN_PX && x < mindAt(stickyRef.current)) {
+      if (!native && up && x > PAST_PIN_PX && x < mindAt(stickyRef.current)) {
         closing = true
         hurry("presence", PRESENCE_BEAT_S / PRESENCE_OFF_S)
         rewind("mind")
@@ -1643,9 +1668,19 @@ export function HeroAnimation() {
 
   // The page comes to rest where the doors fill the screen, and stays while
   // each beat plays (see holdScroll).
+  // The page is held at the doors, and the scroll opens them, only where the
+  // browser can play the site's scroll-tied movements (`hasScrollTimeline`).
+  // Elsewhere — Safari before 26, every iPhone that cannot update past iOS 18,
+  // the author's iPhone 8 among them — the page scrolls by itself, as any page
+  // does, and the doors open at their own pace once it is past them
+  // (2026-11-20, the audit, the author's choice "C with B"). Held, an iPhone 8
+  // moved the page from this script on every touch, while the same script was
+  // busy decoding the frames, and the doors stuttered. A reader in a hurry
+  // there can now pass the doors before they have finished: that is the price
+  // the author accepted. `?safari16` shows this version on a computer.
   useEffect(() => {
     const el = containerRef.current
-    if (!el) return
+    if (!el || !hasScrollTimeline()) return
     return holdScroll(el, [
       { at: () => PAST_PIN_PX, done: () => doorsRef.current() },
       { at: () => mindAt(stickyRef.current), done: () => mindRef.current() },
@@ -1891,7 +1926,7 @@ export function HeroAnimation() {
               </div>
               <Image
                 ref={sculptureRef}
-                src="/presence.png?v=3"
+                src="/presence.webp"
                 alt="Presence sculpture"
                 width={220}
                 height={440}

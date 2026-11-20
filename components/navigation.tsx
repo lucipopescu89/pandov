@@ -135,13 +135,17 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
         </Link>
       </div>
 
-      {/* Menu: the same row on every screen */}
+      {/* Menu: the same row on every screen. Neither the words nor their
+          collections are fetched ahead (2026-11-20, the audit): fetching Body
+          ahead also fetched the photographs at the top of /body, on every page,
+          for nothing; each page now loads on the tap. */}
       <nav ref={navRef} className="pb-6 md:pb-8 lg:pb-10">
         <div className="nv-row flex justify-center gap-12 md:gap-20">
           {menuItems.map((item) => (
             <div key={item.name} className={`nv-item${open === item.name ? " nv-open" : ""}`}>
               <Link
                 href={item.href}
+                prefetch={false}
                 className="nv-word font-heading text-sm tracking-[0.2em] uppercase"
                 style={{ fontSize: "12px" }}
                 onClick={onWord(item)}
@@ -152,10 +156,15 @@ export function Navigation({ bgColor = "white" }: { bgColor?: string }) {
               </Link>
               {item.collections.length > 0 && (
                 <div className="nv-sub" style={{ backgroundColor: bgColor }}>
+                  {/* Not fetched ahead (2026-11-20, the audit): the submenu
+                      is in the page even while closed, so every page
+                      downloaded Second Wind ahead of time, 224KB, for a page
+                      few open. A collection now loads on the tap. */}
                   {item.collections.map((c) => (
                     <Link
                       key={c.href}
                       href={c.href}
+                      prefetch={false}
                       className="nv-link font-heading uppercase tracking-[0.2em]"
                       style={{ fontSize: SUB_FONT_SIZE }}
                       onClick={() => setOpen(null)}

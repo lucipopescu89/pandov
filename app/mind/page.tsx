@@ -11,6 +11,9 @@ export const metadata = {
 /** Mind, in the Body page's composition (`CollectionPage`, 2026-10-28). */
 export default function MindPage() {
   return (
+    <>
+    {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
+    <h1 className="sr-only">Mind — sculptural objects by Pandov</h1>
     <CollectionPage theme="light" intro={MIND_INTRO}>
       <Heart />
       <CollectionName theme="light" href="/mind/chess-set" style={{ marginTop: SPACE.name }}>
@@ -27,5 +30,6 @@ export default function MindPage() {
         />
       </Link>
     </CollectionPage>
+    </>
   )
 }

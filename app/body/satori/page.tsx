@@ -6,5 +6,11 @@ export const metadata = {
 }
 
 export default function SatoriPage() {
-  return <SatoriPresentation />
+  return (
+    <>
+      {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
+      <h1 className="sr-only">Satori — pendants by Pandov</h1>
+      <SatoriPresentation />
+    </>
+  )
 }

@@ -1,31 +1,44 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Julius_Sans_One } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
 import { manrope } from "@/lib/type"
+import { SITE_URL } from "@/lib/site"
 import "./globals.css"
 
-const _juliusSansOne = Julius_Sans_One({ weight: "400", subsets: ["latin"] })
-
+/*
+ * What Google, and a link shared on WhatsApp, Facebook or Instagram, show of
+ * the site (2026-11-20, the audit). Until then the homepage carried the v0
+ * template's "PANDOV - Modern E-Commerce Store" and its description, a
+ * `generator: v0.app` tag, and the template's v0 icons, which had been saved
+ * as base64 text and so showed nothing at all. The icons are now Pandov's mark,
+ * #888888 on #202020 like the top menu (`public/icon.svg`, the PNGs beside it,
+ * `favicon.ico`). The pages under it keep their own titles and descriptions;
+ * the shared picture (`public/og.jpg`, the doors' first frame) is inherited by
+ * every page that does not name its own. No og:title or og:description here on
+ * purpose: set in the layout they would follow every page, and a shared link
+ * to Second Wind would carry the homepage's words. Left out, Next fills them in
+ * from each page's own title and description (checked on /body/second-wind).
+ *
+ * The Julius `next/font` instance that sat here was never applied to anything
+ * (Julius is reached by name, through the Google Fonts <link> below), but it
+ * was still downloaded and preloaded on every page: removed.
+ */
 export const metadata: Metadata = {
-  title: "PANDOV - Modern E-Commerce Store",
-  description: "Curating beautiful, functional pieces for your space. Quality craftsmanship meets timeless design.",
-  generator: "v0.app",
+  metadataBase: new URL(SITE_URL),
+  title: "Pandov — Sculptural Objects, Jewellery & Lighting",
+  description:
+    "Independent art and design studio in Padeș, Romania. Sculptural objects, jewellery and lighting. Ships across the EU.",
+  openGraph: {
+    type: "website",
+    siteName: "Pandov",
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Pandov — the doors with their sculpted handles" }],
+  },
+  twitter: { card: "summary_large_image" },
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-light-32x32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: "/apple-icon.png",
   },

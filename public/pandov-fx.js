@@ -70,9 +70,9 @@ header nav a:hover::after{width:70%;left:15%}
 header nav .nv-open>.nv-word::after{width:70%;left:15%}
 @media (hover:hover){header nav .nv-item:hover>.nv-word::after{width:70%;left:15%}}
 header nav .nv-link::after{display:none}
-.pfx-r{opacity:0;filter:blur(2px);translate:0 6px;transition:opacity 1.1s ${E},filter 1.1s ${E},translate 1.1s ${E}}
+.pfx-r{opacity:0;translate:0 6px;transition:opacity 1.1s ${E},translate 1.1s ${E}}
 text.pfx-r{translate:none}
-.pfx-r.pfx-in{opacity:1;filter:blur(0);translate:0 0}
+.pfx-r.pfx-in{opacity:1;translate:0 0}
 .pp-info .pfx-r{opacity:1!important;filter:none!important;translate:none!important;transition:none!important}
 .pfx-dust{position:fixed;inset:0;pointer-events:none;z-index:9996}
 .pfx-rule{position:fixed;left:0;top:0;height:1px;width:100%;transform-origin:0 50%;scale:0 1;z-index:9999;background:linear-gradient(90deg,transparent,#d6b26e 60%,#f3dfae);opacity:.7;pointer-events:none}
@@ -292,17 +292,27 @@ text.pfx-r{translate:none}
     // The homepage dust is off (2026-11-16, the author's asking: "scoate
     // particulele"). The loop above is kept whole; starting it again is this
     // one line: if (!reduce) raf = requestAnimationFrame(tick);
+    // Its canvas is taken out of the page meanwhile (2026-11-20, the audit):
+    // a full-screen layer over every page that is never drawn on. Starting the
+    // dust again, delete this line too.
+    dust.style.display = 'none';
 
     // --- soft entrance as things scroll into view ---
-    let queue = [], qt;
+    // 2026-11-20 (the audit, the author's report from an iPhone 8: images
+    // stuttering at the end of a page): what comes into view together now
+    // comes in together, and without the 2px blur. Until then they were let in
+    // one at a time, 160ms apart, so eight arriving at once at the foot of a
+    // page took 1.3s and read as a stutter; and a blur animated over a large
+    // photograph is redrawn on every frame, which an iPhone 8 could not keep up
+    // with. The fade and the 6px rise are as they were.
+    const qt = null; // kept for remove() below
     const io = new IntersectionObserver(es => {
-      es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); queue.push(e.target); } });
-      queue.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-      if (!qt) qt = setInterval(() => {
-        const el = queue.shift(); if (!el) { clearInterval(qt); qt = null; return; }
+      es.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el = e.target; io.unobserve(el);
         el.classList.add('pfx-in');
         setTimeout(() => { el.classList.remove('pfx-r', 'pfx-in'); el.dataset.pfxDone = 1; }, 1200);
-      }, 160);
+      });
     }, { rootMargin: '0px 0px -10% 0px' });
     // leave alone anything the site already animates (inline opacity/transform, pinned scenes)
     const animatedBySite = el => { let e = el.parentElement; while (e && e.tagName !== 'MAIN' && e !== document.body) { const s = e.getAttribute('style') || ''; if (/opacity|transform/.test(s) || getComputedStyle(e).position === 'sticky') return true; e = e.parentElement; } return /opacity|transform/.test(el.getAttribute('style') || ''); };
@@ -371,6 +381,7 @@ text.pfx-r{translate:none}
     const ctx = cv.getContext('2d'); let W, H; const dpr = Math.min(devicePixelRatio, 2);
     const size = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
     size(); addEventListener('resize', size);
+    const onSecondWind = () => location.pathname === '/body/second-wind';
     const hideStyle = document.createElement('style'); hideStyle.textContent = '.pfx-silence-off{visibility:hidden!important}'; document.head.appendChild(hideStyle);
     // the pendant's silhouette, so the dust passes behind the piece
     let mask = null;
@@ -426,6 +437,11 @@ text.pfx-r{translate:none}
     };
     const spawn = (m, Z) => { m.x = rnd(Z.l, Z.r); m.py = rnd(Z.t, Z.b); m.vx = rnd(-.08, .08); m.vy = rnd(-.08, .02); look(m); };
     const tick = t => {
+      // Only on Second Wind (2026-11-20, the audit): until then this loop ran
+      // sixty times a second on every page, over a full-screen canvas, with
+      // nothing to draw. Away from the page it clears, hides its canvas and
+      // stops; `wake` below starts it again when the page is Second Wind.
+      if (!onSecondWind()) { ctx.clearRect(0, 0, W, H); cv.style.display = 'none'; raf = 0; alpha = 0; seeded = false; sec = null; return; }
       raf = requestAnimationFrame(tick); frame++;
       if (dirty) { ctx.clearRect(0, 0, W, H); dirty = false; } // only when drawn on: see the dust's tick
       if (frame % 30 === 1 || !sec || !sec.isConnected) find();
@@ -483,8 +499,15 @@ text.pfx-r{translate:none}
       if (mask) ctx.drawImage(mask, pb.left, pb.top, pb.width, pb.height); else ctx.fillRect(pb.left, pb.top, pb.width, pb.height);
       ctx.globalCompositeOperation = 'source-over';
     };
-    if (!reduce) raf = requestAnimationFrame(tick);
-    window.__pfxSilence = { remove() { cancelAnimationFrame(raf); removeEventListener('resize', size); cv.remove(); hideStyle.remove(); document.querySelectorAll('.pfx-silence-off').forEach(e => e.classList.remove('pfx-silence-off')); } };
+    // The site moves between pages without reloading, so the page is looked at
+    // again every half second, which costs nothing like a frame loop does.
+    const wake = () => {
+      if (!onSecondWind()) { if (!raf) cv.style.display = 'none'; return; }
+      if (reduce || raf) return;
+      cv.style.display = ''; raf = requestAnimationFrame(tick);
+    };
+    const wakeTimer = setInterval(wake, 500); wake();
+    window.__pfxSilence = { remove() { clearInterval(wakeTimer); cancelAnimationFrame(raf); removeEventListener('resize', size); cv.remove(); hideStyle.remove(); document.querySelectorAll('.pfx-silence-off').forEach(e => e.classList.remove('pfx-silence-off')); } };
   }
 
   // ======================= CURSOR =======================

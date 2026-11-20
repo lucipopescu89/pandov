@@ -89,10 +89,15 @@ export function BodyFooter({
       )}
 
       <nav className="flex items-center justify-center gap-20">
+        {/* Not fetched ahead as the bottom menu comes into view (2026-11-20,
+            the audit): it did so exactly as the reader reached the end of a
+            page, two pages and their scripts, work an old phone did while the
+            last images were still coming in. They now load on the tap. */}
         {NAV.map((item) => (
           <Link
             key={item.label}
             href={item.href}
+            prefetch={false}
             className="font-heading uppercase tracking-[0.2em] transition-opacity hover:opacity-50"
             style={{ fontSize: "12px", color: NAV_COLOR }}
             aria-current={item.label === activeLabel ? "page" : undefined}

@@ -10,6 +10,12 @@ import { RevealOnScrollUp } from "@/components/reveal-on-scroll-up"
 export default function Home() {
   return (
     <>
+      {/* The page's title for Google and screen readers, not drawn: the
+          homepage's composition carries no heading element (2026-11-20, the
+          audit). First in the page, never between the hero and For Mind's
+          section (see the note on ScrollHint below). */}
+      <h1 className="sr-only">Pandov — sculptural objects, jewellery and lighting</h1>
+
       {/* Top menu — grey #888888 logo and links on a dark band. On the homepage
           it lies over the page, hidden, and slides down only when the reader
           scrolls up (2026-11-02), so the page opens on the handles filling the

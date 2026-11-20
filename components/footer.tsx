@@ -6,6 +6,7 @@ import Link from "next/link"
 import { BirdRings } from "@/components/bird-rings"
 import { BodyFooter } from "@/components/body-footer"
 import { JULIUS_MIN, TRACK } from "@/lib/type"
+import { hasScrollTimeline } from "@/lib/scroll-timeline"
 
 /** The hand sits a little back, so the ring and the words over it lead. */
 const HAND_OPACITY = 0.77
@@ -360,7 +361,9 @@ export function Footer() {
   const [birdIn, setBirdIn] = useState(0)
 
   useEffect(() => {
-    const Timeline = (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline
+    const Timeline = hasScrollTimeline()
+      ? (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline
+      : undefined
     let settling: Animation | null = null
     let builtFor = { whole: NaN, pageEnd: NaN, span: NaN }
 
@@ -413,7 +416,14 @@ export function Footer() {
       const photo = photoRef.current
       if (!photo) return
       if (!Timeline) {
-        Object.assign(photo.style, photoAt(y, whole, pageEnd, span))
+        // Written from here, the settling landed a frame late on every scroll
+        // and the photograph jumped (the author's report from an iPhone 8,
+        // 2026-11-20: the images stutter at the end of the page). So where
+        // the browser cannot play it, the photograph is not settled at all: it
+        // stands where the settling would leave it at the end of the page, and
+        // only its fade is written from here, which a frame late does not show.
+        photo.style.transform = photoAt(pageEnd, whole, pageEnd, span).transform
+        photo.style.opacity = photoAt(y, whole, pageEnd, span).opacity
         return
       }
       if (pageEnd <= 0) return
@@ -483,8 +493,11 @@ export function Footer() {
             ref={photoRef}
             style={{ position: "absolute", inset: 0, opacity: HAND_OPACITY, willChange: "transform, opacity" }}
           >
+            {/* JPEG since 2026-11-20 (the audit): the PNG it replaced was
+                1.8MB for a photograph with no transparency; this is 140KB, the
+                same 2792 × 1230, and no difference can be seen. */}
             <Image
-              src="/images/home/footer-banner.png"
+              src="/images/home/footer-banner.jpg"
               alt="White sculptural hand wearing the Pandov golden ring"
               fill
               sizes={`${PHONE} ${PHONE_HAND_W}vw, 108vw`}
@@ -509,6 +522,7 @@ export function Footer() {
         <Link
           ref={wordsRef}
           href="/contact"
+          prefetch={false}
           className="ft-words transition-opacity hover:opacity-50"
           style={{
             pointerEvents: ctaIn > 0 ? "auto" : "none",
@@ -540,6 +554,7 @@ export function Footer() {
             white in the corners a link to Contact. */}
         <Link
           href="/contact"
+          prefetch={false}
           aria-label="Get in touch"
           className="ft-bird transition-opacity hover:opacity-50"
           style={{

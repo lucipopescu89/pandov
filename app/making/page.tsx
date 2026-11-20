@@ -7,5 +7,11 @@ export const metadata = {
 }
 
 export default function Making() {
-  return <MakingPage />
+  return (
+    <>
+      {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
+      <h1 className="sr-only">Making — how Pandov pieces are made</h1>
+      <MakingPage />
+    </>
+  )
 }

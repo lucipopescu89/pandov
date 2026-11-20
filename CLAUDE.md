@@ -368,6 +368,18 @@ The author's Figma frame "Making Page - MAIN" (node 4158:180) and a ten-point br
 
 `app/*/page.tsx` files are thin: export `metadata`, render one section component from `components/`. Put the work in the component.
 
+### The audit's first round (2026-11-20)
+
+An audit of the site (the author's Claude doc "Audit tehnic — site-ul Pandov") found the iPhone 8's stutter came from the page moving itself from script, and Google showing the v0 template's words. What changed, and where it wins over older notes here:
+
+- **Old Safari gets calmer versions** (the author's choice, "C with B"). `lib/scroll-timeline.ts` (`hasScrollTimeline`) tells a browser that can play scroll-tied animations (Chrome, Safari 26+) from one that cannot (Safari before 26: every iPhone stuck on iOS 18 or earlier, the iPhone 8 among them). Where it cannot: `holdScroll` is not installed, so the page scrolls by itself and the doors open at their own pace (`DOORS_S`) once past the pin, closing all the way back at the top; `giveUp` does not skip; `back` never calls scrollTo on the way up (no `layOutUp`, no snap to the pin). The footer's hand stands where its settling would end and only fades. Desktop Chrome and new iPhones are exactly as before. `?safari16` in the address shows the calm versions in any browser.
+- **Door frames are decoded one at a time on every screen**, each `img.decode()`d first and a `setTimeout(0)` between two (was: all 38 at once on a computer, a 477ms freeze).
+- **`pandov-fx.js`:** the entrance has no blur and no queue (what comes in together comes in together); the never-drawn homepage dust canvas is `display:none` while the dust is off (delete that line too if it is turned back on); Silence's loop runs only on `/body/second-wind` (`onSecondWind`, woken every 500ms).
+- **No prefetch** on the top menu (words and collections), the bottom menu, the footer's two Contact links and Selected's cards (`prefetch={false}`): they downloaded Second Wind (224KB) and the photographs at the top of /body on every page, and two pages and their scripts at the foot of every page.
+- **Images:** `footer-banner.png` (1.8MB) → `footer-banner.jpg` (140KB, same size, PSNR 46); `presence.png` (488KB) → `presence.webp` (70KB, alpha kept; `seen-mosaic.tsx` still names the PNG, which stays); `cat-body.jpg` re-encoded 644KB → 170KB and `cat-mind-mobile.jpg` 645KB → 376KB (same names, same pixel sizes). For Mind's photograph is one `<picture>` with a `(max-width: 767px)` source, no longer two `priority` images swapped in script (a phone downloaded both).
+- **What Google sees:** the homepage's title and description, Pandov's icons (the old ones were the v0 logo, saved as base64 text), `public/og.jpg` (the doors' first frame, 1200 × 630) for shared links, `app/robots.ts`, `app/sitemap.ts` (pendants listed from `SECOND_WIND` and `SATORI`), a visually hidden `<h1>` (`sr-only`) on the homepage, Mind, Chess Set, Body, Second Wind, Satori, Space, Making and Contact (the pendant pages already had a visible one), `lib/site.ts` for the address (Vercel's production domain when there is one). `generator: v0.app` and the unused Julius `next/font` instance are gone. `app/dev-satori/layout.tsx` makes the workshop a 404 outside development.
+- **Not done, on purpose:** a long cache for `public/images` and `public/frames` (a replaced image would stay old on the author's own iPhone for the cache's length after publishing); Julius self-hosted (the cached subset has no Romanian letters); the Next.js upgrade and removing `lucide-react` (both need `pnpm install` on this computer, which the publish batch file does not run).
+
 ## Brand rules
 
 These are the author's rules, not inferences from the code. Where the code disagrees with them, the code is wrong.

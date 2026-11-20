@@ -619,25 +619,25 @@ function MindRow() {
           <CategoryLabel title="For Mind" align="center" href="/mind" />
         </div>
         <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-          {isMobile ? (
-            <Image
-              src="/images/cat-mind-mobile.jpg?v=3"
-              alt="Chess set — For Mind"
-              width={900}
-              height={1200}
-              style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
-              priority
-            />
-          ) : (
-            <Image
+          {/* One <picture> for both screens, the browser choosing the file
+              (2026-11-20, the audit). Until then the page chose it in script:
+              the server sent the computer's photograph, and a phone swapped it
+              for its own once the script ran, so a phone downloaded both, 1.1MB,
+              each marked to come before everything else. The section sits under
+              the doors, so neither needs to jump the queue any more. The phone's
+              file was re-encoded the same day, 645KB to 376KB. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <picture style={{ display: "block", width: "100%" }}>
+            <source media="(max-width: 767px)" srcSet="/images/cat-mind-mobile.jpg?v=4" width={1000} height={1195} />
+            <img
               src="/images/cat-mind.jpg"
               alt="Chess set — For Mind"
-              width={1600}
-              height={600}
+              width={2968}
+              height={900}
+              decoding="async"
               style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
-              priority
             />
-          )}
+          </picture>
         </div>
       </div>
     </div>
