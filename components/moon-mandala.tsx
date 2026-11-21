@@ -404,10 +404,10 @@ const FREE_S = 0.9
  * The page is held once a visit (2026-11-21, the author's asking, so as not
  * to try a reader in a hurry). Once a reader has been held at the moon and
  * seen it strike, the sequence still plays every time, going back up and
- * coming down again or coming back to the page, but the scroll is left
- * alone: the wheel is the browser's, a finger's page is never cut off at the
- * moon, and where nothing is held the bow draws itself as the page goes by
- * (`PAST_PX`), as all of it did before 2026-10-07.
+ * coming down again or coming back to the page, but the drop's stretch is
+ * left alone: the page neither slows nor waits for the drop, and a finger's
+ * page is not cut off at the moon while it falls. (Until later that day the
+ * whole scroll was left alone, the black too; see `CATCH`.)
  *
  * "A visit" is `HELD_FOR_MS` since that strike, kept in the browser
  * (localStorage), so that leaving for Body and coming back, or opening the
@@ -417,6 +417,24 @@ const FREE_S = 0.9
  */
 const HELD_KEY = "pandov-mandala-held"
 const HELD_FOR_MS = 12 * 60 * 60 * 1000
+
+/**
+ * But the black is heavy every time (2026-11-21, later the same day, the
+ * author's asking: held once, the page went past the black mandala as lightly
+ * as anywhere else, the bow drew itself in `DRAW_MIN_S` and it struck at once).
+ * So what the visit lets go of is only the drop's stretch: the page no longer
+ * slows while the drop falls, nor waits for it. From the moment the mandala is
+ * inked, the reader's scrolling draws the bow, ARM_PX of it, and the page goes
+ * only in step with it, as on the first time.
+ *
+ * Free while the drop fell, the reader has often brought the moon a little
+ * past the middle by the time it lands. It is caught there, not let go: the
+ * page goes on in step with the bow only as far as the moon's centre standing
+ * `CATCH` of the window from the top, where all of the moon is still on the
+ * screen, and strikes there. Only a moon already further up than that when it
+ * is inked is left alone, and draws itself as before.
+ */
+const CATCH = 0.3
 
 /** Whether this reader was held at the moon within the last `HELD_FOR_MS`. */
 function heldLately(): boolean {
@@ -864,10 +882,15 @@ export function MoonMandala({
 
     /* The slowed scroll: see the figures above for what it does and why. */
 
-    /** Where the moon's centre stands in the window, and the window's middle. */
+    /**
+     * Where the moon's centre stands in the window, the window's middle, and
+     * the line up to which an inked moon a little past the middle is caught
+     * (`CATCH`).
+     */
     const standing = () => {
       const rect = box.getBoundingClientRect()
-      return { centre: rect.top + rect.width / 2, mid: window.innerHeight / 2 }
+      const vh = window.innerHeight
+      return { centre: rect.top + rect.width / 2, mid: vh / 2, line: vh * CATCH }
     }
     /** Whether the scroll is still being given back after the strike. */
     const givingBack = () =>
@@ -889,13 +912,16 @@ export function MoonMandala({
         // so: the moon went off the screen before it had finished, and
         // nothing is drawn there. The page is at rest.
       }
-      if (phase === "recede" || released) return free
-      const { centre, mid } = standing()
+      // Held once already this visit, only the black is slowed (see `CATCH`).
+      if (phase === "recede" || (released && phase !== "ink")) return free
+      const { centre, mid, line } = standing()
       // Where the page stands with the moon in the middle of the window, and
       // where it stood when the drop was sent: the slow stretch between them.
       const lock = window.scrollY + centre - mid
       const send = lock - dropH
-      if (y > lock + PAST_PX) return free
+      // And once it is black, where it stands with the moon caught at `CATCH`.
+      const caught = window.scrollY + centre - line
+      if (y > (phase === "ink" ? caught : lock) + PAST_PX) return free
       // At rest the stretch is slow for a hand coming down onto it from
       // above, which is about to send the drop, and for one the page has seen
       // above it. A page that was opened part-way down it sends no drop, and
@@ -912,11 +938,14 @@ export function MoonMandala({
       if (phase === "ink") {
         const before = pulled
         pulled = Math.min(1, pulled + left / ARM_PX)
-        if (to >= lock) return to
-        if (before >= 1) return Math.min(lock, to + left)
+        // Where it comes to rest as the bow is full: with the moon in the
+        // middle, or, brought past it while the drop fell, at `CATCH`.
+        const stand = to <= lock + PAST_PX ? lock : caught
+        if (to >= stand) return to
+        if (before >= 1) return Math.min(stand, to + left)
         // The rest of the way in step with the bow, and never faster than
         // the hand.
-        return to + Math.min(left, ((lock - to) * (pulled - before)) / (1 - before))
+        return to + Math.min(left, ((stand - to) * (pulled - before)) / (1 - before))
       }
       if (to >= lock) return to
       return lock - (lock - to) * Math.exp(-left / dropH)
@@ -927,9 +956,10 @@ export function MoonMandala({
       finger: () => {
         if (!art) return false
         if (phase === "strike") return givingBack()
-        if (released) return false
-        if (phase !== "fall" && phase !== "ink") return false
-        const { centre, mid } = standing()
+        const { centre, mid, line } = standing()
+        // Black, every time, down to where it is caught (`CATCH`).
+        if (phase === "ink") return centre >= line - PAST_PX
+        if (released || phase !== "fall") return false
         return centre >= mid - PAST_PX
       },
     })
@@ -968,19 +998,29 @@ export function MoonMandala({
 
     /** Takes the scroll, or gives it back, as the page and the sequence now stand. */
     const govern = () => {
-      // Held once already this visit: nothing is taken, save the scroll
-      // being given back after the strike that did the holding.
-      if (!art || disposed || (released && !givingBack())) {
+      if (!art || disposed) {
         geared.hold(false, false)
         return endPage(-1)
       }
-      const { centre, mid } = standing()
-      const slow = phase === "fall" || phase === "ink"
-      // The wheel is the page's wherever a turn of it could still reach the
-      // slow stretch: anywhere above the moon (see `lib/geared-scroll.ts`).
-      const above = slow ? centre >= mid - PAST_PX : centre > mid + PAST_PX
-      geared.hold(above || givingBack(), (slow && above) || givingBack())
-      endPage(slow && above && coarse.matches && main ? centre - main.getBoundingClientRect().top + mid + 1 : -1)
+      const { centre, mid, line } = standing()
+      // Held once already this visit, the drop's stretch is free and only the
+      // black is slowed (see `CATCH`).
+      const black = phase === "ink"
+      const slow = black || (phase === "fall" && !released)
+      // The line the page comes to rest at: the middle, or, for a moon inked
+      // after it was brought past the middle, `CATCH`.
+      const stand = black && centre < mid - PAST_PX ? line : mid
+      const here = slow && centre >= stand - PAST_PX
+      // The wheel is the page's wherever a turn of it could still reach a slow
+      // stretch: anywhere above the moon, down to the line the black catches
+      // it at (see `lib/geared-scroll.ts`).
+      const above = phase !== "strike" && phase !== "recede" && centre > line + PAST_PX
+      geared.hold(here || above || givingBack(), here || givingBack())
+      endPage(
+        here && coarse.matches && main
+          ? centre - main.getBoundingClientRect().top + window.innerHeight - stand + 1
+          : -1,
+      )
     }
 
     /** Where the moon stands in the window, and the phase it calls for. */
@@ -1042,7 +1082,8 @@ export function MoonMandala({
           // past the moon by a hand that is not slowed has no scrolling left
           // to draw it with: there it draws itself.
           if (climbed > 0) pulled = Math.max(0, pulled - climbed / (RELAX * dropH))
-          const past = centre < vh / 2 - PAST_PX
+          // Past the line an inked moon is caught at (`CATCH`), not the middle.
+          const past = centre < vh * CATCH - PAST_PX
           drawTarget = Math.min(
             smooth(past ? 1 : pulled),
             smooth(clamp01((ink - INK_BEFORE_DRAW) / (1 - INK_BEFORE_DRAW))),
@@ -1053,10 +1094,13 @@ export function MoonMandala({
             phase = "strike"
             strikeAt = now
             drawnAtStrike = drawn
-            struckHeld = !past && !released
-            // The reader has been held and seen it strike: not again this
-            // visit. The scroll is still given back by degrees from here.
-            if (struckHeld) {
+            // Given back by degrees wherever the black held it, the first
+            // time or not, so a hand still turning does not carry the moon
+            // off while its arrows are in the air.
+            struckHeld = !past
+            // The reader has been held all the way and seen it strike: the
+            // drop's stretch is not slowed again this visit.
+            if (struckHeld && !released) {
               released = true
               rememberHeld()
             }
