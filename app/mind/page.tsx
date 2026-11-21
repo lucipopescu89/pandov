@@ -8,15 +8,15 @@ export const metadata = {
   description: introText(MIND_INTRO),
 }
 
-/** Mind, in the Body page's composition (`CollectionPage`, 2026-10-28). */
+/** Mind, in the Body page's composition (`CollectionPage`, 2026-10-28), on Body's #202020 since 2026-11-21 (the author's asking). */
 export default function MindPage() {
   return (
     <>
     {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
     <h1 className="sr-only">Mind — sculptural objects by Pandov</h1>
-    <CollectionPage theme="light" intro={MIND_INTRO}>
+    <CollectionPage theme="dark" intro={MIND_INTRO}>
       <Heart />
-      <CollectionName theme="light" href="/mind/chess-set" style={{ marginTop: SPACE.name }}>
+      <CollectionName theme="dark" href="/mind/chess-set" style={{ marginTop: SPACE.name }}>
         Chess Set
       </CollectionName>
       <Link href="/mind/chess-set" style={{ display: "block", width: "100%", maxWidth: 621, marginTop: SPACE.picture }}>

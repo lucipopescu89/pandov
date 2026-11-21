@@ -197,7 +197,14 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t)
 }
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
-const [C0, C1] = SCENE.sun.colour.map(hex)
+/**
+ * On the homepage's dark since 2026-11-21 (the author's asking): the export's
+ * greys are mirrored about the ground, white to #202020, so the sun stands as
+ * faintly on the dark as it stood on the white — its pale top faint, its
+ * darker foot clearer.
+ */
+const onDark = (c: number[]) => c.map((v) => 255 + 32 - v)
+const [C0, C1] = SCENE.sun.colour.map(hex).map(onDark)
 
 export function MakingSun({ className }: { className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null)

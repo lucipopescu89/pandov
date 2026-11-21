@@ -9,6 +9,82 @@ import { JULIUS_MIN, TRACK } from "@/lib/type"
 const CATEGORY_IMAGE_OPACITY = 0.85
 
 /**
+ * The homepage on #202020 (2026-11-21, the author's asking), each category's
+ * photograph shot on white in a white band the screen's whole width, the
+ * photograph centred in it and its words above it on the dark.
+ *
+ * The bands stand at about the same height, but not the same: the chess set
+ * and the Space sculpture are larger objects than a pendant, so their bands
+ * are a little taller (`*_BAND_VH`, `*_PHONE_BAND_VH`). The objects keep about
+ * the size they had before.
+ *
+ * Until that day the three rows stood on white, For Body and For Space crossed
+ * on two columns either side of the centre line (`COLUMN_*`, `onColumn`, kept
+ * below for the record), and For Space washed into Making's white
+ * (`useWhiteOut`). The file before that day is in git history and in
+ * `D:\PANDOV\Claude outputs\backup homepage negru`.
+ */
+const DARK = "#202020"
+/** The words on the dark: the hero's grey, as "We give form to presence". */
+const WORDS_GREY = "#888"
+/** From the foot of "→ Explore" to the top of the white band, px. */
+const LABEL_GAP = 48
+/**
+ * The dark between the rows, so the page breathes (the author's asking, the
+ * same day), and the same everywhere (asked again the same morning): from the
+ * foot of one white band to the top of the next row's words, and from the
+ * doors to "For Mind", `ROW_GAP` (`ROW_GAP_PHONE` on a phone). Each row after
+ * For Mind opens with it.
+ */
+const ROW_GAP = "28vh"
+const ROW_GAP_PHONE = "18vh"
+/**
+ * For Mind's row is the screen it is played on, right under the doors, so it
+ * cannot move down the page. Its words stand `ROW_GAP` down that screen
+ * instead (they were centred with it, and sat high and close under the doors,
+ * the author's report), and For Body's row opens with what `ROW_GAP` still
+ * needs after the dark left under For Mind's band on its screen: worked out
+ * in CSS from the band's height and the words' (`LABEL_H*`, measured roughly:
+ * the two lines and `LABEL_GAP`).
+ */
+const LABEL_H = 104
+const LABEL_H_PHONE = 96
+const MIND_BAND_VH = 52
+/** The computer's chess photograph is this share of the page's width tall. */
+const MIND_PHOTO_VW = +((900 / 2968) * 100).toFixed(3)
+/** For Body's row opens with this, so the dark under For Mind's band is `ROW_GAP` too. */
+const MIND_AFTER = `calc(max(${MIND_BAND_VH}vh, ${MIND_PHOTO_VW}vw) - 44vh + ${LABEL_H}px)`
+/** On a phone the photograph (1000 × 1195) is the band: 119.5vw tall. */
+const MIND_AFTER_PHONE = `max(0px, calc(119.5vw - 64vh + ${LABEL_H_PHONE}px))`
+const BODY_BAND_VH = 56
+/** The pendant inside its band (60 before, without a band). */
+const BODY_IN_BAND_VH = 52
+/**
+ * Space larger than Mind's chess set, which read the largest (the author's
+ * asking, the same day), and white above the sculpture's head, which stood
+ * close to the top of the photograph: the room is `SPACE_ROOM_VH` high, at the
+ * foot of a band `SPACE_BAND_VH` high, the white of its top running on into
+ * the band's.
+ */
+const SPACE_BAND_VH = 86
+const SPACE_ROOM_VH = 76
+const BODY_PHONE_BAND_VH = 56
+const BODY_PHONE_IN_BAND_VH = 52
+const SPACE_PHONE_BAND_VH = 78
+const SPACE_PHONE_ROOM_VH = 70
+/** A band is a link to its category's page too (the author's asking, the same day). */
+const BAND_LINK: React.CSSProperties = { textDecoration: "none", cursor: "pointer" }
+const BAND: React.CSSProperties = {
+  width: "100%",
+  background: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  position: "relative",
+  overflow: "hidden",
+}
+
+/**
  * Where each object's own axis falls across its photograph, read off the
  * pixels: the midpoint of the dark shape, row by row, through the figure. The
  * pendant's is a hair left of the frame's centre and steady from the ring to
@@ -246,8 +322,11 @@ function CategoryLabel({
   dark?: boolean
   href?: string
 }) {
-  const color = dark ? "#1a1a1a" : "#555"
-  const exploreColor = dark ? "#444" : "#888"
+  // On the homepage's dark since 2026-11-21: both lines in the hero's grey.
+  // (`dark` was for words set on a photograph; none are now.)
+  void dark
+  const color = WORDS_GREY
+  const exploreColor = WORDS_GREY
 
   const content = (
     <div
@@ -353,14 +432,11 @@ const WHITE_VEIL: React.CSSProperties = {
   willChange: "opacity",
 }
 
-// FOR SPACE row — scroll-driven gradient overlays + fade in
+// FOR SPACE row — its words, then the room in its white band, fading in
 function SpaceRow() {
   const rowRef = useRef<HTMLDivElement>(null)
-  const veilRef = useRef<HTMLDivElement>(null)
-  const [gradientOpacity, setGradientOpacity] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
   const fadeProgress = useScrollFadeIn(rowRef as React.RefObject<HTMLElement>)
-  useWhiteOut(rowRef as React.RefObject<HTMLElement>, veilRef as React.RefObject<HTMLElement>)
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -369,146 +445,61 @@ function SpaceRow() {
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  useEffect(() => {
-    const onScroll = () => {
-      const el = rowRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const vh = window.innerHeight
-      const center = rect.top + rect.height / 2
-      const distFromCenter = Math.abs(center - vh / 2)
-      const maxDist = vh / 2 + rect.height / 2
-      const raw = 1 - Math.min(1, distFromCenter / (maxDist * 0.6))
-      setGradientOpacity(Math.max(0, 1 - raw))
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
-  if (isMobile) {
-    return (
-      <div
-        ref={rowRef}
-        style={{
-          position: "relative",
-          width: "100%",
-          paddingTop: "100px",
-          background: "#fff",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          opacity: fadeProgress,
-          transform: `translateY(${(1 - fadeProgress) * 30}px)`,
-          transition: "opacity 0.1s, transform 0.1s",
-        }}
-      >
-        {/* The words on white now, over the room rather than on it, so they
-            take For Body's grey rather than the darker ink they needed on the
-            photograph. See PHONE_GAP. */}
-        <div style={{ marginBottom: `calc(${PHONE_GAP}px - ${+(SPACE_TOP * SPACE_PHONE_H_VH).toFixed(3)}vh)` }}>
-          <CategoryLabel title="For Space" align="center" href="/space" />
-        </div>
-        {/* The window onto the room, the sculpture's axis on the centre line. */}
-        <div style={{ position: "relative", width: "100%", height: `${SPACE_PHONE_H_VH}vh`, overflow: "hidden" }}>
-          <Image
-            src="/images/cat-space.avif"
-            alt="For Space sculpture"
-            width={SPACE_W}
-            height={SPACE_H}
-            sizes={`${+SPACE_PHONE_W_VH.toFixed(3)}vh`}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: `calc(50% - ${+(SPACE_AXIS * SPACE_PHONE_W_VH).toFixed(3)}vh)`,
-              height: "100%",
-              width: `${+SPACE_PHONE_W_VH.toFixed(3)}vh`,
-              maxWidth: "none",
-              opacity: CATEGORY_IMAGE_OPACITY,
-            }}
-          />
-        </div>
-        <div ref={veilRef} style={WHITE_VEIL} />
-      </div>
-    )
-  }
+  const bandVh = isMobile ? SPACE_PHONE_BAND_VH : SPACE_BAND_VH
+  const roomVh = isMobile ? SPACE_PHONE_ROOM_VH : SPACE_ROOM_VH
+  const roomW = roomVh * SPACE_ASPECT
 
   return (
     <div
       ref={rowRef}
       style={{
-        width: "100%",
-        height: "100vh",
-        background: "#fff",
         position: "relative",
+        width: "100%",
+        paddingTop: isMobile ? ROW_GAP_PHONE : ROW_GAP,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         opacity: fadeProgress,
         transform: `translateY(${(1 - fadeProgress) * 30}px)`,
         transition: "opacity 0.1s, transform 0.1s",
-        overflow: "hidden",
       }}
     >
-      {/* The whole room, placed so the sculpture's axis stands on the left
-          column. See SPACE_W_VH. */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: `calc(${COLUMN_LEFT} - ${+(SPACE_AXIS * SPACE_W_VH).toFixed(3)}vh)`,
-          height: "100%",
-          width: `${+SPACE_W_VH.toFixed(3)}vh`,
-        }}
-      >
-        <Image
-          src="/images/cat-space.avif"
-          alt="For Space sculpture"
-          width={SPACE_W}
-          height={SPACE_H}
-          sizes={`${+SPACE_W_VH.toFixed(3)}vh`}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            height: "100%",
-            width: "100%",
-            maxWidth: "none",
-            opacity: CATEGORY_IMAGE_OPACITY,
-          }}
-        />
-
-        {/* Left white gradient, on the edge alone */}
+      <div style={{ marginBottom: `${LABEL_GAP}px` }}>
+        <CategoryLabel title="For Space" align="center" href="/space" />
+      </div>
+      {/* The room, its sculpture's axis on the centre line, at the foot of
+          the band, white above its head. */}
+      <a href="/space" aria-label="For Space" style={{ ...BAND, ...BAND_LINK, height: `${bandVh}vh` }}>
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            width: `${+(SPACE_EDGE_FADE * 100).toFixed(2)}%`,
-            background: "linear-gradient(to right, #fff, transparent)",
-            opacity: 0.8 + gradientOpacity * 0.2,
-            pointerEvents: "none",
+            bottom: 0,
+            left: `calc(50% - ${+(SPACE_AXIS * roomW).toFixed(3)}vh)`,
+            height: `${roomVh}vh`,
+            width: `${+roomW.toFixed(3)}vh`,
           }}
-        />
-
-        {/* Right white gradient — blends image into text area */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            left: "auto",
-            right: 0,
-            width: `${+(SPACE_RIGHT_FADE * 100).toFixed(2)}%`,
-            background: "linear-gradient(to left, #fff, transparent)",
-            opacity: 1,
-            pointerEvents: "none",
-          }}
-        />
-      </div>
-
-      {/* On the right column, over the pendant above it; 60px above the
-          middle of the row, where it has always stood. */}
-      <div style={onColumn(COLUMN_RIGHT, 60)}>
-        <CategoryLabel title="For Space" align="center" dark href="/space" />
-      </div>
-
-      <div ref={veilRef} style={WHITE_VEIL} />
+        >
+          <Image
+            src="/images/cat-space.avif"
+            alt="For Space sculpture"
+            width={SPACE_W}
+            height={SPACE_H}
+            sizes={`${+roomW.toFixed(3)}vh`}
+            style={{ position: "absolute", inset: 0, height: "100%", width: "100%", maxWidth: "none", opacity: CATEGORY_IMAGE_OPACITY }}
+          />
+          {/* Its left edge, nearly white in the file, taken the rest of the
+              way into the band's white; its right is white in the file. */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: `${+(SPACE_EDGE_FADE * 100).toFixed(2)}%`,
+              background: "linear-gradient(to right, #fff, transparent)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+      </a>
     </div>
   )
 }
@@ -569,7 +560,10 @@ function MindRow() {
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
+        justifyContent: "flex-start",
+        // Its words ROW_GAP down the screen, as far under the doors as each
+        // row stands under the one before.
+        paddingTop: isMobile ? ROW_GAP_PHONE : ROW_GAP,
       }}
     >
       {/* Not clickable until it has begun to appear. This row is pulled up
@@ -610,15 +604,14 @@ function MindRow() {
           style={{
             display: "flex",
             justifyContent: "center",
-            paddingBottom: "24px",
-            position: "relative",
-            top: isMobile ? 0 : "60px",
-            zIndex: 1,
+            paddingBottom: `${LABEL_GAP}px`,
           }}
         >
           <CategoryLabel title="For Mind" align="center" href="/mind" />
         </div>
-        <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+        {/* The band: at least MIND_BAND_VH, the photograph across it, centred
+            in its white (2026-11-21). On a phone the photograph is the band. */}
+        <a href="/mind" aria-label="For Mind" style={{ ...BAND, ...BAND_LINK, minHeight: isMobile ? 0 : `${MIND_BAND_VH}vh` }}>
           {/* One <picture> for both screens, the browser choosing the file
               (2026-11-20, the audit). Until then the page chose it in script:
               the server sent the computer's photograph, and a phone swapped it
@@ -638,13 +631,13 @@ function MindRow() {
               style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
             />
           </picture>
-        </div>
+        </a>
       </div>
     </div>
   )
 }
 
-// FOR BODY — fade in on scroll
+// FOR BODY — its words, then the pendant in its white band, fading in
 function BodyRow() {
   const ref = useRef<HTMLDivElement>(null)
   const fade = useScrollFadeIn(ref as React.RefObject<HTMLElement>)
@@ -657,54 +650,34 @@ function BodyRow() {
     return () => window.removeEventListener("resize", check)
   }, [])
 
+  const bandVh = isMobile ? BODY_PHONE_BAND_VH : BODY_BAND_VH
+  const pendantVh = isMobile ? BODY_PHONE_IN_BAND_VH : BODY_IN_BAND_VH
+
   return (
     <div
       ref={ref}
       style={{
-        paddingTop: "100px",
-        paddingBottom: isMobile ? "0" : BODY_LIFT,
-        marginTop: isMobile ? BODY_PHONE_PULL : `calc(-1 * ${BODY_LIFT})`,
+        paddingTop: isMobile ? MIND_AFTER_PHONE : MIND_AFTER,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         opacity: fade,
         transform: `translateY(${(1 - fade) * 30}px)`,
         transition: "opacity 0.1s, transform 0.1s",
       }}
     >
-      {isMobile ? (
-        /* Phone: the words over the pendant, both centred. See PHONE_GAP. */
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ marginBottom: `calc(${PHONE_GAP}px - ${+(BODY_TOP * BODY_PHONE_H_VH).toFixed(3)}vh)` }}>
-            <CategoryLabel title="For Body" align="center" href="/body" />
-          </div>
-          <Image
-            src="/images/cat-body.jpg"
-            alt="Body sculpture — For Body"
-            width={1026}
-            height={1868}
-            style={{ width: "auto", height: `${BODY_PHONE_H_VH}vh`, display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
-          />
-        </div>
-      ) : (
-        /* Desktop: the pendant's axis on the right column, the words on the
-           left one, level with the middle of the pendant. */
-        <div style={{ position: "relative" }}>
-          <Image
-            src="/images/cat-body.jpg"
-            alt="Body sculpture — For Body"
-            width={1026}
-            height={1868}
-            style={{
-              display: "block",
-              height: `${BODY_H_VH}vh`,
-              width: `${BODY_W_VH}vh`,
-              marginLeft: `calc(${COLUMN_RIGHT} - ${+(BODY_AXIS * BODY_W_VH).toFixed(3)}vh)`,
-              opacity: CATEGORY_IMAGE_OPACITY,
-            }}
-          />
-          <div style={onColumn(COLUMN_LEFT)}>
-            <CategoryLabel title="For Body" align="center" href="/body" />
-          </div>
-        </div>
-      )}
+      <div style={{ marginBottom: `${LABEL_GAP}px` }}>
+        <CategoryLabel title="For Body" align="center" href="/body" />
+      </div>
+      <a href="/body" aria-label="For Body" style={{ ...BAND, ...BAND_LINK, height: `${bandVh}vh` }}>
+        <Image
+          src="/images/cat-body.jpg"
+          alt="Body sculpture — For Body"
+          width={1026}
+          height={1868}
+          style={{ display: "block", width: "auto", height: `${pendantVh}vh`, opacity: CATEGORY_IMAGE_OPACITY }}
+        />
+      </a>
     </div>
   )
 }
@@ -726,7 +699,7 @@ export function CategoriesSection() {
      * washed white, against this section's own white, so nothing of it is ever
      * seen leaving and the two beats read as one dissolve.
      */
-    <section style={{ background: "#fff", width: "100%", marginTop: "-100vh" }}>
+    <section style={{ background: DARK, width: "100%", marginTop: "-100vh" }}>
       <MindRow />
       <BodyRow />
       <SpaceRow />

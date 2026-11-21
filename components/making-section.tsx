@@ -217,6 +217,9 @@ const AIR = 120
 
 const ALT = "A white vase in a burnt trunk — the making process"
 
+/** The drawn figures' grey on the homepage's dark, under the words' #888. */
+const DRAWING_INK = "#5e5e5e"
+
 export function MakingSection() {
   return (
     <section
@@ -225,14 +228,15 @@ export function MakingSection() {
         position: "relative",
         width: "100%",
         overflow: "hidden",
-        background: "#fff",
+        // #202020 since 2026-11-21, the homepage's ground (the author's asking).
+        background: "#202020",
       }}
     >
       {/* The phone's heading and words, centred over the picture, as For
           Space's (none on a computer, where they stand on the picture). */}
       <div className="mk-phone-words">
         <a href={MAKING_HREF} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: `${EXPLORE_GAP_PX}px`, textDecoration: "none" }}>
-          <span style={{ fontFamily: JULIUS, textTransform: "uppercase", letterSpacing: TRACK, fontSize: `clamp(${JULIUS_MIN}px, 2vw, 20px)`, lineHeight: 1, color: "#555" }}>
+          <span style={{ fontFamily: JULIUS, textTransform: "uppercase", letterSpacing: TRACK, fontSize: `clamp(${JULIUS_MIN}px, 2vw, 20px)`, lineHeight: 1, color: "#888" }}>
             Making
           </span>
           <span style={{ fontFamily: JULIUS, textTransform: "uppercase", letterSpacing: TRACK, fontSize: EXPLORE_SIZE, lineHeight: 1, color: "#888" }}>
@@ -361,7 +365,10 @@ export function MakingSection() {
       </div>
 
       <style>{`
-        .mk-comp { position: relative; width: ${BOX_W}; margin: ${vw(AIR)} auto 0; aspect-ratio: ${FW} / ${FH}; }
+        /* On the homepage's dark (2026-11-21, the author's asking): the same
+           28vh of dark from For Space's band to "Making" as between the
+           categories, less the heading's own place down the frame. */
+        .mk-comp { position: relative; width: ${BOX_W}; margin: calc(28vh - ${+(HEADING_TOP / FW).toFixed(4)} * ${BOX_W}) auto 0; aspect-ratio: ${FW} / ${FH}; }
         .mk-side { position: absolute; top: 0; width: 100%; height: 100%; pointer-events: none; }
         .mk-plank { position: absolute; left: 0; width: 100%; top: ${pctY(PLANK.y)}; height: ${pctY(PLANK.h)}; background-repeat: repeat-x; }
         .mk-side-wood { position: absolute; left: 0; width: 100%; top: ${pctY(WOOD.y)}; height: ${pctY(WOOD.h)}; }
@@ -375,10 +382,13 @@ export function MakingSection() {
         .mk-wood { position: absolute; z-index: 1; left: ${pctX(WOOD.x)}; top: ${pctY(WOOD.y)}; width: ${pctX(WOOD.w)}; height: ${pctY(WOOD.h)}; }
         .mk-wood img { object-fit: fill; }
         .mk-draw { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+        /* On the dark (2026-11-21, the author's asking): the drawn figures
+           darker than the words, #7B7B7B in the file. */
+        .mk-draw path[fill="#7B7B7B"] { fill: ${DRAWING_INK}; }
         .mk-head { display: flex; flex-direction: column; gap: ${EXPLORE_GAP_PX}px; }
         .mk-phone-words { display: none; }
         @media (max-width: 767px) {
-          .mk-phone-words { display: flex; flex-direction: column; align-items: center; padding: ${P_TOP_PX}px 24px 0; }
+          .mk-phone-words { display: flex; flex-direction: column; align-items: center; padding: max(${P_TOP_PX}px, 18vh) 24px 0; }
           .mk-comp { width: ${P_COMP_W}; aspect-ratio: ${FW} / ${FH}; margin: calc(${P_PICTURE_GAP_PX}px + ${P_COMP_TOP}) 0 0 ${P_COMP_LEFT}; }
           .mk-side, .mk-words-desk { display: none; }
           /* the band, the sea and the dark wood across the window, not the frame's middle */

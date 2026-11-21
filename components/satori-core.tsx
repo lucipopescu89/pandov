@@ -385,7 +385,7 @@ export function SatoriCore({ slug }: { slug: Slug }) {
     /** Steps the springs; whether any band is still off its rest or moving. */
     const zoom = (dt: number) => {
       if (!ZOOM) return false
-      ic = hovered ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK)
+      ic = hovered && !lite ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK) // not on a touch screen: a tap draws, but nothing comes forward (2026-11-21, the author's asking)
       let changed = false
       moved = false
       for (let j = 0; j < ZOOM_BANDS; j++) {

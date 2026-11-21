@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { SATORI } from "@/lib/satori"
+import { PHONE_MAX } from "@/lib/satori-lights"
 import { SatoriSun } from "@/components/satori-sun"
 import { SatoriCore } from "@/components/satori-core"
 import { SatoriFlow } from "@/components/satori-flow"
@@ -66,6 +67,17 @@ const FRAME_H = 1380
  * is nothing; a narrower one shrinks it so the sun still fits whole.
  */
 const WIDEST = 1100
+/**
+ * On a phone (`PHONE_MAX` wide or less) every frame is drawn this many times
+ * larger (2026-11-21, the author's asking: Satori 1's and 2's pendants were
+ * under a centimetre on an iPhone 8), drawings cut at the sides; the gaps
+ * between frames and verses are in the frame's units, so they grow with it.
+ * Satori's canvases draw at one pixel to a screen pixel there to pay for it
+ * (`canvasDpr` in `lib/satori-lights.ts`, the author's choice: the smoothest).
+ */
+const PHONE_SCALE = 2
+/** The frame's width, as a CSS length: `--sp-w` on `.sp`, set larger on a phone. */
+const FRAME_CSS_W = "var(--sp-w)"
 
 /**
  * Each pendant's photograph, cut out on transparency (`photo-<n>.avif`, by
@@ -125,24 +137,48 @@ const GAP_TO_DRAWING = 70
 const GAP_TO_VERSE = 130
 /** Where the first verse stands under the menu, as before (frame units from the frame's top). */
 const FIRST_VERSE_TOP = 88
-const DRAWING: Record<string, { top: number; bottom: number }> = {
+type Extent = { top: number; bottom: number }
+const DRAWING: Record<string, Extent> = {
   "satori-1": { top: 340, bottom: 1104 },
   "satori-2": { top: 221, bottom: 1226 },
   "satori-3": { top: 170, bottom: 1200 },
   "satori-4": { top: 150, bottom: FRAME_H },
 }
+/**
+ * On a phone nothing comes forward on a tap (2026-11-21, the author's asking),
+ * so Satori 1's drawing there is its great circle at rest (511 to 1013), with
+ * the same 30 either side; the others' extents do not grow on a hover.
+ */
+const DRAWING_PHONE: Record<string, Extent> = { ...DRAWING, "satori-1": { top: 481, bottom: 1043 } }
+/**
+ * On a phone, Satori 1 and 2 are drawn larger again than the others, the
+ * pendant nearer its size on a hover (140% and 130%) without coming forward
+ * on a tap (2026-11-21, the author's asking; a little less than the hover's,
+ * the author's choice, to spare the phone): the whole frame, drawing and
+ * photograph, on top of `PHONE_SCALE`.
+ */
+const PHONE_FRAME_SCALE: Record<string, number> = { "satori-1": 1.2, "satori-2": 1.15 }
 /** A verse's height, frame units at full size: three lines of 14px, or one. */
 const verseH = (text: string) => text.split("\n").length * 14
-/** Each frame's verse foot, and how far it is pulled up (frame units). */
-function layout(slugs: string[]) {
+/**
+ * Each frame's verse foot (in its own units) and how far it is pulled up
+ * (in units of a frame at scale 1), each frame drawn `scale(slug)` times the
+ * others' size: the gaps between frames are at scale 1, those inside a frame
+ * (verse to drawing) at its own.
+ */
+function layout(slugs: string[], drawing: Record<string, Extent>, scale: (slug: string) => number) {
   let prevBottom = 0
+  let prevScale = 1
   return slugs.map((slug, i) => {
-    const d = DRAWING[slug]
+    const d = drawing[slug]
+    const k = scale(slug)
     const vh = verseH(VERSES[slug].text)
     const verse = d.top - GAP_TO_DRAWING
-    const margin = i === 0 ? FIRST_VERSE_TOP + vh - verse : prevBottom + GAP_TO_VERSE + vh - FRAME_H - verse
+    const margin =
+      i === 0 ? FIRST_VERSE_TOP + vh - k * verse : prevScale * (prevBottom - FRAME_H) + GAP_TO_VERSE + vh - k * verse
     prevBottom = d.bottom
-    return { verse, margin }
+    prevScale = k
+    return { verse, margin, k }
   })
 }
 
@@ -155,7 +191,9 @@ const VERSES: Record<string, { text: string; top: number }> = {
 
 export function SatoriPresentation() {
   const pendants = Object.entries(SATORI)
-  const place = layout(pendants.map(([slug]) => slug))
+  const slugs = pendants.map(([slug]) => slug)
+  const place = layout(slugs, DRAWING, () => 1)
+  const phone = layout(slugs, DRAWING_PHONE, (slug) => PHONE_FRAME_SCALE[slug] ?? 1)
   return (
     <main className="w-full overflow-x-hidden min-h-screen" style={{ backgroundColor: GROUND }}>
       <Navigation bgColor={GROUND} />
@@ -168,7 +206,13 @@ export function SatoriPresentation() {
               href={`/body/satori/${slug}`}
               className="sp-frame"
               aria-label={p.name}
-              style={{ marginTop: `calc(min(${FRAME_W}px, ${(FRAME_W / WIDEST) * 100}%) * ${(place[i].margin / FRAME_W).toFixed(5)})` }}
+              style={
+                {
+                  "--sp-m": (place[i].margin / FRAME_W).toFixed(5),
+                  "--sp-mp": (phone[i].margin / FRAME_W).toFixed(5),
+                  "--sp-k": phone[i].k,
+                } as React.CSSProperties
+              }
             >
               {slug === FLOW_SLUG && <SatoriFlow />}
               {slug === SUN_SLUG || slug === FLOW_SLUG ? (
@@ -204,7 +248,15 @@ export function SatoriPresentation() {
               )}
               <SatoriTap slug={slug} href={`/body/satori/${slug}`} />
               {verse && (
-                <p className="sp-verse" style={{ top: `${(place[i].verse / FRAME_H) * 100}%` } as React.CSSProperties}>
+                <p
+                  className="sp-verse"
+                  style={
+                    {
+                      "--sp-v": `${((place[i].verse / FRAME_H) * 100).toFixed(3)}%`,
+                      "--sp-vp": `${((phone[i].verse / FRAME_H) * 100).toFixed(3)}%`,
+                    } as React.CSSProperties
+                  }
+                >
                   {verse.text}
                 </p>
               )}
@@ -214,8 +266,8 @@ export function SatoriPresentation() {
       </div>
       <BodyFooter activeLabel="body" />
       <style>{`
-        .sp { display: flex; flex-direction: column; align-items: center; padding: 24px 0 160px; overflow: hidden; }
-        .sp-frame { position: relative; display: block; flex: none; width: min(${FRAME_W}px, ${(FRAME_W / WIDEST) * 100}%); aspect-ratio: ${FRAME_W} / ${FRAME_H};
+        .sp { --sp-w: min(${FRAME_W}px, ${(FRAME_W / WIDEST) * 100}%); display: flex; flex-direction: column; align-items: center; padding: 24px 0 160px; overflow: hidden; }
+        .sp-frame { position: relative; display: block; flex: none; width: ${FRAME_CSS_W}; margin-top: calc(${FRAME_CSS_W} * var(--sp-m)); aspect-ratio: ${FRAME_W} / ${FRAME_H};
           text-decoration: none; pointer-events: none; }
         .sp-frame > .sp-photo { pointer-events: auto; }
         .sp-frame > img { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 200ms; }
@@ -223,7 +275,13 @@ export function SatoriPresentation() {
         .sp-frame:hover > img { opacity: 0.8; }
         .sp-verse { position: absolute; left: 0; right: 0; pointer-events: none; margin: 0; text-align: center; white-space: pre-line; transform: translateY(-100%);
           font-family: "Julius Sans One", var(--font-heading); font-size: 12px; line-height: 14px; letter-spacing: 0.2em; padding-left: 0.2em; color: #888888; }
+        .sp-verse { top: var(--sp-v); }
         @media (max-width: 600px) { .sp-verse { font-size: 11px; line-height: 13px; } }
+        @media (max-width: ${PHONE_MAX}px) {
+          .sp { --sp-w: min(${FRAME_W}px, ${((FRAME_W / WIDEST) * 100 * PHONE_SCALE).toFixed(3)}%); }
+          .sp-frame { width: calc(${FRAME_CSS_W} * var(--sp-k)); margin-top: calc(${FRAME_CSS_W} * var(--sp-mp)); }
+          .sp-verse { top: var(--sp-vp); }
+        }
       `}</style>
     </main>
   )

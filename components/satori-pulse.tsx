@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import PULSE from "@/lib/satori-pulse-2.json"
 import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
-import { canvasDpr, cometsFrom, ease, flush, level, lights, samplePath, skipFrame, stretch, type Gate, type LightCfg, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, isLite, cometsFrom, ease, flush, level, lights, samplePath, skipFrame, stretch, type Gate, type LightCfg, type Pts } from "@/lib/satori-lights"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 
 /**
@@ -535,7 +535,7 @@ export function SatoriPulse() {
     const lf = new Float32Array(count) // and how far it has risen, frame units
     const tops = Array.from({ length: count }, (_, k) => zoomTop(k, count))
     const zoom = (dt: number) => {
-      ic = onPendant ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK)
+      ic = onPendant && !isLite() ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK) // not on a touch screen: a tap draws, but nothing comes forward (2026-11-21, the author's asking)
       for (let k = 0; k < count; k++) {
         const target = ic > k * ZOOM_STAGGER ? 1 : 0
         let p = zp[k]

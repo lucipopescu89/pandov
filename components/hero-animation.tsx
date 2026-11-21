@@ -1734,7 +1734,7 @@ export function HeroAnimation() {
       veil = document.createElement("div")
       veil.setAttribute("aria-hidden", "true")
       veil.style.cssText =
-        `position:fixed;inset:0;background:#fff;z-index:60;pointer-events:none;opacity:0;` +
+        `position:fixed;inset:0;background:#202020;z-index:60;pointer-events:none;opacity:0;` +
         `transition:opacity ${SKIP_IN_MS}ms cubic-bezier(.45,0,.55,1)`
       document.body.appendChild(veil)
       // Once the veil is laid, in the next frame, it fades in.
@@ -1982,12 +1982,14 @@ export function HeroAnimation() {
               inside the moving layer, which is overscanned past the viewport
               on both edges, so no strip of #202020 can show under it. Its
               strength is written by For Mind's player. */}
+          {/* #202020 since 2026-11-21, the homepage's ground (the author's
+              asking): the hero now washes into the dark For Mind stands on. */}
           <div
             ref={washRef}
             style={{
               position: "absolute",
               inset: 0,
-              background: "#fff",
+              background: "#202020",
               opacity: 0,
               pointerEvents: "none",
               zIndex: 4,

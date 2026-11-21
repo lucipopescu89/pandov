@@ -131,16 +131,43 @@ function tunnelKeyframes(): string {
  * Everything is laid out in fractions of the 357px square the circles were
  * measured in, so `size` scales the whole mark — rings, dashes and bird — and
  * at the default it renders exactly as first drawn for the footer.
+ *
+ * `ringColor` and `ringStrength` colour the rings for a dark ground (the
+ * homepage footer, since 2026-11-21); left out, they are black as drawn.
+ * `birdOpacity`, `birdContrast` and `birdSaturation` set the bird on a dark
+ * ground (the same day, the author's asking: more contrast, its dark parts
+ * darker so they blend into the ground, its lights kept, and less of its
+ * reddish colour); left out, it is at 70% as drawn.
+ *
+ * `ground` is the colour the mark stands on. Given, the bird is laid on it
+ * with `lighten` (the same day, the author's asking): wherever the bird is
+ * darker than the ground the ground shows, so its dark parts are lost in it
+ * altogether and only its lights remain. The mark's own square is filled with
+ * the ground, the page's own colour, so the blend always has it to work
+ * against, even while the mark fades in or dims on hover, when its opacity
+ * makes it a group of its own that would otherwise see nothing behind it.
  */
 export function BirdRings({
   size = `${BOX}px`,
+  ringColor = "black",
+  ringStrength = 1,
+  birdOpacity = 0.7,
+  birdContrast = 1,
+  birdSaturation = 1,
+  ground,
   style,
 }: {
   size?: string
+  ringColor?: string
+  ringStrength?: number
+  birdOpacity?: number
+  birdContrast?: number
+  birdSaturation?: number
+  ground?: string
   style?: React.CSSProperties
 }) {
   return (
-    <div style={{ position: "relative", width: size, aspectRatio: "1", ...style }}>
+    <div style={{ position: "relative", width: size, aspectRatio: "1", backgroundColor: ground, ...style }}>
       {Array.from({ length: TRAVEL }, (_, c) => (
         <div
           key={c}
@@ -158,7 +185,8 @@ export function BirdRings({
               cx={BOX / 2}
               cy={BOX / 2}
               r={RADIUS}
-              stroke="black"
+              stroke={ringColor}
+              strokeOpacity={ringStrength}
               strokeWidth={LINE}
               strokeDasharray={`${DASH} ${DASH}`}
             />
@@ -166,7 +194,7 @@ export function BirdRings({
         </div>
       ))}
 
-      {/* Bird GIF centered, 70% opacity */}
+      {/* Bird GIF centered, 70% opacity unless told otherwise */}
       <div
         style={{
           position: "absolute",
@@ -175,7 +203,12 @@ export function BirdRings({
           width: `${(BIRD / BOX) * 100}%`,
           aspectRatio: "1",
           transform: "translate(-50%, -50%)",
-          opacity: 0.7,
+          opacity: birdOpacity,
+          filter:
+            [birdContrast !== 1 && `contrast(${birdContrast})`, birdSaturation !== 1 && `saturate(${birdSaturation})`]
+              .filter(Boolean)
+              .join(" ") || undefined,
+          mixBlendMode: ground ? "lighten" : undefined,
         }}
       >
         <Image

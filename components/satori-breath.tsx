@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import DATA from "@/lib/satori-breath-1.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
-import { canvasDpr, comets, drawnStretches, flush, lights, skipFrame, type Gate, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
+import { canvasDpr, isLite, comets, drawnStretches, flush, lights, skipFrame, type Gate, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
 
 /**
  * Satori 1, "the one who sits / is complete" (2026-11-12, the author's brief).
@@ -612,7 +612,7 @@ export function SatoriBreath() {
     const icEnd = (ZOOM_BANDS - 1) * ZOOM_STAGGER + 0.001
     let ic = 0
     const zoom = (dt: number) => {
-      ic = hovered ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK)
+      ic = hovered && !isLite() ? Math.min(icEnd, ic + dt) : Math.max(0, ic - dt * ZOOM_BACK) // not on a touch screen: a tap draws, but nothing comes forward (2026-11-21, the author's asking)
       moved = false
       for (let j = 0; j < ZOOM_BANDS; j++) {
         const target = ic > j * ZOOM_STAGGER ? 1 : 0

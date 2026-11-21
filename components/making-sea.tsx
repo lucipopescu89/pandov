@@ -98,6 +98,16 @@ const GAP_GROWTH = 1.45
  * on average; there, flat, it went behind the plank at every trough), the
  * rest between at growing gaps (about 1318.0, 1319.9, 1322.6, 1326.6, 1332.4).
  */
+/**
+ * On the homepage's dark since 2026-11-21 (the author's asking): each line's
+ * grey mirrored about the ground, white to #202020, so the sea is as faint on
+ * the dark as it was on the white.
+ */
+function onDark(hex: string): string {
+  const v = [1, 3, 5].map((i) => 255 + 32 - parseInt(hex.slice(i, i + 2), 16))
+  return `rgb(${v.join(", ")})`
+}
+
 const LINES = (() => {
   const n = SEA.lines.length
   const back = SEA.lines[0].y
@@ -106,7 +116,7 @@ const LINES = (() => {
   let at = back
   return SEA.lines.map((l, i) => {
     if (i) at += ((front - back) * Math.pow(GAP_GROWTH, i - 1)) / sum
-    return { rgb: l.colour, y: at }
+    return { rgb: onDark(l.colour), y: at }
   })
 })()
 /** Points along a line, frame units apart. */

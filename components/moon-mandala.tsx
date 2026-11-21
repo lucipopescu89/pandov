@@ -388,6 +388,43 @@ const PAST_PX = 4
 const FREE_AFTER_S = 0.3
 const FREE_S = 0.9
 
+/**
+ * The page is held once a visit (2026-11-21, the author's asking, so as not
+ * to try a reader in a hurry). Once a reader has been held at the moon and
+ * seen it strike, the sequence still plays every time, going back up and
+ * coming down again or coming back to the page, but the scroll is left
+ * alone: the wheel is the browser's, a finger's page is never cut off at the
+ * moon, and where nothing is held the bow draws itself as the page goes by
+ * (`PAST_PX`), as all of it did before 2026-10-07.
+ *
+ * "A visit" is `HELD_FOR_MS` since that strike, kept in the browser
+ * (localStorage), so that leaving for Body and coming back, or opening the
+ * page in another tab, does not hold the reader again; a reader who comes
+ * back another day is held once more. Where the browser keeps nothing
+ * (private browsing on an old Safari), the page holds as before.
+ */
+const HELD_KEY = "pandov-mandala-held"
+const HELD_FOR_MS = 12 * 60 * 60 * 1000
+
+/** Whether this reader was held at the moon within the last `HELD_FOR_MS`. */
+function heldLately(): boolean {
+  try {
+    const at = Number(window.localStorage.getItem(HELD_KEY))
+    return at > 0 && Date.now() - at < HELD_FOR_MS
+  } catch {
+    return false
+  }
+}
+
+/** Notes that this reader has now been held at the moon. */
+function rememberHeld(): void {
+  try {
+    window.localStorage.setItem(HELD_KEY, String(Date.now()))
+  } catch {
+    /* Nothing kept: the next time holds again. */
+  }
+}
+
 /* --- The page following the drop ------------------------------------------ */
 
 /**
@@ -671,6 +708,8 @@ export function MoonMandala({
     let pulled = 0
     /** Whether the page was standing at the moon when it struck, and so is given back by degrees. */
     let struckHeld = false
+    /** Held once already this visit: the scroll is left alone (see `HELD_KEY`). */
+    let released = heldLately()
     /** Where the page stood last frame, to tell it climbing. */
     let lastY = window.scrollY
     /** The page's own end, moved up to the moon for a finger: the height `main` is cut to, or -1. */
@@ -838,7 +877,7 @@ export function MoonMandala({
         // so: the moon went off the screen before it had finished, and
         // nothing is drawn there. The page is at rest.
       }
-      if (phase === "recede") return free
+      if (phase === "recede" || released) return free
       const { centre, mid } = standing()
       // Where the page stands with the moon in the middle of the window, and
       // where it stood when the drop was sent: the slow stretch between them.
@@ -876,6 +915,7 @@ export function MoonMandala({
       finger: () => {
         if (!art) return false
         if (phase === "strike") return givingBack()
+        if (released) return false
         if (phase !== "fall" && phase !== "ink") return false
         const { centre, mid } = standing()
         return centre >= mid - PAST_PX
@@ -916,7 +956,9 @@ export function MoonMandala({
 
     /** Takes the scroll, or gives it back, as the page and the sequence now stand. */
     const govern = () => {
-      if (!art || disposed) {
+      // Held once already this visit: nothing is taken, save the scroll
+      // being given back after the strike that did the holding.
+      if (!art || disposed || (released && !givingBack())) {
         geared.hold(false, false)
         return endPage(-1)
       }
@@ -999,7 +1041,13 @@ export function MoonMandala({
             phase = "strike"
             strikeAt = now
             drawnAtStrike = drawn
-            struckHeld = !past
+            struckHeld = !past && !released
+            // The reader has been held and seen it strike: not again this
+            // visit. The scroll is still given back by degrees from here.
+            if (struckHeld) {
+              released = true
+              rememberHeld()
+            }
             startRush(now)
           }
           break

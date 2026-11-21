@@ -281,5 +281,20 @@ export function skipFrame(gate: Gate, now: number): boolean {
   gate.at = now
   return false
 }
-/** Device pixels per CSS pixel for Satori's canvases: the screen's, at most 2, at most `LITE_DPR` on a phone. */
-export const canvasDpr = () => Math.min(window.devicePixelRatio || 1, isLite() ? LITE_DPR : 2)
+/**
+ * Screens this wide or less draw Satori's frames `PHONE_SCALE` times larger
+ * (`satori-presentation.tsx`, 2026-11-21, the author's asking), so its
+ * canvases there are drawn at one device pixel to a CSS pixel: about 1.8× the
+ * pixels of before the enlargement rather than 4× (the author chose the
+ * smoothest of three ways; the lines a little softer, the photographs not).
+ */
+export const PHONE_MAX = 600
+export const PHONE_DPR = 1
+let phoneMq: MediaQueryList | null = null
+const isPhone = () => {
+  phoneMq ??= window.matchMedia(`(max-width: ${PHONE_MAX}px)`)
+  return phoneMq.matches
+}
+/** Device pixels per CSS pixel for Satori's canvases: the screen's, at most 2, at most `LITE_DPR` on a touch screen, `PHONE_DPR` on a phone's narrow screen. */
+export const canvasDpr = () =>
+  Math.min(window.devicePixelRatio || 1, isLite() ? (isPhone() ? PHONE_DPR : LITE_DPR) : 2)
