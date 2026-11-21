@@ -178,7 +178,7 @@ const SETS = {
   phone: { dir: "/images/making/heavy/540", h: 540 },
 }
 /** Bump with a new export, so browsers fetch the new frames. */
-const VERSION = 1
+const VERSION = 6
 /** The picture follows the scroll with this time constant, ms; still this long, ms, and it settles on whole frames. */
 const FOLLOW_MS = 70
 const REST_MS = 140
@@ -421,8 +421,8 @@ export function MakingHeavy({ words }: { words: React.ReactNode }) {
           <img
             ref={stillRef}
             className="mk-hl-still"
-            src="/images/making/heavy/still-2400.avif?v=1"
-            srcSet="/images/making/heavy/still-1400.avif?v=1 1400w, /images/making/heavy/still-2400.avif?v=1 2400w"
+            src="/images/making/heavy/still-2400.avif?v=2"
+            srcSet="/images/making/heavy/still-1400.avif?v=2 1400w, /images/making/heavy/still-2400.avif?v=2 2400w"
             sizes="100vw"
             alt="Heavy Light, a carved wooden figure with a brass sphere, standing on a stone table"
             loading="lazy"
@@ -476,16 +476,19 @@ export function MakingHeavy({ words }: { words: React.ReactNode }) {
 }
 
 const CSS = `
-.mk-hl{position:relative;height:calc(var(--vh) + var(--s5));background:#fff}
-.mk-hl-stage{position:sticky;top:0;height:var(--vh);overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center}
+/* On the page's dark since 2026-11-21 (the author's asking; white until then), and later that day the author's
+   photograph on the dark ("Heav Light _Black.jpg", scripts/making-heavy.py), the models' floors made dark shadows;
+   the scene goes into the dark as it leaves (.mk-hl-dusk). The words light, on the dark. */
+.mk-hl{position:relative;height:calc(var(--vh) + var(--s5));background:#202020}
+.mk-hl-stage{position:sticky;top:0;height:var(--vh);overflow:hidden;background:#202020;display:flex;align-items:center;justify-content:center}
 /* The scene: the ensemble and its margins, as large as the window allows, centred; the photograph runs on past its left side. */
 .mk-hl-scene{position:relative;flex:none;width:min(100%, var(--h1) * ${(VW / STILL.h).toFixed(4)});aspect-ratio:${VW.toFixed(1)}/${STILL.h}}
 .mk-hl-still{position:absolute;top:0;left:var(--l);width:var(--w);height:100%;max-width:none;display:block;opacity:0;will-change:opacity;
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%);mask-image:linear-gradient(90deg,transparent 0,#000 7%)}
 .mk-hl-group{position:absolute;inset:0;pointer-events:none}
 .mk-hl-model{position:absolute;left:var(--l);width:var(--w);display:block;opacity:0;will-change:opacity}
-.mk-hl-words{position:absolute;z-index:2;margin:0;color:#6e6a65;line-height:2.6;white-space:nowrap;opacity:0;will-change:opacity}
-.mk-hl-dusk{position:absolute;inset:0;z-index:3;background:#fff;opacity:0;pointer-events:none}
+.mk-hl-words{position:absolute;z-index:2;margin:0;color:#a7a29b;line-height:2.6;white-space:nowrap;opacity:0;will-change:opacity}
+.mk-hl-dusk{position:absolute;inset:0;z-index:3;background:#202020;opacity:0;pointer-events:none}
 @media (max-width:767px){
   .mk-hl{background:transparent}
   .mk-hl-stage{align-items:flex-end;padding-bottom:6vh;box-sizing:border-box}
@@ -495,6 +498,6 @@ const CSS = `
   /* The words above the scene, as far above the sculpture's head (1.5% down the photograph) as the scan's words
      are above its picture (clamp(48px, 9vh, 80px), making-scan.tsx). */
   .mk-hl-words{position:absolute;left:calc(8vw - (100vw - 100%) / 2) !important;top:auto !important;bottom:calc(98.5% + clamp(48px, 9vh, 80px));
-    white-space:normal;width:84vw;max-width:84vw}
+    white-space:normal;width:84vw;max-width:84vw;color:#a7a29b}
 }
 `

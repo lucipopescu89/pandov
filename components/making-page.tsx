@@ -10,7 +10,7 @@ import { MakingScan } from "@/components/making-scan"
 import { MakingHarag } from "@/components/making-harag"
 import { MakingHeavy } from "@/components/making-heavy"
 import { FIRE_SECTION_EXTRA, FIRE_FROM_S1, PHONE_FIRE_Z, PHONE_FIRE_FROM_S1 } from "@/lib/making-rhythm"
-import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
+import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK, JULIUS, TRACK } from "@/lib/type"
 
 /**
  * /making, after the author's Figma frame "Making Page - MAIN" (node 4158:180,
@@ -49,7 +49,8 @@ import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
  * the found wood's frame (`--h1`; the turning piece alone keeps the window's
  * height), comes out of transparency with a small glide, and has its words
  * only once it has come, fading over the same length of scroll. The ground is
- * the site's dark from the top through the scan, then white to the foot. On
+ * the site's dark from the top to the foot (2026-11-21, the author's asking;
+ * from the scan to the foot it was white until then). On
  * the dark the passages follow each other with no empty scroll between them:
  * the turning piece begins under the fire's end, the scan under the turning
  * piece's.
@@ -83,7 +84,6 @@ const GROUND = "#202020"
 
 /** The frame's boxes, px. */
 const WOOD = { top: 571, h: 957 } // image 30, the found wood
-const SKETCH = { top: 3378, h: 1201 } // image 31, the sketches
 /**
  * The found wood's photograph (the author's Found_RawWood.jpg, 4752 × 3168,
  * retouched on 2026-11-18), in the drawing's units: 1920 × 1280 whole. Its
@@ -93,9 +93,6 @@ const SKETCH = { top: 3378, h: 1201 } // image 31, the sketches
  */
 const WOOD_CROP = 90
 const WOOD_FULL_H = 1280 - WOOD_CROP
-/** The sketches (3565 × 2344) drawn 1920 wide: 1262 tall, cropped to 1201. */
-const SKETCH_FULL_H = 1262
-const SKETCH_CROP = (SKETCH_FULL_H - SKETCH.h) / 2
 /**
  * The drawing on the found wood, in the photograph's own coordinates (1920 ×
  * 1280), at its own size: its circle stands in the hollow under the knot. Set
@@ -107,8 +104,6 @@ const SKETCH_CROP = (SKETCH_FULL_H - SKETCH.h) / 2
  * crop.
  */
 const DRAWING_AT = { x: 746.5 - 139.5, y: 908 - 587.5 - WOOD_CROP }
-/** Where the frame places Siluet 2, px, frame coordinates. */
-const SILUET_AT = { x: 886.26, y: 3753.21 }
 
 /* Text: Manrope at the site's one size and tracking (`TEXT_SIZE`, `TEXT_TRACK` in `lib/type.ts`). */
 const INK = {
@@ -203,6 +198,28 @@ const CSS = `
 .mk-band{position:absolute;left:0;right:0;top:var(--t1);height:var(--h1);overflow:hidden}
 .mk-stage .mk-cover,.mk-stage svg{opacity:0}
 .mk-staged{position:absolute;z-index:3;opacity:0;will-change:opacity}
+/* 4. The drawings (2026-11-21): two sheets, white on the page's dark, the screen's width and whole, one under the
+   other with the words between them, going up with the page (the page flows; MakingScroll writes their opacity). */
+.mk-drs{display:flex;flex-direction:column;align-items:center}
+.mk-dr{display:block;width:100%;height:auto;opacity:0;will-change:opacity}
+/* Later that day (the author's asking): the words on sheet 1, in the clear band at its foot (below 0.88 of its height,
+   where nothing is drawn right of its middle), aligned with the scan's words above (their left edge); sheet 2 close
+   under sheet 1. */
+.mk-dr-1w{position:relative;width:100%}
+.mk-dr-2{margin-top:2vh}
+/* Its words on two lines, a sentence each (the author's asking); on a narrow screen they may wrap. */
+.mk-dr-words{position:absolute;z-index:2;left:calc(min(85vw, 2000px) * .59 + 5vw);top:88%;margin:0 !important;text-align:left;line-height:2;opacity:0;will-change:opacity}
+.mk-dr-words>span{display:block;white-space:nowrap}
+/* A phone: the sheet is too small to carry them; under it, at the scan's words' margin. */
+@media (max-width:767px){
+  .mk-dr-words{position:relative;left:auto;top:auto;margin:3vh 8vw 0 !important;max-width:84vw}
+  .mk-dr-words>span{white-space:normal}.mk-dr-words>span+span{margin-top:.6em}
+  .mk-dr-2{margin-top:3vh}
+}
+/* 6. The print (2026-11-21): in the found wood's frame (--h1), the whole width, on white, going up with the page. */
+.mk-pr{position:relative;z-index:3;padding:6vh 0 24vh;background:transparent}
+.mk-pr-box{position:relative;height:var(--h1);overflow:hidden;background:${GROUND}}
+.mk-flow .mk-pr-box{opacity:0;will-change:opacity}
 /* The last screen: the last words, a little above the middle, and the bottom menu at its foot, coming up
    together over Heavy Light's white (its last window, under them). */
 .mk-end{position:relative;z-index:3;margin-top:calc(-1 * var(--vh));background:transparent}
@@ -214,8 +231,8 @@ const CSS = `
    higher on a short window so the bottom menu stays clear of them; MakingScroll brings them from about the middle. */
 .mk-last{margin:0;padding:clamp(40px, calc(var(--vh) - 450px), 30vh) 0 0 ${vw(805)};line-height:3}
 .mk-last>span{display:block;white-space:nowrap}
-.mk-last a{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.25em;text-decoration-color:rgba(110,106,101,.4);transition:text-decoration-color .3s}
-.mk-last a:hover{text-decoration-color:rgba(110,106,101,1)}
+.mk-last a{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.25em;text-decoration-color:rgba(167,162,155,.4);transition:text-decoration-color .3s}
+.mk-last a:hover{text-decoration-color:rgba(167,162,155,1)}
 
 .mk-on-wood{text-shadow:0 0 14px rgba(0,0,0,.35)}
 .mk-held-words{opacity:0}
@@ -224,8 +241,9 @@ const CSS = `
 .mk-lines>span{display:block;white-space:nowrap}
 .mk-wrap>span{white-space:normal}
 .mk-pbr{display:none}
-/* The page's white behind everything, on a phone only (MakingScroll fades it in as the scan goes). */
-.mk-bg-veil{display:none;position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:0}
+/* The page's white behind everything after the scan: gone (2026-11-21, the author's asking: the page dark to its foot;
+   the display:block below it is overruled by !important). */
+.mk-bg-veil{display:none !important;position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:0}
 .mk-lines>.mk-gap{height:1.9em}
 .mk-short{display:none}
 @media (max-width:1399px){.mk-long{display:none}.mk-short{display:block}}
@@ -271,6 +289,8 @@ const CSS = `
   .mk-bg-veil{display:block}
   .mk-c1>.mk-hold{position:relative;top:auto}
   .mk-fs{height:auto;margin-top:0;padding:4vh 0 8vh}
+  .mk-pr{padding:4vh 0 20vh;background:transparent}
+  .mk-pr-box{opacity:0;will-change:opacity}
   .mk-fs-stage{position:relative;height:var(--h1)}
   .mk-fire{transform:none}
   /* The sketches come straight in on the dark, as the pictures above (no gradient); Heavy Light's window then goes
@@ -288,14 +308,47 @@ const CSS = `
   .mk-last>span{white-space:normal;line-height:2;margin-bottom:.6em}
   .mk-last>span:last-child{margin-top:2.4em}
 }
+/* ── Editorial (2026-11-21, the author's asking; tried first as a test on 127.0.0.1, then kept): .mk-ed on <main>.
+   Two axes for all the words (A, a quarter in, where most stood; B, the scan's), one line-height (2) and a
+   half-line between sentences, a measure for the longest lines, chapter marks in Julius over each passage's first
+   words, and the opening and closing lines in Julius, larger. Manrope stays 12px. ── */
+.mk{--ax-a:${vw(489)};--ax-b:calc(min(85vw, 2000px) * .59 + 5vw)}
+.mk .mk-ch{display:none}
+.mk.mk-ed .mk-ch{display:block;font-family:${JULIUS};font-size:13px;letter-spacing:${TRACK};line-height:1.4;margin:0 0 2em;opacity:.62;white-space:nowrap}
+.mk.mk-ed .mk-pr-ch{position:absolute;z-index:2;left:var(--ax-a);bottom:7%;margin:0;color:#cdc8c0;opacity:.75}
+/* The first line set as "We don't follow a fixed formula." is (the author's asking, later that day): Julius 13px,
+   tracked, the same tone (#a7a29b at 0.62 on #202020); centred on the page, as the last words are, its dots on a
+   line of their own under it; the tracking given back on the left so the letters, not the box, stand centred. */
+.mk.mk-ed .mk-title{left:0 !important;max-width:none !important;text-align:center;white-space:normal !important;font-family:${JULIUS};font-size:13px;letter-spacing:${TRACK};line-height:1.4;padding-left:${TRACK};color:#74716c !important}
+.mk.mk-ed .mk-title .mk-dots{display:block;margin:1.6em auto 0;font-family:${TEXT_FONT};font-size:${TEXT_SIZE}px;letter-spacing:${TEXT_TRACK}}
+/* The last words' first line as a chapter mark (the author's asking: not large), a space under it and over
+   "Subscribe for more.", which is white. */
+.mk.mk-ed .mk-last>.mk-last-lead{margin-bottom:2em;white-space:normal;padding-left:${TRACK}}
+/* The last words centred on the page (the author's asking: with the first line, as on Contact). */
+.mk.mk-ed .mk-last{padding-left:0 !important;padding-right:0 !important;text-align:center}
+.mk.mk-ed .mk-last>span:last-child{margin-top:2em}
+.mk.mk-ed .mk-last a{color:#fff;text-decoration-color:rgba(255,255,255,.45)}
+.mk.mk-ed .mk-last a:hover{text-decoration-color:#fff}
+.mk.mk-ed .mk-lines,.mk.mk-ed .mk-hg-words,.mk.mk-ed .mk-scan-words,.mk.mk-ed .mk-dr-words,.mk.mk-ed .mk-hl-words,.mk.mk-ed .mk-last{line-height:2 !important}
+.mk.mk-ed .mk-lines>.mk-gap{height:1em}
+.mk.mk-ed .mk-last>span{margin-bottom:0}
+@media (min-width:768px){
+  /* "Or anywhere there is a quiet potential." stays where it was: on axis B it stood on the trunk. */
+  .mk.mk-ed .mk-hl-words{left:calc(var(--ax-a) - (100vw - 100%) / 2) !important}
+  .mk.mk-ed .mk-scan-words{max-width:32em !important}
+  .mk.mk-ed .mk-scan-words>span{white-space:normal}
+}
+@media (max-width:767px){
+  .mk.mk-ed .mk-pr-ch{left:8vw}
+  .mk.mk-ed .mk-last{padding-left:8vw !important;padding-right:8vw !important}
+}
 `
 
 export function MakingPage() {
   const draw = woodDrawing()
-  const siluet = svgInner("siluet-2.svg")
   const woodTop = (px: number) => `calc(var(--h1) * ${((px - WOOD.top) / WOOD.h).toFixed(4)})`
   return (
-    <main className="mk mk-flow w-full">
+    <main className="mk mk-flow mk-ed w-full">
       {/* `mk-flow`: the page flows, held only for the turning piece and Heavy Light (2026-11-19, the author's asking,
           on a phone first, then on a computer to see). Without it, a computer has the held passages again. */}
       <style>{CSS}</style>
@@ -305,7 +358,7 @@ export function MakingPage() {
 
       {/* 1. The search */}
       <div className="mk-search" style={{ position: "relative", padding: `${vw(135)} 0 ${vw(150)}`, background: GROUND }}>
-        <p data-center-fade className="mk-text" style={{ position: "relative", left: vw(489), color: INK.search, whiteSpace: "nowrap" }}>
+        <p data-center-fade className="mk-text mk-title" style={{ position: "relative", left: vw(489), color: INK.search, whiteSpace: "nowrap" }}>
           Every Pandov piece begins with a search
           <span className="mk-dots" aria-hidden="true">
             <span>
@@ -347,6 +400,7 @@ export function MakingPage() {
             data-mk="wood-words-1"
             style={{ left: vw(489), top: woodTop(658), maxWidth: "none", color: INK.onWood }}
           >
+            <span className="mk-ch">I — Found</span>
             {/* The author's own line breaks, two settings (2026-11-17): the
                 long where it stands clear of the wood, the short on narrower
                 screens. Never broken anywhere else; a blank line between the
@@ -398,6 +452,7 @@ export function MakingPage() {
               textShadow: "0 0 18px rgba(0,0,0,0.55)",
             }}
           >
+            <span className="mk-ch">II — Treat</span>
             {/* Set as the words on the wood are: airy, a blank line between the sentences. */}
             <span className="mk-lines mk-wrap">
               {/* On a phone in four lines, the author's breaks (2026-11-19). */}
@@ -422,6 +477,7 @@ export function MakingPage() {
         color={INK.night}
         words={
           <>
+            <span className="mk-ch">III — Scan</span>
             <span>Most of the found pieces are 3D scanned.</span>
             <span>Hundreds of photographs are captured</span>
             <span>to digitally reconstruct every detail.</span>
@@ -441,52 +497,40 @@ export function MakingPage() {
         }
       />
 
-      {/* 4. The sketches, Siluet 2 rising out of the paper, and the dark */}
+      {/* 4. The drawings (2026-11-21, the author's asking; the sketches photograph and Siluet 2 rising out of it
+          until then): the first sheet of drawings under the scan, going up with the page and fading as it goes;
+          the words come as it fades, and the second sheet with them (MakingScroll). */}
       <section className="mk-c3" data-mk="paper">
-        <div className="mk-stage" data-mk="stage">
-          <div className="mk-band">
-          <picture>
-            <source media="(max-width: 767px)" srcSet="/images/making/sketches-phone.avif" />
+        <div className="mk-stage mk-drs" data-mk="stage">
+          <div className="mk-dr-1w">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              className="mk-cover"
-              data-mk="sketches"
-              src="/images/making/sketches.avif"
-              alt="Pencil sketches in open notebooks, a white sculpture standing on them"
+              className="mk-dr mk-dr-1"
+              data-mk="drawings-1"
+              src="/images/making/drawings-1-2400.avif?v=1"
+              srcSet="/images/making/drawings-1-1200.avif?v=1 1200w, /images/making/drawings-1-2400.avif?v=1 2400w"
+              sizes="100vw"
+              alt="Pencil drawings of hanging pieces and standing figures, white on dark"
               loading="lazy"
+              decoding="async"
             />
-          </picture>
-          <svg
-            className="mk-cover"
-            viewBox={`0 0 ${FRAME_W} ${SKETCH_FULL_H}`}
-            preserveAspectRatio="xMidYMid slice"
-            aria-hidden="true"
-            data-mk="siluet"
-          >
-            <defs>
-              <linearGradient id="mk-rise-edge" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#000" />
-                <stop offset="0.12" stopColor="#fff" />
-                <stop offset="1" stopColor="#fff" />
-              </linearGradient>
-              <mask id="mk-rise" maskUnits="userSpaceOnUse" x="-300" y="-100" width="900" height="1000">
-                {/* Moved up by `MakingScroll`: the silhouette shows from its foot up. */}
-                <rect data-mk="rise" x="-300" y="868" width="900" height="900" fill="url(#mk-rise-edge)" />
-              </mask>
-            </defs>
-            <g transform={`translate(${SILUET_AT.x} ${SILUET_AT.y - SKETCH.top + SKETCH_CROP})`}>
-              <g mask="url(#mk-rise)" fill="none" dangerouslySetInnerHTML={{ __html: siluet }} />
-            </g>
-          </svg>
-          <p
-            className="mk-staged"
-            data-mk="paper-words"
-            style={{ left: vw(805), top: "11%", maxWidth: vw(600), color: INK.wood }}
-          >
-            Another way to search for a form is on a blank sheet of paper. Here, an imagined silhouette gradually takes
-            shape.
-          </p>
+            <p className="mk-dr-words" data-mk="paper-words" style={{ color: INK.night }}>
+              <span className="mk-ch">IV — Drawing</span>
+              <span>Another way to search for a form is on a blank sheet of paper.</span>
+              <span>Here, an imagined silhouette gradually takes shape.</span>
+            </p>
           </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="mk-dr mk-dr-2"
+            data-mk="drawings-2"
+            src="/images/making/drawings-2-2400.avif?v=2"
+            srcSet="/images/making/drawings-2-1200.avif?v=2 1200w, /images/making/drawings-2-2400.avif?v=2 2400w"
+            sizes="100vw"
+            alt="Pencil drawings of sculptures on plinths, white on dark"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
       </section>
 
@@ -496,6 +540,7 @@ export function MakingPage() {
       <MakingHeavy
         words={
           <>
+            <span className="mk-ch">V — Modeling</span>
             Once drawn, the form is modeled digitally
             <br />
             and brought into the physical world
@@ -505,12 +550,29 @@ export function MakingPage() {
         }
       />
 
+      {/* 6. The print (2026-11-21, the author's asking: "at the very bottom"): the 3D printer building the
+          figure layer by layer, after Heavy Light and before the last words. It goes up with the page, as the
+          fire does in the flow: out of transparency as it comes, into the white as the last screen comes up
+          (MakingScroll), so the last words never stand over it. */}
+      <section className="mk-pr" data-mk="print-sec">
+        <div className="mk-pr-box" data-mk="print">
+          <MakingVideo
+            src="/videos/making-print.mp4?v=2"
+            poster="/videos/making-print-poster.jpg?v=2"
+            phone={{ src: "/videos/making-print-phone.mp4?v=2", poster: "/videos/making-print-phone-poster.jpg?v=2" }}
+            mirror={false}
+            label="A white figure growing layer by layer inside a 3D printer"
+          />
+          <p className="mk-ch mk-pr-ch" aria-hidden="true">VI — Print</p>
+        </div>
+      </section>
+
       {/* The last screen: the last words and the bottom menu, together */}
       <div className="mk-end" data-mk="end">
         <div className="mk-end-in" data-mk="end-in">
-        <p className="mk-last" data-mk="last" style={{ color: INK.paper }}>
-          <span>We don&apos;t follow a fixed formula.</span>
-          <span>Every material brings its own questions,</span>
+        <p className="mk-last" data-mk="last" style={{ color: INK.night }}>
+          <span className="mk-ch mk-last-lead">We don&apos;t follow a fixed formula.</span>
+          <span>Every project brings new questions,</span>
           <span>every process opens new possibilities,</span>
           <span>and every object teaches us something for the next.</span>
           <span>

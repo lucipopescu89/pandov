@@ -77,12 +77,11 @@ export default function RootLayout({
             author's asking). Delete this line and it is gone.
             See public/pandov-glide.js. */}
         <Script src="/pandov-glide.js" strategy="afterInteractive" />
-        {/* TEST ONLY (2026-11-20, the author's asking): the whole site on
-            #202020, photographs shot on white in a #202020 frame. Never runs
-            on the published site. http://localhost:3000 shows the site as it
-            is, http://127.0.0.1:3000 shows it dark. Delete this line and
-            public/pandov-dark-test.js and the site is exactly as it was. */}
-        <Script src="/pandov-dark-test.js" strategy="afterInteractive" />
+        {/* The #202020 test of 2026-11-20 (public/pandov-dark-test.js, local
+            addresses only) is no longer loaded (2026-11-21): the author decided
+            that day, and on 127.0.0.1 it kept repainting what is now dark on
+            purpose (two lines of the drawing on the found wood came out white).
+            The file is left in public/, unused. */}
       </body>
     </html>
   )

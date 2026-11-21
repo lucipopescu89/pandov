@@ -33,11 +33,17 @@ export function MakingVideo({
   src,
   poster,
   phone,
+  mirror = true,
+  label = "A torch passing over a plank of wood, burning its surface",
 }: {
   src: string
   poster: string
   phone: { src: string; poster: string }
+  /** Left for right (the fire's, above). The print at the page's foot (2026-11-21) is shown as shot. */
+  mirror?: boolean
+  label?: string
 }) {
+  const flip = mirror ? MIRROR : undefined
   const videoRef = useRef<HTMLVideoElement>(null)
   const stillRef = useRef<HTMLImageElement>(null)
   const veilRef = useRef<HTMLDivElement>(null)
@@ -91,7 +97,7 @@ export function MakingVideo({
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img ref={stillRef} alt="" aria-hidden="true" className="mk-cover" style={{ transform: MIRROR }} />
+      <img ref={stillRef} alt="" aria-hidden="true" className="mk-cover" style={{ transform: flip }} />
       <video
         ref={videoRef}
         className="mk-cover"
@@ -99,8 +105,8 @@ export function MakingVideo({
         loop
         playsInline
         preload="metadata"
-        aria-label="A torch passing over a plank of wood, burning its surface"
-        style={{ opacity: 0, transition: "opacity 0.6s ease", transform: MIRROR }}
+        aria-label={label}
+        style={{ opacity: 0, transition: "opacity 0.6s ease", transform: flip }}
       />
       <div ref={veilRef} aria-hidden="true" className="mk-cover" style={{ background: "#000", opacity: 1 }} />
     </>

@@ -123,6 +123,9 @@ const CENTRE = 360.9
  * ink. LINE_INK_MIN is the least it takes, because a solid pixel at a third of
  * the ink reads fainter than the smeared line it replaces did.
  */
+/** The ornament's lines on the dark (the export draws them #5C4C34, for white). */
+const ORNAMENT_INK = "#c8b088"
+
 const EXPORT_LINE = 0.6
 const EXPORT_BOX = 722
 const LINE_INK_MIN = 0.55
@@ -268,8 +271,13 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
              above them — a third of the frame over the shorter pairs — and that
              white reads as part of the gap, so the room measured here is not the
              room the eye sees. */
-          background-color: #fff;
-          padding: 160px 0 100px;
+          /* On the dark, the board's fifth square, between the board's
+             white and the pieces' (2026-11-21, the author's asking: the page
+             as a chessboard). On white until then; 100px under it then, for
+             the white the pieces' photographs leave above them, which now
+             stands on the other side of an edge, so it closes as it opens. */
+          background-color: #202020;
+          padding: 160px 0 160px;
         }
         .statement-inner {
           max-width: 1400px;
@@ -296,12 +304,13 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
           font-size: clamp(11px, 0.85vw, 12px);
           letter-spacing: 0.2em;
           line-height: 2.1;
-          color: #aaa;
+          /* Under the lead on the dark, as it was over it on white (#aaa). */
+          color: #6f6f6f;
           margin: 48px 0 0;
         }
         .statement-rule {
           height: 1px;
-          background-color: #e0e0e0;
+          background-color: #3a3a3a;
           margin: 44px 0 0;
         }
         .statement-contact {
@@ -337,6 +346,10 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
         .statement-ornament path {
           vector-effect: non-scaling-stroke;
           stroke-width: var(--sr-line);
+          /* The export's dark bronze (#5C4C34) reads on white and is lost on
+             the dark (2026-11-21): the same warm hue, light, so the drawing
+             keeps about the weight it had against white. */
+          stroke: ${ORNAMENT_INK};
         }
         .statement-radiant {
           width: 100%;
@@ -389,7 +402,7 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
         }
         @media (max-width: 900px) {
           .statement-section {
-            padding: 90px 0 100px;
+            padding: 110px 0 110px;
           }
           .statement-inner {
             flex-direction: column;

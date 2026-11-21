@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK } from "@/lib/type"
+import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK, TRACK_BACK } from "@/lib/type"
 
 /**
  * SELECTED — laid out after the author's Figma frame "Selected" of
@@ -35,33 +35,72 @@ import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK } from "@/li
  * lines of intent.
  */
 
+/**
+ * 2026-11-21, the author's asking: the words go above the cards, and Satori
+ * joins Emperor and the Chess Set, three cards where there were two. The
+ * Chess Set stands in the middle, a pendant either side (Satori 4's render,
+ * on the same #202020 ground, until the author's retouched photograph). The
+ * three are the frame's cards at the frame's size and the frame's gap
+ * (`CARD_GAP`, 70), the row centred on the page (`GALLERY_X`).
+ *
+ * On a computer the words are Making's mirror image about the page's centre
+ * line (the author's asking, the same morning): Making's words are ranged
+ * left on a line `MAKING_TEXT_X` into Making's composition, so these are
+ * ranged right on a line as far right of the centre (`MIRROR_RIGHT`).
+ * Making's composition is the page's width only up to 16:9 of the screen's
+ * height (`BOX_W` in `making-section.tsx`), so the distance is worked out from
+ * the same box and the two stay mirrored on any screen. The letters, not
+ * their boxes, end on the line: the tracking after the last letter is handed
+ * back (`TRACK_BACK`, and the line's own `TEXT_TRACK`). On the phone they are
+ * centred, as Making's are there.
+ *
+ * Before that, the same morning, they were ranged left on the first card's
+ * edge, then centred over the gallery.
+ *
+ * Vertically, the heading's cap top is where the cards' tops were (168), so
+ * the dark from Making down to the first thing in Selected is unchanged, and
+ * the cards come `CARD_Y` down, under the line; the frame is that much taller
+ * (`FH`, 928 before), with the same 192 units of dark under the cards. Until
+ * that day the words stood at the right of the two cards, at x 1332.
+ */
 /** The frame, in its own units. */
 const FW = 1893
-const FH = 928
+const FH = 1100
 const pctX = (x: number) => `${(x / FW) * 100}%`
 const pctY = (y: number) => `${(y / FH) * 100}%`
 /** Type follows the frame's width; `px` is the size at 1893. */
 const vw = (px: number) => `${(px / FW) * 100}vw`
 
-const CARD_Y = 168
+const CARD_Y = 340
 const CARD_W = 504
 const CARD_H = 568
+const CARD_GAP = 70
 const PRODUCTS = [
-  { x: 86, src: "/images/home/selected-emperor.avif", alt: "Emperor, a Second Wind pendant", href: "/body/second-wind" },
-  { x: 660, src: "/images/home/selected-chess-set.avif", alt: "The Chess Set", href: "/mind/chess-set" },
+  { src: "/images/home/selected-emperor.avif", alt: "Emperor, a Second Wind pendant", href: "/body/second-wind" },
+  { src: "/images/home/selected-chess-set.avif", alt: "The Chess Set", href: "/mind/chess-set" },
+  { src: "/images/body/satori/satori-4.avif", alt: "Satori, a pendant", href: "/body/satori" },
 ]
+const GALLERY_W = PRODUCTS.length * CARD_W + (PRODUCTS.length - 1) * CARD_GAP
+const GALLERY_X = (FW - GALLERY_W) / 2
+const cardX = (i: number) => GALLERY_X + i * (CARD_W + CARD_GAP)
 
 /**
  * The words. Julius 29.9 and Assistant 15 at 1893, measured off the export's
- * outlined text (cap tops at 297.2 and 378.2, left edges at 1332). A line box's
- * top is set above the cap top by the face's own room: 0.085em for Julius at
- * line-height 1, 0.31em for Assistant at 1.35.
+ * outlined text (cap tops 81 apart: 297.2 and 378.2 in the frame). A line
+ * box's top is set above the cap top by the face's own room: 0.085em for
+ * Julius at line-height 1, 0.31em for Assistant at 1.35.
  */
-const TEXT_X = 1332
+/** Making's words' left edge in Making's frame (`TEXT_X` in `making-section.tsx`, 1893 wide). */
+const MAKING_TEXT_X = 582.6
+/** Making's composition's width (`BOX_W` there): the page's, up to 16:9 of the screen's height. */
+const MAKING_BOX_W = `min(100%, ${+((16 / 9) * 100).toFixed(3)}vh)`
+/** From the page's right edge to the mirror of Making's line. */
+const MIRROR_RIGHT = `calc(50% - ${+((FW / 2 - MAKING_TEXT_X) / FW).toFixed(5)} * ${MAKING_BOX_W})`
 const HEADING_PX = 29.9
-const HEADING_TOP = 297.2 - 0.085 * HEADING_PX
+const HEADING_CAP = 168
+const HEADING_TOP = HEADING_CAP - 0.085 * HEADING_PX
 const LINE_PX = 15
-const LINE_TOP = 378.2 - 0.31 * LINE_PX
+const LINE_TOP = HEADING_CAP + 81 - 0.31 * LINE_PX
 
 /** The line is in Manrope since 2026-11-16 (the frame has Assistant), never under TEXT_MIN. */
 
@@ -74,17 +113,30 @@ const LINE_TOP = 378.2 - 0.31 * LINE_PX
  */
 const PW = 974
 const PH = 1522
+/*
+ * Satori (2026-11-21) is a third card at Emperor's size, after the Chess Set.
+ * Every card but the last, in front, stands `P_BLEED` off the left edge, as
+ * Emperor did, with the next one peeking in at the right; the last stands
+ * `P_BLEED` off the right edge with the one before peeking in at the left, as
+ * the Chess Set did. (Centred, the Chess Set left none of its neighbours
+ * showing: the phone's frame is only its width and two gaps wide.) A swipe
+ * moves one card along.
+ */
 const P_CARDS = [
   { w: 843, h: 1036, y: 411 },
   { w: 891, h: 1005, y: 383 },
+  { w: 843, h: 1036, y: 411 },
 ]
 const P_GAP = 41
 const P_BLEED = 69
 const P_TEXT_X = 61
 const P_TEXT_Y = 79
 /** Where each card starts on the strip, and the strip's offset with each in the middle. */
-const P_START = [0, P_CARDS[0].w + P_GAP]
-const P_OFFSET = [-P_BLEED, PW - P_CARDS[1].w + P_BLEED - P_START[1]]
+const P_START = P_CARDS.map((_, i) => P_CARDS.slice(0, i).reduce((s, c) => s + c.w + P_GAP, 0))
+const P_LAST = P_CARDS.length - 1
+const P_OFFSET = P_CARDS.map((c, i) =>
+  i === P_LAST ? PW - c.w + P_BLEED - P_START[i] : -P_BLEED - P_START[i],
+)
 /** A sideways drag at least this long (px) is a swipe. */
 const SWIPE_PX = 40
 
@@ -129,7 +181,7 @@ function SelectedPhone() {
     const dy = t.clientY - s.y
     if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return
     swiped.current = true
-    setActive(dx < 0 ? 1 : 0)
+    setActive((a) => (dx < 0 ? Math.min(a + 1, P_LAST) : Math.max(a - 1, 0)))
   }
 
   return (
@@ -138,7 +190,9 @@ function SelectedPhone() {
       onTouchEnd={onTouchEnd}
       style={{ position: "relative", width: "100%", aspectRatio: `${PW} / ${PH}`, overflow: "hidden", touchAction: "pan-y" }}
     >
-      <div style={{ position: "absolute", left: `${(P_TEXT_X / PW) * 100}%`, top: `${(P_TEXT_Y / PH) * 100}%`, right: "12%" }}>
+      {/* Centred, as Making's words on the phone (2026-11-21; it stood at
+          the left, `P_TEXT_X` in). */}
+      <div style={{ position: "absolute", left: `${(P_TEXT_X / PW) * 100}%`, right: `${(P_TEXT_X / PW) * 100}%`, top: `${(P_TEXT_Y / PH) * 100}%`, textAlign: "center" }}>
         <p
           style={{
             fontFamily: JULIUS,
@@ -257,7 +311,7 @@ export function SelectedSection() {
             className="selected-card"
             style={{
               position: "absolute",
-              left: pctX(p.x),
+              left: pctX(cardX(i)),
               top: pctY(CARD_Y),
               width: pctX(CARD_W),
               height: pctY(CARD_H),
@@ -275,9 +329,10 @@ export function SelectedSection() {
         <div
           style={{
             position: "absolute",
-            left: pctX(TEXT_X),
+            left: 0,
             top: pctY(HEADING_TOP),
-            right: 0,
+            right: MIRROR_RIGHT,
+            textAlign: "right",
             opacity: fade,
             transform: `translateY(${(1 - fade) * 30}px)`,
             transition: "opacity 0.15s, transform 0.15s",
@@ -291,7 +346,7 @@ export function SelectedSection() {
               fontSize: `clamp(${JULIUS_MIN}px, ${vw(HEADING_PX)}, 32px)`,
               lineHeight: 1,
               color: "#888",
-              margin: 0,
+              margin: `0 ${TRACK_BACK} 0 0`,
             }}
           >
             Selected
@@ -305,7 +360,7 @@ export function SelectedSection() {
               lineHeight: 1.35,
               color: "#888",
               // from the heading's line box to this one's, as in the frame
-              margin: `${vw(LINE_TOP - HEADING_TOP - HEADING_PX)} 0 0`,
+              margin: `${vw(LINE_TOP - HEADING_TOP - HEADING_PX)} -${TEXT_TRACK} 0 0`,
             }}
           >
             A curated selection across Mind, Body and Space.

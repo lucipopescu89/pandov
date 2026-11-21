@@ -254,6 +254,18 @@ const INK = "#202020"
  */
 const INK_WIDTH = 0.2
 /**
+ * No line is drawn thinner than one CSS pixel (2026-11-21, the author's
+ * report: with the mandala at a fixed size, its lines came out well under a
+ * pixel, the grey hairline at about 0.3px, and read broken and odd). A screen
+ * smears a line thinner than its pixel, and on the curves whole stretches
+ * fall between pixels. So a line that would be thinner is drawn 1px wide and
+ * gives back the ink it gained: at the share of a pixel it would have been,
+ * never less than `HAIR_INK_MIN` (a solid pixel at a third of the ink reads
+ * fainter than the smeared line it replaces). The Chess Set's ornament does
+ * the same (`LINE_INK_MIN` in `chess-set-statement.tsx`).
+ */
+const HAIR_INK_MIN = 0.55
+/**
  * The bow can only be drawn once it is inked: the draw is held back until the
  * ink has gone this far, and has all of it by the time the ink is done.
  */
@@ -1160,6 +1172,17 @@ export function MoonMandala({
         }
       }
 
+      /**
+       * A line's width in units and the share of its ink to draw it with: as
+       * it is, or 1 CSS pixel at less ink where it would be thinner (see
+       * `HAIR_INK_MIN`). The width is the same in pixels however the ring is
+       * zoomed, since the zoom divides it back out.
+       */
+      const hair = (width: number): [number, number] => {
+        const px = (width * scale) / dpr
+        return px >= 1 ? [width, 1] : [dpr / scale, Math.max(HAIR_INK_MIN, px)]
+      }
+
       const paint = (
         g: Group,
         alpha: number,
@@ -1194,15 +1217,17 @@ export function MoonMandala({
           }
           const stroke = art.strokes[run.stroke]
           if (withColour) {
-            ctx.globalAlpha = alpha
+            const [w, k] = hair(stroke.width)
+            ctx.globalAlpha = alpha * k
             ctx.strokeStyle = stroke.color
-            ctx.lineWidth = stroke.width / zoom
+            ctx.lineWidth = w / zoom
             ctx.stroke(path)
           }
           if (withInk && inkStyle) {
-            ctx.globalAlpha = alpha * inkAlpha
+            const [w, k] = hair(Math.max(stroke.width, INK_WIDTH))
+            ctx.globalAlpha = alpha * inkAlpha * k
             ctx.strokeStyle = inkStyle
-            ctx.lineWidth = Math.max(stroke.width, INK_WIDTH) / zoom
+            ctx.lineWidth = w / zoom
             ctx.stroke(path)
           }
         }
@@ -1297,9 +1322,10 @@ export function MoonMandala({
       if (landAt >= 0) {
         const u = (now - landAt) / 1000 / SPLASH_S
         if (u < 1) {
-          ctx.globalAlpha = 0.55 * (1 - u) * inkAlpha
+          const [w, k] = hair(INK_WIDTH)
+          ctx.globalAlpha = 0.55 * (1 - u) * inkAlpha * k
           ctx.strokeStyle = INK
-          ctx.lineWidth = INK_WIDTH
+          ctx.lineWidth = w
           ctx.beginPath()
           ctx.arc(0, 0, SPLASH_R * (1 - (1 - u) * (1 - u)), 0, Math.PI * 2)
           ctx.stroke()

@@ -75,7 +75,7 @@ text.pfx-r{translate:none}
 .pfx-r.pfx-in{opacity:1;translate:0 0}
 .pp-info .pfx-r{opacity:1!important;filter:none!important;translate:none!important;transition:none!important}
 .pfx-dust{position:fixed;inset:0;pointer-events:none;z-index:9996}
-.pfx-rule{position:fixed;left:0;top:0;height:1px;width:100%;transform-origin:0 50%;scale:0 1;z-index:9999;background:linear-gradient(90deg,transparent,#d6b26e 60%,#f3dfae);opacity:.7;pointer-events:none}
+.pfx-rule{position:fixed;left:0;top:0;height:2px;width:100%;transform-origin:0 50%;scale:0 1;z-index:9999;background:linear-gradient(90deg,transparent,#d6b26e 60%,#f3dfae);opacity:.7;pointer-events:none}
 `;
     const style = document.createElement('style'); style.id = 'pfx-style'; style.textContent = reduce ? '' : css; document.head.appendChild(style);
     const nodes = []; const add = (cls, tag = 'div') => { const e = document.createElement(tag); e.className = cls; document.body.appendChild(e); nodes.push(e); return e; };

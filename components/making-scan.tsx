@@ -40,13 +40,19 @@ import { clamp01, smooth, words as wordsAt, ARRIVE, ARRIVE_GLIDE_VW, arriveOpaci
  *
  * Both pictures carry the same `srcset` and `sizes`, so the browser takes the
  * same width of both and they meet exactly.
+ *
+ * **2026-11-21, on the dark** (the author's asking): the author's new pair on
+ * #202020 ("Saning Edges Original Black", "Scaning Edges _Black", 3168 × 3772,
+ * `scripts/making-scan.py`), placed as the white pair was; their panel is the
+ * page's dark, the page stays dark after them (no white veil, here or behind
+ * the page), and their foot fades into the dark.
  */
 
 /** The pictures' height / width (printed by the script). */
-const SCAN_RATIO = 1.0581
+const SCAN_RATIO = 1.1907
 const WIDTHS = [1100, 1600, 2000] as const
 /** Bump with a new export, so browsers fetch the new pictures. */
-const VERSION = 2
+const VERSION = 3
 /** The screenshot's layout (1464 wide, the frame the window's height), in vw. */
 const PANEL = "46.45vw"
 const SCAN_W = "62.3vw"
@@ -78,7 +84,7 @@ const CSS = `
 .mk-scan{--vh:100vh;--vh:100svh;--scan-w:${SCAN_W};--scan-h:calc(var(--scan-w) * ${SCAN_RATIO});
   position:relative;z-index:3;margin-top:calc(-1 * var(--vh));height:calc(var(--vh) * ${1 + HELD});background:transparent}
 .mk-scan-win{position:sticky;top:0;height:var(--vh);overflow:hidden;-webkit-user-select:none;user-select:none}
-.mk-scan-frame{position:absolute;left:0;top:var(--t1);height:var(--h1);width:${PANEL};overflow:hidden;background:#fff;
+.mk-scan-frame{position:absolute;left:0;top:var(--t1);height:var(--h1);width:${PANEL};overflow:hidden;background:#202020;
   opacity:0;transform:translateX(-${ARRIVE_GLIDE_VW}vw);will-change:opacity,transform}
 .mk-scan-x{position:absolute;top:0;bottom:0;left:${SCAN_LEFT};width:var(--scan-w)}
 .mk-scan-img{position:absolute;left:0;top:0;width:100%;height:var(--scan-h);will-change:transform}
@@ -95,7 +101,8 @@ const CSS = `
 .mk-scan-words{position:absolute;z-index:2;left:${WORDS_LEFT};top:calc(var(--t1) + var(--h1) * ${WORDS_TOP});margin:0;line-height:3;opacity:0}
 .mk-scan-words>span{display:block;white-space:nowrap}
 @media (max-width:1299px){.mk-scan-words{max-width:calc(100vw - ${WORDS_LEFT} - 5vw)}.mk-scan-words>span{white-space:normal;line-height:2;margin-bottom:1em}}
-.mk-scan-veil{position:absolute;inset:0;z-index:5;background:#fff;opacity:0;pointer-events:none}
+/* The white veil is gone (2026-11-21, the author's asking: the page stays dark). */
+.mk-scan-veil{display:none}
 /* A phone (2026-11-19, the author's asking: the words not over the picture): the words above, on the dark, and the
    picture under them, the screen's width, a little shorter than the frame. */
 /* And, to try (later that day): not held on a phone; it goes up with the page, the words above the picture, and the
@@ -110,10 +117,12 @@ const CSS = `
   /* It begins to come up as the turning piece above fades out (a negative margin, 2026-11-19, the author's asking:
      too many scrolls between them). */
   .mk-flow .mk-scan{--scan-w:min(85vw, 2000px);height:auto;margin-top:calc(-0.45 * var(--vh))}
-  .mk-flow .mk-scan-win{position:relative;height:auto;padding:12vh 0 8vh}
+  /* Later on 2026-11-21 (the author's asking): it comes a little higher (12vh less room above it), and its words
+     stand at the picture's middle, centred on it. */
+  .mk-flow .mk-scan-win{position:relative;height:auto;padding:0 0 8vh}
   .mk-flow .mk-scan-frame{position:relative;top:auto;height:var(--scan-h);width:calc(var(--scan-w) * .59)}
   .mk-flow .mk-scan-x{left:calc(var(--scan-w) * -.18)}
-  .mk-flow .mk-scan-words{top:calc(12vh + var(--scan-h) * .08);left:calc(var(--scan-w) * .59 + 5vw);max-width:none}
+  .mk-flow .mk-scan-words{top:calc(var(--scan-h) * .5);transform:translateY(-50%);left:calc(var(--scan-w) * .59 + 5vw);max-width:none}
   .mk-flow .mk-scan-veil{display:none}
 }
 @media (max-width:767px){
@@ -241,8 +250,14 @@ export function MakingScan({ words, color }: { words: ReactNode; color: string }
         const Dp = Math.max(0, boxH - frameH)
         style(box, "p", "transform", `translate3d(0, ${(-Dp * smooth((p - 0.2) / 0.6)).toFixed(1)}px, 0)`)
         // Its words go as the page goes white behind it (`.mk-bg-veil`).
-        const wIn = phoneNow ? 0.05 : 0.1
-        if (wordsEl) style(wordsEl, "w", "opacity", (smooth((p - wIn) / 0.13) * (1 - smooth((p - 0.4) / 0.13))).toFixed(3))
+        // A computer (2026-11-21): the words at the picture's middle, so they come as that middle comes up into the
+        // window and go as it nears the top. A phone: above the picture, as before.
+        if (wordsEl) {
+          const o = phoneNow
+            ? smooth((p - 0.05) / 0.13) * (1 - smooth((p - 0.4) / 0.13))
+            : smooth((p - 0.34) / 0.12) * (1 - smooth((p - 0.55) / 0.1))
+          style(wordsEl, "w", "opacity", o.toFixed(3))
+        }
         if (r.top < vh && r.bottom > 0) place()
         return
       }

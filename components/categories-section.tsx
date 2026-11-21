@@ -52,10 +52,40 @@ const LABEL_H_PHONE = 96
 const MIND_BAND_VH = 52
 /** The computer's chess photograph is this share of the page's width tall. */
 const MIND_PHOTO_VW = +((900 / 2968) * 100).toFixed(3)
-/** For Body's row opens with this, so the dark under For Mind's band is `ROW_GAP` too. */
-const MIND_AFTER = `calc(max(${MIND_BAND_VH}vh, ${MIND_PHOTO_VW}vw) - 44vh + ${LABEL_H}px)`
+/**
+ * The band whole on the screen, always, with dark under it (2026-11-21, the
+ * author's asking, twice the same morning). On a wide screen the photograph,
+ * drawn the page's width, grew taller than the screen had room for and was cut
+ * at its foot. First the band was let grow with it and run a little below the
+ * screen; seen, the author asked instead for the band to be seen whole, the
+ * dark showing under it, and the photograph scaled to fit.
+ *
+ * So the band is never less than `MIND_BAND_WHITE` times the photograph, white
+ * above and below the board (the photograph itself leaves only 4–5% of its
+ * height white either side), not less than `MIND_BAND_VH`, and never more
+ * than `MIND_BAND_MAX`, which wins over both: the screen less the dark above
+ * the words (`ROW_GAP`),
+ * the words (`LABEL_H`) and `MIND_DARK_UNDER` of dark under it. Where that
+ * limit holds, the photograph is drawn narrower than the page, centred in the
+ * band's white (`MIND_PHOTO_W`; its own edges are white, so it reads as one
+ * white). On a laptop of 1440 × 900 and smaller screens the limit is what
+ * sizes it; on a 1920 monitor too unless the window is nearly full height.
+ */
+const MIND_BAND_WHITE = 1.15
+const MIND_DARK_UNDER = "8vh"
+const MIND_BAND_MAX = `calc(100vh - ${ROW_GAP} - ${LABEL_H}px - ${MIND_DARK_UNDER})`
+const MIND_BAND = `min(${MIND_BAND_MAX}, max(${MIND_BAND_VH}vh, ${+(MIND_PHOTO_VW * MIND_BAND_WHITE).toFixed(3)}vw))`
+/** The photograph's width on a computer: the page's, or less where the band's limit holds. */
+const MIND_PHOTO_W = `min(100%, calc(${MIND_BAND_MAX} * ${+(2968 / 900 / MIND_BAND_WHITE).toFixed(4)}))`
+/**
+ * For Body's row opens with this, so the dark under For Mind's band is
+ * `ROW_GAP` too: what `ROW_GAP` still needs after the dark left under the band
+ * on For Mind's screen, and `ROW_GAP` whole where the row is taller than the
+ * screen and leaves none.
+ */
+const MIND_AFTER = `max(0px, min(${ROW_GAP}, calc(${MIND_BAND} - 44vh + ${LABEL_H}px)))`
 /** On a phone the photograph (1000 × 1195) is the band: 119.5vw tall. */
-const MIND_AFTER_PHONE = `max(0px, calc(119.5vw - 64vh + ${LABEL_H_PHONE}px))`
+const MIND_AFTER_PHONE = `max(0px, min(${ROW_GAP_PHONE}, calc(119.5vw - 64vh + ${LABEL_H_PHONE}px)))`
 const BODY_BAND_VH = 56
 /** The pendant inside its band (60 before, without a band). */
 const BODY_IN_BAND_VH = 52
@@ -556,7 +586,10 @@ function MindRow() {
       ref={ref}
       style={{
         position: "relative",
-        height: "100vh",
+        // At least a screen rather than exactly one (2026-11-21): the band is
+        // sized to fit it (`MIND_BAND_MAX`), but should the words come out
+        // taller than `LABEL_H`, the row grows instead of cutting the band.
+        minHeight: "100vh",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -609,9 +642,10 @@ function MindRow() {
         >
           <CategoryLabel title="For Mind" align="center" href="/mind" />
         </div>
-        {/* The band: at least MIND_BAND_VH, the photograph across it, centred
-            in its white (2026-11-21). On a phone the photograph is the band. */}
-        <a href="/mind" aria-label="For Mind" style={{ ...BAND, ...BAND_LINK, minHeight: isMobile ? 0 : `${MIND_BAND_VH}vh` }}>
+        {/* The band: at least MIND_BAND_VH, and on a wide screen growing with
+            the photograph (`MIND_BAND`), the photograph across it, centred in
+            its white (2026-11-21). On a phone the photograph is the band. */}
+        <a href="/mind" aria-label="For Mind" style={{ ...BAND, ...BAND_LINK, minHeight: isMobile ? 0 : MIND_BAND }}>
           {/* One <picture> for both screens, the browser choosing the file
               (2026-11-20, the audit). Until then the page chose it in script:
               the server sent the computer's photograph, and a phone swapped it
@@ -620,6 +654,10 @@ function MindRow() {
               the doors, so neither needs to jump the queue any more. The phone's
               file was re-encoded the same day, 645KB to 376KB. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* The computer's photograph at `MIND_PHOTO_W`, the phone's at the
+              page's width, by a media query rather than `isMobile`, so the
+              first paint already has the right one. */}
+          <style>{`.mind-photo{width:${MIND_PHOTO_W}}@media (max-width:767px){.mind-photo{width:100%}}`}</style>
           <picture style={{ display: "block", width: "100%" }}>
             <source media="(max-width: 767px)" srcSet="/images/cat-mind-mobile.jpg?v=4" width={1000} height={1195} />
             <img
@@ -628,7 +666,8 @@ function MindRow() {
               width={2968}
               height={900}
               decoding="async"
-              style={{ width: "100%", height: "auto", display: "block", opacity: CATEGORY_IMAGE_OPACITY }}
+              className="mind-photo"
+              style={{ height: "auto", display: "block", margin: "0 auto", opacity: CATEGORY_IMAGE_OPACITY }}
             />
           </picture>
         </a>

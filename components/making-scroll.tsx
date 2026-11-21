@@ -213,6 +213,9 @@ export function MakingScroll() {
     const siluet = $("siluet")
     const rise = document.querySelector<SVGRectElement>('[data-mk="rise"]')
     const paperWords = $("paper-words")
+    // The drawings (2026-11-21): two sheets, the words between them.
+    const drawings1 = $("drawings-1")
+    const drawings2 = $("drawings-2")
     const end = $("end")
     const bgVeil = $("bg-veil")
     const flowing = !!wood?.closest(".mk-flow")
@@ -332,15 +335,23 @@ export function MakingScroll() {
         set(fireWords, "opacity", (ramp(f.p, 0.1, 0.2) * (1 - ramp(f.p, 0.3, 0.4))).toFixed(3))
       }
 
-      // ── The sketches ──
-      const band = paper.querySelector<HTMLElement>(".mk-band")
-      if (band) {
-        const k = passing(band, vh)
-        const picture = ramp(k.p, 0.02, 0.25).toFixed(3)
-        set(sketches, "opacity", picture)
-        set(siluet, "opacity", picture)
-        if (rise) set(rise, "attr:y", (868 - ramp(k.p, 0.25, 0.65) * 978).toFixed(1))
-        set(paperWords, "opacity", (ramp(k.p, 0.12, 0.25) * (1 - ramp(k.p, 0.6, 0.72))).toFixed(3))
+      // ── The drawings (2026-11-21, the author's asking; the sketches
+      // photograph and Siluet 2 rising until then) ──
+      // The first sheet comes up out of transparency and goes into it again
+      // as it passes the window's middle; the words come as it goes, and the
+      // second sheet, just under them, comes about then.
+      if (drawings1) {
+        const a = passing(drawings1, vh)
+        // Held longer (the author's asking, later that day: it went at 0.45–0.62).
+        set(drawings1, "opacity", (ramp(a.p, 0.02, 0.25) * (1 - ramp(a.p, 0.6, 0.76))).toFixed(3))
+        if (paperWords) {
+          const w = passing(paperWords, vh)
+          set(paperWords, "opacity", (ramp(a.p, 0.56, 0.68) * (1 - ramp(w.p, 0.66, 0.8))).toFixed(3))
+        }
+      }
+      if (drawings2) {
+        const b = passing(drawings2, vh)
+        set(drawings2, "opacity", (ramp(b.p, 0, 0.2) * (1 - ramp(b.p, 0.7, 0.9))).toFixed(3))
       }
       // ── The white after the scan (2026-11-19, the author's asking: "it goes
       // straight into white, no grey or black under it") ──
@@ -350,6 +361,19 @@ export function MakingScroll() {
         // later: 0.3–0.48 turned white with them only half way up), nearly so
         // as the picture's foot comes in.
         set(bgVeil, "opacity", sc ? ramp(passing(sc, vh).p, 0.38, 0.54).toFixed(3) : "0")
+      }
+      // ── The print (2026-11-21, the author's asking): after Heavy Light,
+      // going up with the page. It comes out of transparency as the fire
+      // does, and goes into the page's dark as the last screen comes up (as
+      // Heavy Light does as it rises; white until 2026-11-21), gone before the last words come
+      // (`LAST_IN_FLOW`): they stand fixed near the window's top while the
+      // last screen rises, and would otherwise be read over the footage.
+      const print = $("print")
+      if (print) {
+        const q = passing(print, vh)
+        const endP = end ? clamp01(1 - end.getBoundingClientRect().top / vh) : 0
+        // At most 0.9 (2026-11-21, the author's asking: 90%).
+        set(print, "opacity", (0.9 * ramp(q.p, 0, 0.32) * (1 - ramp(endP, 0.02, 0.3))).toFixed(3))
       }
       lastScreen(vh)
     }
@@ -489,7 +513,8 @@ export function MakingScroll() {
       {
         const r = paper.getBoundingClientRect()
         const y = -r.top / vh
-        set(stage, "background-color", y >= 0 ? "#fff" : "transparent")
+        // The page stays dark from here (2026-11-21, the author's asking): no white behind them.
+        set(stage, "background-color", "transparent")
         const picture = arriveOpacity(y / ARRIVE).toFixed(3)
         set(sketches, "opacity", picture)
         set(siluet, "opacity", picture)
