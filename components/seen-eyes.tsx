@@ -53,14 +53,25 @@ const pathOf = (p: number[]) => {
 const ease = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2)
 
 /**
- * `place` sets the wrapper: a <header> above the grid, a <footer> below it.
- * Besides being what they are, that keeps them out of the soft entrance in
- * `public/pandov-fx.js`, which leaves headers and footers alone: the eyes at
- * the foot of the page sit inside the last 10% of the screen, where that
- * entrance never fires, and they stayed hidden (the author's report).
+ * `place` sets the wrapper: a <footer> below the grid (a <header> above it
+ * until 2026-11-22, when the top pair moved into the bar, `SeenBar`, which
+ * uses `SeenEyesButton` on its own). Besides being what it is, a footer keeps
+ * them out of the soft entrance in `public/pandov-fx.js`, which leaves headers
+ * and footers alone: the eyes at the foot of the page sit inside the last 10%
+ * of the screen, where that entrance never fires, and they stayed hidden (the
+ * author's report).
  */
 export function SeenEyes({ place }: { place: "header" | "footer" }) {
   const Wrap = place
+  return (
+    <Wrap className="flex w-full justify-center" style={{ padding: "40px 0" }}>
+      <SeenEyesButton />
+    </Wrap>
+  )
+}
+
+/** The pair of eyes itself, the button that takes the reader back. */
+export function SeenEyesButton() {
   const router = useRouter()
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "")
   const hostRef = useRef<HTMLButtonElement>(null)
@@ -199,27 +210,25 @@ export function SeenEyes({ place }: { place: "header" | "footer" }) {
   }
 
   return (
-    <Wrap className="flex w-full justify-center" style={{ padding: "40px 0" }}>
-      <button
-        ref={hostRef}
-        type="button"
-        onClick={goBack}
-        aria-label="Back"
-        className="flex cursor-pointer items-center border-none bg-transparent p-0"
-        style={{ gap: EYE_GAP }}
-      >
-        {[0, 1].map((k) => (
-          <svg
-            key={k}
-            viewBox={EYE_VIEWBOX}
-            width={EYE_W}
-            height={(EYE_W * 210) / 500}
-            fill="none"
-            aria-hidden="true"
-            style={{ display: "block", overflow: "visible", transform: k === 1 ? "scaleX(-1)" : undefined }}
-          />
-        ))}
-      </button>
-    </Wrap>
+    <button
+      ref={hostRef}
+      type="button"
+      onClick={goBack}
+      aria-label="Back"
+      className="flex cursor-pointer items-center border-none bg-transparent p-0"
+      style={{ gap: EYE_GAP }}
+    >
+      {[0, 1].map((k) => (
+        <svg
+          key={k}
+          viewBox={EYE_VIEWBOX}
+          width={EYE_W}
+          height={(EYE_W * 210) / 500}
+          fill="none"
+          aria-hidden="true"
+          style={{ display: "block", overflow: "visible", transform: k === 1 ? "scaleX(-1)" : undefined }}
+        />
+      ))}
+    </button>
   )
 }

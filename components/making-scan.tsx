@@ -77,6 +77,15 @@ const INERTIA = 0.06
 const INERTIA_MS = 420
 /** It keeps this far, px, inside what is seen of the picture. */
 const LINE_INSET = 14
+/**
+ * And this far on a touch screen (2026-11-22, the author's asking): left at the
+ * screen's very edge, a finger reaching for it began the browser's own swipe
+ * back (Safari on an iPhone; Android's back gesture the same) and the page went
+ * back instead of the line moving. Nothing on a page can stop that swipe; the
+ * line simply never goes into its strip (about the outer 20–30px), so it is
+ * always taken where a finger can hold it. The same at the right edge (forward).
+ */
+const LINE_INSET_TOUCH = 48
 /** An arrow key moves it this share of the picture's width. */
 const KEY_STEP = 0.025
 
@@ -100,6 +109,9 @@ const CSS = `
 .mk-scan-line:focus-visible::before{width:2px;margin-left:-1px}
 .mk-scan-words{position:absolute;z-index:2;left:${WORDS_LEFT};top:calc(var(--t1) + var(--h1) * ${WORDS_TOP});margin:0;line-height:3;opacity:0}
 .mk-scan-words>span{display:block;white-space:nowrap}
+/* A line written for one screen only (2026-11-22): mk-pc on a computer, mk-ph on a phone. */
+.mk-scan-words>span.mk-ph{display:none}
+@media (max-width:767px){.mk-scan-words>span.mk-ph{display:block}.mk-scan-words>span.mk-pc{display:none}}
 @media (max-width:1299px){.mk-scan-words{max-width:calc(100vw - ${WORDS_LEFT} - 5vw)}.mk-scan-words>span{white-space:normal;line-height:2;margin-bottom:1em}}
 /* The white veil is gone (2026-11-21, the author's asking: the page stays dark). */
 .mk-scan-veil{display:none}
@@ -159,6 +171,8 @@ export function MakingScan({ words, color }: { words: ReactNode; color: string }
     if (!frameEl || !x || !box || !after || !line) return
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     const flowing = !!section.closest(".mk-flow")
+    // Any touch screen, a phone, a tablet, a laptop that has one (`LINE_INSET_TOUCH`).
+    const touch = window.matchMedia("(any-pointer: coarse)").matches
 
     let frameH = 0
     let frameW = 0
@@ -188,8 +202,9 @@ export function MakingScan({ words, color }: { words: ReactNode; color: string }
     let shownAt = -1
     const place = () => {
       // inside what is seen of the picture
-      const lo = Math.max(0, -boxLeft) + LINE_INSET
-      const hi = Math.min(boxW, frameW - boxLeft) - LINE_INSET
+      const inset = touch ? LINE_INSET_TOUCH : LINE_INSET
+      const lo = Math.max(0, -boxLeft) + inset
+      const hi = Math.min(boxW, frameW - boxLeft) - inset
       const px = Math.min(hi, Math.max(lo, at * boxW))
       if (Math.abs(px - shownAt) < 0.05) return
       shownAt = px

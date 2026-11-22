@@ -9,7 +9,7 @@ import { MakingVideo } from "@/components/making-video"
 import { MakingScan } from "@/components/making-scan"
 import { MakingHarag } from "@/components/making-harag"
 import { MakingHeavy } from "@/components/making-heavy"
-import { FIRE_SECTION_EXTRA, FIRE_FROM_S1, PHONE_FIRE_Z, PHONE_FIRE_FROM_S1 } from "@/lib/making-rhythm"
+import { FIRE_SECTION_EXTRA, FIRE_FROM_S1, PHONE_FIRE_Z, PHONE_FIRE_FROM_S1, HEAVY_LEAN } from "@/lib/making-rhythm"
 import { TEXT_FONT, TEXT_SIZE, TEXT_TRACK, JULIUS, TRACK } from "@/lib/type"
 
 /**
@@ -334,7 +334,9 @@ const CSS = `
 .mk.mk-ed .mk-last>span{margin-bottom:0}
 @media (min-width:768px){
   /* "Or anywhere there is a quiet potential." stays where it was: on axis B it stood on the trunk. */
-  .mk.mk-ed .mk-hl-words{left:calc(var(--ax-a) - (100vw - 100%) / 2) !important}
+  /* The axis less the scene's own distance from the left: HEAVY_LEAN of the free room (2026-11-22; it was half of it,
+     the scene centred, and on a very wide screen the words came over the wooden piece). */
+  .mk.mk-ed .mk-hl-words{left:calc(var(--ax-a) - (100vw - 100%) * ${HEAVY_LEAN.toFixed(6)}) !important}
   .mk.mk-ed .mk-scan-words{max-width:32em !important}
   .mk.mk-ed .mk-scan-words>span{white-space:normal}
 }
@@ -491,8 +493,15 @@ export function MakingPage() {
         words={
           <>
             {/* "Most of the found pieces are 3D scanned." went to the turning piece's words (2026-11-19). */}
-            <span>Capturing their exact geometry reveals what works visually,</span>
-            <span>while allowing new elements to be engineered for a precise physical fit.</span>
+            {/* Broken by sense, a line each, as everywhere on the page (2026-11-22, the author's asking): the second
+                sentence used to wrap where the width ran out, leaving "physical fit." alone (on a phone "visually,"
+                too), set closer than the lines around it. On a phone the first sentence is two lines as well
+                (`mk-pc` the computer's, `mk-ph` the phone's, MakingScan). */}
+            <span className="mk-pc">Capturing their exact geometry reveals what works visually,</span>
+            <span className="mk-ph">Capturing their exact geometry</span>
+            <span className="mk-ph">reveals what works visually,</span>
+            <span>while allowing new elements to be engineered</span>
+            <span>for a precise physical fit.</span>
           </>
         }
       />

@@ -89,6 +89,13 @@ const LAST_RISE = 0.2
  * only once it is nearly white (2026-11-19, the author's asking).
  */
 const LAST_IN_FLOW = 0.32
+/**
+ * While the page flows, the last words as the homepage's "Get in touch"
+ * (2026-11-22): out of transparency from when their middle is this share of
+ * the way down the window to this (footer.tsx: `IN_FROM`, `IN_TO`).
+ */
+const LAST_FROM = 0.95
+const LAST_TO = 0.65
 /** The sketches, in windows since their frame settled: the words, and Siluet 2 rising. */
 const PAPER_WORDS = [0.55, 1.85] as const
 const PAPER_GROW = [0.6, 1.9] as const
@@ -220,6 +227,7 @@ export function MakingScroll() {
     const bgVeil = $("bg-veil")
     const flowing = !!wood?.closest(".mk-flow")
     const endIn = $("end-in")
+    const lastWords = $("last")
     if (!wood || !drawing || !paper || !stage) return
 
     // The strokes, in the order the export lists them; the circle is the knot.
@@ -258,7 +266,33 @@ export function MakingScroll() {
       const from = Math.min(vh, docTop)
       return { p: clamp01((from - r.top) / Math.max(1, from + r.height)), first: docTop < vh }
     }
-    const lastScreen = (vh: number) => {
+    const lastScreen = (vh: number, natural = false) => {
+    // ── While the page flows (2026-11-22, the author's asking: "as on the
+    // homepage"): the last words and the bottom menu go up with the page like
+    // everything else, nothing holds them to the window. The words come out of
+    // transparency as they come up the screen, from when their middle is
+    // `LAST_FROM` of the way down the window to `LAST_TO`, and are always
+    // fully there at the end of the page; the bottom menu is simply there, as
+    // under the homepage's "Get in touch" (`IN_FROM`, `IN_TO`, footer.tsx).
+    // (Until then they stood fixed near the window's top, the two faded in
+    // together, while the last screen rose under them: below.)
+    if (natural) {
+      if (endIn) {
+        set(endIn, "opacity", "1")
+        set(endIn, "transform", "none")
+        set(endIn, "pointer-events", "auto")
+      }
+      if (lastWords) {
+        const atEnd = document.documentElement.scrollHeight - vh - window.scrollY < 2
+        const a = lastWords.firstElementChild?.getBoundingClientRect()
+        const b = lastWords.lastElementChild?.getBoundingClientRect()
+        // The lines' own middle: the paragraph's box begins with the room above them.
+        const mid = a && b ? (a.top + b.bottom) / 2 : lastWords.getBoundingClientRect().top
+        const o = atEnd ? 1 : clamp01((LAST_FROM * vh - mid) / ((LAST_FROM - LAST_TO) * vh))
+        set(lastWords, "opacity", o.toFixed(3))
+      }
+      return
+    }
     // ── The last screen: the last words with the bottom menu (2026-11-19) ──
     // The words and the menu are one (`.mk-end-in`): they come out of
     // transparency together, the words about the middle of the window,
@@ -364,18 +398,17 @@ export function MakingScroll() {
       }
       // ── The print (2026-11-21, the author's asking): after Heavy Light,
       // going up with the page. It comes out of transparency as the fire
-      // does, and goes into the page's dark as the last screen comes up (as
-      // Heavy Light does as it rises; white until 2026-11-21), gone before the last words come
-      // (`LAST_IN_FLOW`): they stand fixed near the window's top while the
-      // last screen rises, and would otherwise be read over the footage.
+      // does, and goes into it again as it leaves at the top, as the fire
+      // does (2026-11-22: the last words now come up after it with the page;
+      // until then it went into the dark as the last screen came up, gone
+      // before the last words, which stood fixed over where it had been).
       const print = $("print")
       if (print) {
         const q = passing(print, vh)
-        const endP = end ? clamp01(1 - end.getBoundingClientRect().top / vh) : 0
         // At most 0.9 (2026-11-21, the author's asking: 90%).
-        set(print, "opacity", (0.9 * ramp(q.p, 0, 0.32) * (1 - ramp(endP, 0.02, 0.3))).toFixed(3))
+        set(print, "opacity", (0.9 * ramp(q.p, 0, 0.32) * (1 - ramp(q.p, 0.78, 0.97))).toFixed(3))
       }
-      lastScreen(vh)
+      lastScreen(vh, true)
     }
 
     const update = () => {

@@ -123,3 +123,17 @@ export const PHONE_FIRE_EXIT = 1.3
 export const PHONE_FIRE_Z = 2.0
 export const PHONE_FIRE_FROM = 2.4
 export const PHONE_FIRE_FROM_S1 = +(PHONE_FIRE_FROM / 2.1).toFixed(4)
+
+/**
+ * Where the scene stands on a very wide screen (2026-11-22, the author's asking:
+ * there the words came over the wooden piece). On any ordinary screen the scene
+ * fills the width, and the words, on the page's axis A (`--ax-a`, 489 of the
+ * 1920 frame, making-page.tsx), stand 0.2547 of the way across it, a little
+ * right of the piece. Once the window is wider than the scene (wider than about
+ * 2 : 1), the scene used to be centred and the axis fell onto the piece. Now it
+ * stands this share of the free room from the left (0.5 was centred), which
+ * keeps the words exactly where an ordinary screen has them on the photograph,
+ * and moves the scene no further than that. The models go with it: they are
+ * the scene's.
+ */
+export const HEAVY_LEAN = 489 / 1920

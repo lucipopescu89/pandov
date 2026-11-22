@@ -65,21 +65,39 @@ import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK, TRACK_BACK 
  */
 /** The frame, in its own units. */
 const FW = 1893
-const FH = 1100
 const pctX = (x: number) => `${(x / FW) * 100}%`
 const pctY = (y: number) => `${(y / FH) * 100}%`
 /** Type follows the frame's width; `px` is the size at 1893. */
 const vw = (px: number) => `${(px / FW) * 100}vw`
 
+/**
+ * 2026-11-22, the author's asking: four cards. Mother Nature joins (the author's
+ * photograph, worn), Satori's render gives way to the author's photograph of
+ * Satori IV on its drawing ("emperor.png" in `8_Selected`), and Emperor and
+ * Satori lose the top light of the black paper they were photographed on: it
+ * went from lighter than the page at the top to darker at the foot, so the
+ * card showed as a panel at the top that faded out at the bottom
+ * (`selected-emperor-2.avif`; the paper made one level, under the page's, with
+ * the piece and the lines as they were). The pendants open their own pages,
+ * not their collections'.
+ *
+ * The four stand in the row the three stood in (`ROW_W`, the same 120 units
+ * from either edge, the same `CARD_GAP`), so each is smaller, at the same
+ * proportion; the frame is shorter by as much, the 192 units of dark under the
+ * cards kept (`FH`).
+ */
 const CARD_Y = 340
-const CARD_W = 504
-const CARD_H = 568
 const CARD_GAP = 70
+const ROW_W = 3 * 504 + 2 * CARD_GAP
 const PRODUCTS = [
-  { src: "/images/home/selected-emperor.avif", alt: "Emperor, a Second Wind pendant", href: "/body/second-wind" },
+  { src: "/images/home/selected-emperor-2.avif", alt: "Emperor of Nothingness, a Second Wind pendant", href: "/body/second-wind/emperor" },
   { src: "/images/home/selected-chess-set.avif", alt: "The Chess Set", href: "/mind/chess-set" },
-  { src: "/images/body/satori/satori-4.avif", alt: "Satori, a pendant", href: "/body/satori" },
+  { src: "/images/home/selected-satori.avif", alt: "Satori IV, a pendant, on its drawing", href: "/body/satori/satori-4" },
+  { src: "/images/home/selected-mother-nature.avif", alt: "Mother Nature, a Second Wind pendant, worn", href: "/body/second-wind/mother-nature" },
 ]
+const CARD_W = (ROW_W - (PRODUCTS.length - 1) * CARD_GAP) / PRODUCTS.length
+const CARD_H = (CARD_W * 568) / 504
+const FH = CARD_Y + CARD_H + 192
 const GALLERY_W = PRODUCTS.length * CARD_W + (PRODUCTS.length - 1) * CARD_GAP
 const GALLERY_X = (FW - GALLERY_W) / 2
 const cardX = (i: number) => GALLERY_X + i * (CARD_W + CARD_GAP)
@@ -126,6 +144,8 @@ const P_CARDS = [
   { w: 843, h: 1036, y: 411 },
   { w: 891, h: 1005, y: 383 },
   { w: 843, h: 1036, y: 411 },
+  // Mother Nature (2026-11-22), at Emperor's size.
+  { w: 843, h: 1036, y: 411 },
 ]
 const P_GAP = 41
 const P_BLEED = 69
@@ -157,6 +177,28 @@ const SWIPE_PX = 40
  * from the dark to white stood there for a moment; the author had it taken
  * out).
  */
+
+/**
+ * Selected higher on a computer (2026-11-22, the author's asking: 50px as a
+ * first try, "I can't always judge the distance yet", then 50 more the same
+ * morning, 100 in all). The frame keeps all its places; it is drawn
+ * `LIFT_PX` higher inside a box that cuts off that much of the plain dark at
+ * its top (`.sel-lift`), so the words and the cards come that much nearer
+ * Making's dark wood without covering any of it, and everything under
+ * Selected comes up as much. The fade is read off the frame, so it keeps its
+ * time to the words and the cards.
+ *
+ * The dark above the heading is a share of the width (`HEADING_TOP`: about
+ * 126px at 1440 wide, 112 at 1280, 90 at 1024), so 100px would cut the
+ * heading off in a window under about 1420px wide. The lift stops
+ * `MIN_ROOM_PX` short of it there (a CSS `min`; a margin's % is of the width,
+ * as the frame's units are): the full 100px from about 1420 wide, some 88 at
+ * 1280, 66 at 1024.
+ * The phone is as it was: its words stand only some 30px under Making.
+ */
+const LIFT_PX = 100
+const MIN_ROOM_PX = 24
+const LIFT = `min(${LIFT_PX}px, ${+((HEADING_TOP / FW) * 100).toFixed(4)}% - ${MIN_ROOM_PX}px)`
 
 const CARD_OPACITY = 0.85
 const CARD_OPACITY_HOVER = 0.95
@@ -295,7 +337,9 @@ export function SelectedSection() {
           <SelectedPhone />
         </div>
       </div>
-      <div ref={ref} className="sel-desk" style={{ position: "relative", width: "100%", aspectRatio: `${FW} / ${FH}` }}>
+      {/* LIFT_PX: the frame drawn higher, the top of its dark cut off. */}
+      <div className="sel-lift" style={{ overflow: "hidden" }}>
+      <div ref={ref} className="sel-desk" style={{ position: "relative", width: "100%", aspectRatio: `${FW} / ${FH}`, marginTop: `calc(-1 * ${LIFT})` }}>
         {/* The cards and the words come in together as the section rises; the
             ground stays put, so the dark never flashes. Each card carries the
             ground itself (#202020): while it fades its opacity makes it a group
@@ -322,7 +366,7 @@ export function SelectedSection() {
               transition: "opacity 0.15s",
             }}
           >
-            <Image src={p.src} alt={p.alt} fill sizes="27vw" style={{ objectFit: "cover", objectPosition: "center" }} />
+            <Image src={p.src} alt={p.alt} fill sizes="20vw" style={{ objectFit: "cover", objectPosition: "center" }} />
           </Link>
         ))}
 
@@ -366,6 +410,7 @@ export function SelectedSection() {
             A curated selection across Mind, Body and Space.
           </p>
         </div>
+      </div>
       </div>
 
       {/* next/image renders an <img>, so the blend and the hover are set there. */}

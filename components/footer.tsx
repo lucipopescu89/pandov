@@ -65,9 +65,20 @@ function held(px: number): string {
   return `min(${(px / CANVAS_W) * 100}cqw, ${px}px)`
 }
 
+/**
+ * "Get in touch" and the bird 120px higher on a computer (2026-11-22, the
+ * author's asking, the same morning Selected went up 100): taken off the dark
+ * above the words, so everything under them comes up too. That dark is
+ * `held(200)`, 180px at 1440 wide, 160 at 1280, so 120 off leaves 60 and 40;
+ * in a window under about 1150 wide it would leave nothing, and it stops at
+ * `CTA_MIN_PX` there. The phone is as it was.
+ */
+const CTA_LIFT_PX = 120
+const CTA_MIN_PX = 24
+
 const PHONE = "(max-width: 767.98px)"
 const LAYOUT = `
-.ft-col { padding: ${held(200)} 0 ${held(32)}; }
+.ft-col { padding: max(${CTA_MIN_PX}px, calc(${held(200)} - ${CTA_LIFT_PX}px)) 0 ${held(32)}; }
 .ft-words { font-size: clamp(${JULIUS_MIN}px, 0.75vw, 12px); }
 .ft-bird { margin-top: ${held(96)}; width: ${held(360)}; }
 @media ${PHONE} {

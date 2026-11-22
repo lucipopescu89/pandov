@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { NUDGE_PX, ease, heroUp, playBeat, ramp } from "@/lib/played-beat"
+import { ease, heroUp } from "@/lib/played-beat"
 import { JULIUS_MIN, TRACK } from "@/lib/type"
 
 /** Chess (Mind), figure (Body) and lamp (Space) all sit slightly back. */
@@ -313,27 +313,20 @@ function onColumn(left: string, lift = 0): React.CSSProperties {
  * where the author asked for it to show on 2026-09-28.
  */
 /*
- * Quicker and more direct (2026-10-27, the author's asking: For Mind should
- * come in sooner after the scroll past Presence, keeping the inertia but
- * lighter and smaller). The wash, the breath, the fade and the rise are all
- * shorter, the rise is a third of the way it was (46 vh before), and the rise
- * runs on an ease-out: it moves at once and only settles at the end, where it
- * used to gather speed first. 1.55s in all, from 2.6.
+ * Quicker and more direct (2026-10-27, the author's asking): 1.55s in all,
+ * from 2.6, the rise a third of the way it was.
+ *
+ * Scrolled, no longer played (2026-11-22, the author's asking: after
+ * Presence, For Mind "stayed a little stuck", the page held while its beat
+ * played and the rest of the same scroll held after it). The page scrolls as
+ * any page does from Presence on, and For Mind's row simply comes up with it
+ * into its place, as the hero lets go: the page's own movement is its rise.
+ * It comes out of the dark over the last `MIND_IN_VH` of that way, its
+ * strength read off how far its top still is from its place. The hero's
+ * darkening comes before it, over the same scroll (`components/hero-animation.tsx`).
  */
-export const MIND_WASH_S = 0.5
-const MIND_BREATH_S = 0.1
-const MIND_FROM_S = MIND_WASH_S + MIND_BREATH_S
-const MIND_FADE_S = 0.7
-const MIND_RISE_S = 0.95
-/** The whole beat, s, wash included: the time the scroll is held for. */
-export const MIND_BEAT_S = MIND_FROM_S + Math.max(MIND_FADE_S, MIND_RISE_S)
-/** How far below its place the picture starts, vh. */
-const MIND_RISE_VH = 16
-
-// easeOutCubic: the rise leaves at speed and settles into its place.
-function easeOut(t: number): number {
-  return 1 - Math.pow(1 - t, 3)
-}
+/** The way, vh of scrolling, over which For Mind comes up into its place out of the dark. */
+export const MIND_IN_VH = 26
 
 const textStyle = {
   fontFamily: "'Julius Sans One', sans-serif",
@@ -534,7 +527,7 @@ function SpaceRow() {
   )
 }
 
-// FOR MIND — comes up out of the hero's white, played
+// FOR MIND — comes up out of the hero's dark with the scroll
 function MindRow() {
   const ref = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -548,29 +541,39 @@ function MindRow() {
   }, [])
 
   // Its place is the hero's last: the row stands exactly on the screen when
-  // the hero lets go, and the scroll that starts the beat nudges the page
-  // NUDGE_PX past it, so on is the row's top within that of the screen's.
+  // the hero lets go. Until then it is the page's distance below it, coming
+  // up with the scroll, and its strength is how near it is (MIND_IN_VH). On
+  // the way back up, laid out under the hero as a plain screen, it stays
+  // whole and scrolls away with the page (see `heroUp`).
   useEffect(() => {
     const el = ref.current
     const content = contentRef.current
     if (!el || !content) return
-    const beat = playBeat(
-      MIND_BEAT_S,
-      // On the way back up it stays in its place and scrolls away with the
-      // page, rather than sinking (see `heroUp`).
-      () => heroUp.on || el.getBoundingClientRect().top < NUDGE_PX,
-      (t) => {
-        const fade = ease(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_FADE_S))
-        const rise = MIND_RISE_VH * (1 - easeOut(ramp(t, MIND_FROM_S, MIND_FROM_S + MIND_RISE_S)))
-        content.style.opacity = String(fade)
-        content.style.transform = `translateY(${rise.toFixed(3)}vh)`
-        content.style.pointerEvents = fade > 0 ? "auto" : "none"
-      },
-      // One beat with the hero's wash, so that the hero can send both back
-      // to the start together (see `rewind`).
-      "mind",
-    )
-    return beat.dispose
+    let raf = 0
+    let shown = -1
+    const paint = () => {
+      raf = 0
+      const top = el.getBoundingClientRect().top
+      const way = (MIND_IN_VH * window.innerHeight) / 100
+      const f = heroUp.on ? 1 : ease(Math.max(0, Math.min(1, 1 - top / way)))
+      if (Math.abs(f - shown) < 0.002) return
+      shown = f
+      content.style.opacity = f.toFixed(3)
+      content.style.pointerEvents = f > 0 ? "auto" : "none"
+    }
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(paint)
+    }
+    paint()
+    window.addEventListener("scroll", kick, { passive: true })
+    window.addEventListener("resize", kick)
+    window.addEventListener("pageshow", kick)
+    return () => {
+      window.removeEventListener("scroll", kick)
+      window.removeEventListener("resize", kick)
+      window.removeEventListener("pageshow", kick)
+      cancelAnimationFrame(raf)
+    }
   }, [])
 
   return (
@@ -610,8 +613,7 @@ function MindRow() {
         style={{
           width: "100%",
           opacity: 0,
-          transform: `translateY(${MIND_RISE_VH}vh)`,
-          willChange: "opacity, transform",
+          willChange: "opacity",
           pointerEvents: "none",
         }}
       >

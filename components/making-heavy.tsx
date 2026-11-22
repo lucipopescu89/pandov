@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useRef } from "react"
-import { clamp01, smooth, ramp, words as wordsAt, arriveOpacity } from "@/lib/making-rhythm"
+import { clamp01, smooth, ramp, words as wordsAt, arriveOpacity, HEAVY_LEAN } from "@/lib/making-rhythm"
 
 /**
  * Heavy Light, from drawing to model, on /making (2026-11-19, the author's
@@ -489,6 +489,11 @@ const CSS = `
 .mk-hl-model{position:absolute;left:var(--l);width:var(--w);display:block;opacity:0;will-change:opacity}
 .mk-hl-words{position:absolute;z-index:2;margin:0;color:#a7a29b;line-height:2.6;white-space:nowrap;opacity:0;will-change:opacity}
 .mk-hl-dusk{position:absolute;inset:0;z-index:3;background:#202020;opacity:0;pointer-events:none}
+/* A very wide screen: the scene off the centre, to the left, by HEAVY_LEAN of the free room (nothing on an ordinary one). */
+@media (min-width:768px){
+  .mk-hl-stage{justify-content:flex-start}
+  .mk-hl-scene{margin-left:calc((100% - min(100%, var(--h1) * ${(VW / STILL.h).toFixed(4)})) * ${HEAVY_LEAN.toFixed(6)})}
+}
 @media (max-width:767px){
   .mk-hl{background:transparent}
   .mk-hl-stage{align-items:flex-end;padding-bottom:6vh;box-sizing:border-box}

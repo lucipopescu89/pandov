@@ -172,6 +172,11 @@ export function PendantPage({
               </Link>
             ))}
           </div>
+          {/* Back to the collection's own page (2026-11-22, the author's asking: the homepage's Selected now opens a
+              pendant straight on its page). In the words of the homepage's "→ Get in touch". */}
+          <Link href={collection.path} className="pp-back">
+            &larr; Back to collection
+          </Link>
         </section>
       </div>
       <BodyFooter />
@@ -203,6 +208,9 @@ export function PendantPage({
         .pp-more-item > img { display: block; width: 100%; height: min(${78 * MORE_SCALE}vw, ${320 * MORE_SCALE}px); object-fit: contain; }
         .pp-more-item > span { margin-top: 28px; padding-left: ${TRACK}; font-family: var(--font-heading); font-size: 11px; line-height: 1.5;
           letter-spacing: ${TRACK}; text-transform: uppercase; text-wrap: balance; color: ${INK}; }
+        .pp-back { display: inline-block; margin-top: 56px; padding: 12px 16px 12px calc(16px + ${TRACK}); font-family: var(--font-heading); font-size: 11px;
+          line-height: 1; letter-spacing: ${TRACK}; text-transform: uppercase; white-space: nowrap; color: ${TEXT}; text-decoration: none; transition: opacity 150ms; }
+        .pp-back:hover { opacity: 0.5; }
 
         @media (min-width: 1024px) {
           .pp-statement { max-width: none; margin: calc(${u(AIR.computer / 2)} - ${SLACK.computer / 2}px) auto 0; padding: 0 0 0 ${TRACK}; }
@@ -220,6 +228,7 @@ export function PendantPage({
           .pp-more-item { flex: none; width: ${u(400)}; }
           .pp-more-item > img { height: ${u(620 * MORE_SCALE)}; }
           .pp-more-item > span { margin-top: ${u(60.5)}; font-size: ${fit(15, 11)}; line-height: 1; }
+          .pp-back { margin-top: ${u(110)}; font-size: ${fit(12, JULIUS_MIN)}; }
         }
       `}</style>
     </main>

@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
-import { MIND_BEAT_S, MIND_WASH_S } from "@/components/categories-section"
-import { NUDGE_PX, TO_TOP_EVENT, finish, heroDoors, heroUp, hurry, playBeat, rewind } from "@/lib/played-beat"
+import { MIND_IN_VH } from "@/components/categories-section"
+import { NUDGE_PX, TO_TOP_EVENT, finish, heroDoors, heroUp, hurry, rewind } from "@/lib/played-beat"
 import { hasScrollTimeline } from "@/lib/scroll-timeline"
 
 /**
@@ -219,35 +219,39 @@ const BREATH_DOWN_S = 1.7
 /**
  * The section is a few pictures, and the scroll moves from one to the next:
  *
- *   doors shut ─(doors)→ text 1 lit ─(presence)→ the composition ─(mind)→ For Mind
+ *   doors shut ─(doors)→ text 1 lit, then Presence ─(scroll)→ dark ─(scroll)→ For Mind
  *
- * Each arrow is played at its own pace, and the page is held while it plays
- * (`holdScroll`, `lib/played-beat.ts`). The last is For Mind's: the wash to
- * white is its first second, played here, and For Mind's rise out of the white
- * the rest, played by its row in `components/categories-section.tsx`. Each
- * beat stands at a place on the page, in px of real scrolling past the pin: on
- * past it, off before it. A scroll down nudges the page just past the next one
- * (NUDGE_PX), so the beats come one to a scroll however much the hand scrolls,
- * and a scroll back up past one plays it backwards.
- *
- * The doors stand at the pin itself (PAST_PIN_PX). Presence stands
- * PRESENCE_AT_VH further on, about a turn of the wheel on a 900px screen, and
- * For Mind MIND_GAP_VH past Presence's resting place. The page between them
- * shows nothing that moves with it, so the nudge across a gap is never seen.
- * The gaps are there for the way back: each turn of the wheel up plays one
- * beat backwards.
+ * The doors follow the hand while the page is held (`holdScroll`), and
+ * Presence comes through them with their frames. From there on the page
+ * scrolls as ever: see `PRESENCE_STAY_VH` below (2026-11-22).
  *
  * For Mind's resting place is where the pin lets go, and where For Mind's row
- * stands exactly on the screen. The scroll after it carries both on with the
- * page.
+ * stands exactly on the screen. The scroll carries both on with the page.
  *
  * Until 2026-10-02 everything from text 1's fade to For Mind in its place was
  * tied to the scroll: an eased curve of some 73 vh to Presence's line, 36
  * more to white, and 58 of For Mind's own pin. The author asked for each to
- * come on one scroll, or on any number of them, fluidly, as the doors do.
+ * come on one scroll, or on any number of them, fluidly, as the doors do; and
+ * from then until 2026-11-22 Presence and For Mind were beats played on their
+ * own clock while the page was held, which in the end read as being stuck.
  */
-const PRESENCE_AT_VH = 12
-const MIND_GAP_VH = 12
+/*
+ * After the doors, the page scrolls as any page does (2026-11-22, the author's
+ * asking: For Mind "stayed a little stuck" after Presence; passing Presence
+ * should take a little more, but nothing should block). The doors are the one
+ * place left where the page holds the scroll. From Presence's resting place
+ * (`PRESENCE_REST_PX`, where the doors leave the page) the hero stays pinned
+ * while Presence stands alone for `PRESENCE_STAY_VH` of scrolling, which is its
+ * weight; it then goes into the dark over `WASH_VH`; and For Mind comes up out
+ * of the dark into its place over `MIND_IN_VH` more, where the pin lets go and
+ * the same scroll carries it on (`MindRow` in components/categories-section.tsx).
+ * All of it is read off the scroll, so it goes at the reader's pace, the hand's
+ * own momentum included, and the same on every device. Until that day For
+ * Mind's coming was a beat played on its own clock while the page was held
+ * (and from the same morning one moved by the scroll while held, as the doors).
+ */
+const PRESENCE_STAY_VH = 15
+const WASH_VH = 18
 /**
  * Text 1's slow drift upward across its whole life: the first half as it
  * comes up with the doors, the second as it fades out ahead of Presence. It
@@ -394,13 +398,24 @@ const SKIP_IN_MS = 380
 const SKIP_HOLD_MS = 80
 const SKIP_OUT_MS = 650
 
-function presenceAt(sticky: HTMLElement | null): number {
-  return (PRESENCE_AT_VH * (sticky?.offsetHeight || window.innerHeight)) / 100
+/** Where the doors leave the page, Presence on: px past the pin. */
+const PRESENCE_REST_PX = 2 + NUDGE_PX // PAST_PIN_PX + NUDGE_PX
+
+/** The darkening, from → to, px past the pin. */
+function washAt(sticky: HTMLElement | null): [number, number] {
+  const vh = (sticky?.offsetHeight || window.innerHeight) / 100
+  const from = PRESENCE_REST_PX + PRESENCE_STAY_VH * vh
+  return [from, from + WASH_VH * vh]
 }
 
 /** For Mind's place, px past the pin, measured as Presence's is. */
+/**
+ * NUDGE_PX short of where For Mind stands in its place and the pin lets go
+ * (the hero's way up and its skip are still measured from it, as they were
+ * from For Mind's beat).
+ */
 function mindAt(sticky: HTMLElement | null): number {
-  return presenceAt(sticky) + NUDGE_PX + (MIND_GAP_VH * (sticky?.offsetHeight || window.innerHeight)) / 100
+  return washAt(sticky)[1] + (MIND_IN_VH * (sticky?.offsetHeight || window.innerHeight)) / 100 - NUDGE_PX
 }
 
 /**
@@ -526,18 +541,19 @@ const HALO_VIEW_BOX = [-HALO_RX, -HALO_RY, 2 * HALO_RX, 2 * HALO_RY]
  * brings For Mind up out of the same white, so the two read as one dissolve
  * rather than as two sections meeting.
  *
- * The wash is the first MIND_WASH_S of For Mind's beat, played. Until
+ * Scrolled again since 2026-11-22 (`WASH_VH`, into the site's dark now). Until
  * 2026-09-28 it was scrolled, 25 vh held and 32 washing, about five turns
- * from the line to white, and the author asked for it to be quicker. It was
- * then 12 held and 24 washing until 2026-10-02, when For Mind's beat came to
- * be played and the wash with it.
+ * from the line to white, and the author asked for it to be quicker; then 12
+ * held and 24 washing until 2026-10-02, when it came to be played with For
+ * Mind's beat. Now 15 held and 18 darkening, about three turns of the wheel
+ * on a 900px screen, and For Mind's 26 after it, about two.
  *
- * The section's real scrolling past the pin is then only the places of its
- * beats: up to Presence's, the nudge past it, the gap to For Mind's, and the
- * nudge past that, where the pin lets go.
+ * The section's real scrolling past the pin is then where the doors leave
+ * the page, Presence's stay, the darkening and For Mind's coming, where the
+ * pin lets go.
  */
-const SCROLL_VH = PRESENCE_AT_VH + MIND_GAP_VH
-const SCROLL_PX = 2 * NUDGE_PX
+const SCROLL_VH = PRESENCE_STAY_VH + WASH_VH + MIND_IN_VH
+const SCROLL_PX = PRESENCE_REST_PX
 
 /** Linear 0 → 1 ramp across [from, to], flat outside it. */
 function ramp(v: number, from: number, to: number): number {
@@ -1490,22 +1506,30 @@ export function HeroAnimation() {
     // Presence has no beat of its own since 2026-11-16: it comes through the
     // doors with their frames (see the doors' paint). Nothing here waits on
     // it, so the doors close at once on the way up.
-    // For Mind's beat, whose first MIND_WASH_S is the wash to white and the
-    // lift that goes with it. Its row plays the rest on the same clock: both
-    // start on the same scroll, and its place is the row's (see MindRow).
-    const mind = playBeat(
-      MIND_BEAT_S,
-      () => !heroUp.on && past() > mindAt(stickyRef.current),
-      (t) => {
-        const wash = ease(ramp(t, 0, MIND_WASH_S))
-        if (washRef.current) washRef.current.style.opacity = String(wash)
-        stage.style.setProperty("--exit-lift", `${(-EXIT_LIFT_PX * wash).toFixed(2)}px`)
-      },
-      // Its own name as well as For Mind's: on the way back up the wash comes
-      // off while For Mind's row stays in its place.
-      "mind",
-      "wash",
-    )
+    // The darkening and the lift that goes with it, read off the scroll
+    // (WASH_VH; until 2026-11-22 the first half second of For Mind's played
+    // beat). On the way back up the hero is a plain screen and it is off.
+    let washShown = -1
+    const darkening = () => {
+      if (heroUp.on) return 0
+      const [from, to] = washAt(stickyRef.current)
+      return ease(ramp(past(), from, to))
+    }
+    let washRaf = 0
+    const paintWash = () => {
+      washRaf = 0
+      const wash = darkening()
+      if (Math.abs(wash - washShown) < 0.002) return
+      washShown = wash
+      if (washRef.current) washRef.current.style.opacity = wash.toFixed(3)
+      stage.style.setProperty("--exit-lift", `${(-EXIT_LIFT_PX * wash).toFixed(2)}px`)
+    }
+    const kickWash = () => {
+      if (!washRaf) washRaf = requestAnimationFrame(paintWash)
+    }
+    paintWash()
+    window.addEventListener("scroll", kickWash, { passive: true })
+    window.addEventListener("resize", kickWash)
 
     // Only the last beat the page has gone back before plays backward: the
     // ones after it go straight back to their start (see `rewind`). Above the
@@ -1556,8 +1580,8 @@ export function HeroAnimation() {
       const s = section.getBoundingClientRect().top
       shutDoorsRef.current()
       rewind("presence")
-      rewind("wash")
       setUp(true)
+      paintWash()
       const moved = section.getBoundingClientRect().top - s
       window.scrollTo({ top: window.scrollY + moved, behavior: "instant" })
       lastY = window.scrollY
@@ -1582,8 +1606,8 @@ export function HeroAnimation() {
       }
       shutDoorsRef.current()
       rewind("presence")
-      rewind("mind")
       heroUp.on = true
+      paintWash()
     }
     window.addEventListener(TO_TOP_EVENT, toTop)
 
@@ -1609,8 +1633,6 @@ export function HeroAnimation() {
           // under way (the bottom logo's, back to the top) at the doors. What
           // changes is all below the screen, and the hero's top stays put.
           setUp(false)
-          // For Mind's row is off the screen now: back to its start, unseen.
-          rewind("mind")
         }
         return
       }
@@ -1634,12 +1656,12 @@ export function HeroAnimation() {
         shutDoorsRef.current()
         rewind("presence")
       }
-      if (x < presenceAt(stickyRef.current)) rewind("mind")
-
-      if (!native && up && x > PAST_PIN_PX && x < mindAt(stickyRef.current)) {
+      // Back up past Presence's resting place (2026-11-22: from anywhere
+      // before For Mind's place until then; the scroll back through the
+      // darkening now simply lightens it): the doors close.
+      if (!native && up && x > PAST_PIN_PX && x < PRESENCE_REST_PX) {
         closing = true
         hurry("presence", PRESENCE_BEAT_S / PRESENCE_OFF_S)
-        rewind("mind")
         window.scrollTo({ top: y - x, behavior: "instant" })
         lastY = window.scrollY
         lastX = past()
@@ -1652,7 +1674,7 @@ export function HeroAnimation() {
     window.addEventListener("scroll", back, { passive: true, capture: true })
 
     presenceRef.current = () => 0
-    mindRef.current = mind.done
+    mindRef.current = darkening
     // For the top menu: it waits for the doors to be shut (see heroDoors).
     heroDoors.shut = () => doorsRef.current() === 0 && presenceRef.current() === 0
     return () => {
@@ -1660,7 +1682,9 @@ export function HeroAnimation() {
       window.removeEventListener("scroll", back, { capture: true })
       window.removeEventListener(TO_TOP_EVENT, toTop)
       if (heroUp.on) setUp(false)
-      mind.dispose()
+      window.removeEventListener("scroll", kickWash)
+      window.removeEventListener("resize", kickWash)
+      cancelAnimationFrame(washRaf)
       presenceRef.current = () => 1
       mindRef.current = () => 1
     }
@@ -1681,10 +1705,8 @@ export function HeroAnimation() {
   useEffect(() => {
     const el = containerRef.current
     if (!el || !hasScrollTimeline()) return
-    return holdScroll(el, [
-      { at: () => PAST_PIN_PX, done: () => doorsRef.current() },
-      { at: () => mindAt(stickyRef.current), done: () => mindRef.current() },
-    ], {
+    // The doors alone since 2026-11-22: past them the page scrolls as ever.
+    return holdScroll(el, [{ at: () => PAST_PIN_PX, done: () => doorsRef.current() }], {
       active: () => !!stepRef.current?.active(),
       target: () => stepRef.current?.target() ?? 0,
       nudge: (d) => stepRef.current?.nudge(d) ?? false,
@@ -1720,7 +1742,6 @@ export function HeroAnimation() {
     const jump = () => {
       openDoorsRef.current()
       finish("presence")
-      finish("mind")
       const at = el.getBoundingClientRect().top + window.scrollY + mindAt(stickyRef.current) + NUDGE_PX
       window.scrollTo({ top: at, behavior: "instant" })
     }

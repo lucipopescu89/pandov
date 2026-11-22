@@ -1,9 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { BAR_H, SeenBar } from "@/components/seen-bar"
 import { SeenEyes } from "@/components/seen-eyes"
-import { BODY_PIECES, SATORI_PIECE } from "@/lib/body-collections"
-import { SECOND_WIND } from "@/lib/second-wind"
+import { SeenLightbox } from "@/components/seen-lightbox"
+import { SEEN_TILES, type SeenTile } from "@/lib/seen-gallery"
+import { JULIUS, TEXT_FONT, TEXT_SIZE, TEXT_TRACK, TRACK, TRACK_BACK } from "@/lib/type"
 
 /**
  * /seen — the hidden page behind the eye (2026-11-08, the author's asking, an
@@ -11,186 +13,57 @@ import { SECOND_WIND } from "@/lib/second-wind"
  * section (`EYE_HREF` in `making-drawing.tsx`), and it asks search engines to
  * leave it out (`app/seen/page.tsx`).
  *
- * No top or bottom menu (the author's asking, the same day): a pair of small
- * eyes above the grid and another below it are the only way out, back to the
- * eye the reader came in by (`components/seen-eyes.tsx`).
+ * Since 2026-11-22 (the author's asking):
  *
- * Every photograph on the site at once, big, in a Mondrian-like grid on
- * #202020: rows that run the full width, each cut into fields, some fields
- * cut again across into two (`STACK_CHANCE`), held apart by `GAP` of ground.
+ * - **What it shows** is the author's folder for it (`lib/seen-gallery.ts`),
+ *   no longer every photograph on the site.
+ * - **Nothing is cut.** Each picture keeps its own proportion whole: the
+ *   fields are made to the pictures, not the pictures to the fields. Until
+ *   then a picture could lose some of its ground to fit its field (never the
+ *   piece; `BOX`, measured off the files, said how much).
+ * - **A word first.** The page opens on the dark with one line, which comes
+ *   up, stays a moment and goes, and then the pictures come up out of the
+ *   dark (`Intro`). A scroll, a key or a click lets the reader straight in.
+ * - **A bar at the top** (`SeenBar`): an arrow home on the left, the eyes on
+ *   the right; it goes with a scroll down and comes back with a scroll up.
+ *   The pair of eyes at the foot of the page stays.
+ * - **A click opens a picture** large, on the dark, and the arrows go on
+ *   through the gallery (`SeenLightbox`).
  *
- * - **No piece is ever cut** (the author's asking: cropped jewellery looked
- *   wrong). A picture may lose some of its ground to fit its field, never any
- *   of the piece. Each file carries the box its piece stands in (`BOX`,
- *   measured once off the files: where the picture differs from the ground at
- *   its edges, plus air round it: 12% of the piece's longer side on the dark
- *   ground, so a cut-out piece is not blown up to its field's edges, 6% on white). That box sets how far the field may be wider
- *   or narrower than the picture, and the crop is placed round the piece
- *   (`objectPosition`). A photograph whose ground is textured (stone, skin,
- *   cloth) could not be measured that way and keeps its own proportions
- *   whole. A new picture missing from `BOX` is shown whole too, until it is
- *   measured and added.
- * - **About three across a laptop, four on a wide screen, two on a phone**
- *   (`columns`). The rows find their own heights within what the pieces
- *   allow, so the grid fills the width exactly and the page scrolls.
- * - **The order is random but fixed** (`SEED`): the same every visit. The
- *   tries that came before, the same day: one screen of small fields, a click
- *   that re-shuffled it, and an order dark → white → dark by lightness.
- * - **The list is read from the site's own data**, `SECOND_WIND` and
- *   `BODY_PIECES`, so a pendant photograph or a Body piece added there turns up
- *   here too (shown whole until measured). The rest is named in `SITE`.
- *
- * The Second Wind photographs are taken at their -phone size (1080px): no
- * field here is drawn wider than that. The rest are the files the site uses.
+ * The grid is still Mondrian-like, in a random order that is the same on every
+ * visit (`SEED`): rows that run the full width, held apart by `GAP` of
+ * ground, some fields holding two pictures one above the other
+ * (`STACK_CHANCE`). A row's height is whatever lets its pictures fill the
+ * width whole, so the pictures are shared out among the rows to keep the rows
+ * as near one height as they can (`rowsOf`): about three across a laptop, four
+ * on a wide screen, two on a phone (`columns`).
  */
-
-/**
- * `cutout`: a piece cut out on the #202020 ground (or with no ground at all).
- * These are never drawn larger than their own pixels (`object-fit:
- * scale-down`): several are small files (the Compassion ring is 345px wide),
- * and filling a big field blew them up soft (the author's asking, 2026-11-08).
- * Smaller than its field, such a piece stands in the middle of it, its ground
- * meeting the page's invisibly. Photographs fill their fields as before.
- */
-type Tile = { src: string; alt: string; cutout?: boolean }
 
 /** The ground between the fields, px. */
 const GAP = 3
 /** Fields across a row: ~3 on a laptop, 4 on a wide screen (never more, the author's asking), 2 on a phone. */
 const FIELD_PX = 480
 const columns = (w: number) => (w < 768 ? 2 : Math.min(4, Math.max(3, Math.round(w / FIELD_PX))))
-/** A row aims at this height, as a share of a field's width; the pieces decide how near it gets. */
+/** A row aims at this height, as a share of a field's width. */
 const ROW_ASPECT = 1.15
 /** How often two pictures share a field, one above the other, Mondrian's smaller divisions. */
 const STACK_CHANCE = 0.3
 /** Fixes the order and the stacks, so the page is the same on every visit. */
 const SEED = 8
 
-const SITE: Tile[] = [
-  { src: "/images/cat-mind.jpg", alt: "For Mind" },
-  { src: "/images/cat-body.jpg", alt: "For Body" },
-  { src: "/images/cat-space.avif", alt: "For Space" },
-  { src: "/images/home/making-sculpture.jpg", alt: "A white vase in a burnt trunk" },
-  { src: "/images/home/footer-banner.png", alt: "" },
-  { src: "/images/mind-chess-set.jpg", alt: "The Chess Set" },
-  { src: "/images/chess-set/set-left.jpg", alt: "The Chess Set" },
-  { src: "/images/chess-set/set-front.jpg", alt: "The Chess Set" },
-  { src: "/images/chess-set/board-side.jpg", alt: "The chess board" },
-  { src: "/images/chess-set/board-marble.jpg", alt: "The chess board" },
-  { src: "/images/chess-set/board-front.jpg", alt: "The chess board" },
-  { src: "/images/chess-set/board-detail.jpg", alt: "The chess board" },
-  { src: "/images/chess-pieces/kings.jpg", alt: "Kings" },
-  { src: "/images/chess-pieces/queens.jpg", alt: "Queens" },
-  { src: "/images/chess-pieces/bishops.jpg", alt: "Bishops" },
-  { src: "/images/chess-pieces/knights.jpg", alt: "Knights" },
-  { src: "/images/chess-pieces/rooks.jpg", alt: "Rooks" },
-  { src: "/images/chess-pieces/pawns.jpg", alt: "Pawns" },
-  { src: "/images/chess-set/hero.png", alt: "The Chess Set" },
-  { src: "/images/chess-set/moon.avif", alt: "The moon" },
-  { src: "/presence.png?v=3", alt: "Presence sculpture", cutout: true },
-  { src: "/images/home/selected-emperor.avif", alt: "Emperor" },
-  { src: "/images/home/selected-chess-set.avif", alt: "The Chess Set" },
-  { src: "/images/body-collections/emperor.avif", alt: "Emperor", cutout: true },
-]
-
-const TILES: Tile[] = [
-  ...SITE,
-  ...Object.values(SECOND_WIND).flatMap((p) => [
-    { src: p.cutout, alt: p.name, cutout: true },
-    ...p.photos.map((ph) => ({ src: ph.phone, alt: ph.alt })),
-  ]),
-  ...[SATORI_PIECE, ...BODY_PIECES].map((p) => ({ src: `/images/body-collections/${p.file}`, alt: `${p.name}, ${p.kind}`, cutout: true })),
-]
-
 /**
- * Each picture: its size in pixels, then the box its piece stands in, as
- * shares of the width and height (left, top, right, bottom). A box of
- * 0, 0, 1, 1 is a picture shown whole. Measured off the files on 2026-11-08.
+ * The opening line: up in `INTRO_IN_MS`, held `INTRO_HOLD_MS`, gone in
+ * `INTRO_OUT_MS`; then the pictures come up in `GRID_IN_MS`. Let in early by
+ * the reader, the line goes in `INTRO_SKIP_MS`.
  */
-const BOX: Record<string, [number, number, number, number, number, number]> = {
-  "/images/body/icarus/icarus-1-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/icarus/icarus-2-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/icarus/icarus-3-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/icarus/icarus-4-phone.avif": [1080, 1476, 0.000, 0.302, 1.000, 0.974],
-  "/images/body/waterfall/waterfall-5-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/waterfall/waterfall-6-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/waterfall/waterfall-3-phone.avif": [1080, 1621, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/waterfall/waterfall-2-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/waterfall/waterfall-1-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/chaos/chaos-24-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/chaos/chaos-23-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/chaos/chaos-earrings-phone.avif": [1080, 1620, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/chaos/chaos-21-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/chaos/chaos-22-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/silence/silence-19-phone.avif": [1080, 1476, 0.279, 0.000, 0.707, 0.904],
-  "/images/body/silence/silence-3-phone.avif": [1080, 1619, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/silence/silence-20-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/silence/silence-18-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/mnature/mnature-9-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/mnature/mnature-4-phone.avif": [1080, 1620, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/mnature/mnature-13-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/mnature/mnature-10-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/mnature/mnature-11-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/presence/presence-15-phone.avif": [1080, 1476, 0.341, 0.320, 0.621, 0.845],
-  "/images/body/presence/presence-16-phone.avif": [1080, 1476, 0.342, 0.313, 0.638, 0.835],
-  "/images/body/presence/presence-17-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/presence/presence-lumink-phone.avif": [707, 1062, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/presence/presence-14-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/emperor/emperor-3-phone.avif": [1024, 1536, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/emperor/emperor-7-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/emperor/emperor-8-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/emperor/emperor-5-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/emperor/emperor-6-phone.avif": [1080, 1476, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/icarus-pendant.avif": [415, 1190, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/waterfall-pendant.avif": [483, 1298, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/chaos-pendant.avif": [483, 1298, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/silence-pendant.avif": [449, 1244, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/mnature-pendant.avif": [659, 1611, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/presence-pendant.avif": [449, 1244, 0.000, 0.000, 1.000, 1.000],
-  "/images/body/emperor-pendant.avif": [493, 1489, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/satori.avif": [558, 668, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/seeds.avif": [557, 840, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/protection.avif": [476, 841, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/awareness.avif": [697, 671, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/awareness-pendant.avif": [532, 840, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/compassion.avif": [345, 408, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/compassion-pendant.avif": [511, 840, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/duality.avif": [840, 659, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/duality-bracelet.avif": [840, 709, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/in.avif": [368, 792, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/liman.avif": [647, 795, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/one.avif": [332, 744, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/prot.avif": [389, 838, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/sed-ring.avif": [602, 469, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/seed.avif": [700, 694, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/skeyes-earrings.avif": [618, 840, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/skeyes-pendant.avif": [295, 839, 0.008, 0.000, 0.999, 1.000],
-  "/images/body-collections/word.avif": [523, 754, 0.000, 0.000, 1.000, 1.000],
-  "/images/cat-mind.jpg": [2968, 900, 0.038, 0.000, 0.962, 1.000],
-  "/images/cat-body.jpg": [1026, 1868, 0.101, 0.000, 0.890, 0.975],
-  "/images/cat-space.avif": [2294, 1600, 0.000, 0.000, 1.000, 1.000],
-  "/images/home/making-sculpture.jpg": [2400, 2287, 0.000, 0.000, 1.000, 1.000],
-  "/images/home/footer-banner.png": [2792, 1230, 0.109, 0.128, 0.876, 0.809],
-  "/images/mind-chess-set.jpg": [1338, 837, 0.000, 0.052, 1.000, 1.000],
-  "/images/chess-set/set-left.jpg": [2079, 1550, 0.000, 0.182, 1.000, 0.969],
-  "/images/chess-set/set-front.jpg": [2079, 1550, 0.000, 0.166, 1.000, 0.985],
-  "/images/chess-set/board-side.jpg": [2079, 1550, 0.000, 0.000, 1.000, 1.000],
-  "/images/chess-set/board-marble.jpg": [2079, 1550, 0.000, 0.000, 1.000, 1.000],
-  "/images/chess-set/board-front.jpg": [2079, 1550, 0.000, 0.239, 1.000, 0.791],
-  "/images/chess-set/board-detail.jpg": [2079, 1550, 0.000, 0.000, 1.000, 1.000],
-  "/images/chess-pieces/kings.jpg": [1800, 1448, 0.039, 0.105, 0.899, 0.973],
-  "/images/chess-pieces/queens.jpg": [1800, 1448, 0.028, 0.153, 0.910, 0.987],
-  "/images/chess-pieces/bishops.jpg": [1800, 1448, 0.053, 0.231, 0.885, 0.974],
-  "/images/chess-pieces/knights.jpg": [1800, 1448, 0.061, 0.335, 0.881, 0.967],
-  "/images/chess-pieces/rooks.jpg": [1800, 1448, 0.065, 0.324, 0.908, 0.969],
-  "/images/chess-pieces/pawns.jpg": [1800, 1448, 0.052, 0.292, 0.861, 0.970],
-  "/images/chess-set/hero.png": [2667, 1861, 0.000, 0.014, 1.000, 1.000],
-  "/images/chess-set/moon.avif": [3870, 1719, 0.326, 0.065, 0.674, 0.844],
-  "/presence.png": [309, 1089, 0.000, 0.000, 1.000, 1.000],
-  "/images/home/selected-emperor.avif": [924, 1124, 0.000, 0.000, 0.907, 1.000],
-  "/images/home/selected-chess-set.avif": [1187, 1154, 0.000, 0.000, 1.000, 1.000],
-  "/images/body-collections/emperor.avif": [278, 840, 0.000, 0.000, 1.000, 1.000],
-}
+const INTRO_IN_MS = 1200
+const INTRO_HOLD_MS = 2000
+const INTRO_OUT_MS = 1000
+const INTRO_SKIP_MS = 450
+const GRID_IN_MS = 1200
+const INTRO_TITLE = "You found the hidden gallery"
+const INTRO_LINE = "What the eye has kept, in no particular order."
+const GREY = "#888"
 
 /** A small seeded random, so the order is the same for the same seed. */
 function seeded(seed: number) {
@@ -204,60 +77,56 @@ function seeded(seed: number) {
   }
 }
 
-/**
- * What a picture allows: its own proportion (width over height) and how far
- * a field may go narrower (`lo`) or wider (`hi`) before the crop reaches the
- * piece. An unmeasured picture is taken as a square shown whole.
- */
-type Shape = { n: number; lo: number; hi: number; box: [number, number, number, number] }
-function shapeOf(t: Tile): Shape {
-  const m = BOX[t.src.split("?")[0]]
-  if (!m) return { n: 1, lo: 1, hi: 1, box: [0, 0, 1, 1] }
-  const [w, h, x0, y0, x1, y1] = m
-  const n = w / h
-  return { n, lo: n * (x1 - x0), hi: n / (y1 - y0), box: [x0, y0, x1, y1] }
-}
+/** A field: one picture, or two one above the other. `n` is its proportion, width over height. */
+type Field = { items: number[]; n: number }
 
 /**
- * Sizes that add up to `total`, one per [natural, min, max], each as near its
- * natural share as its limits allow: a common factor found by halving.
+ * The fields shared out among `k` rows, in order, so each row's proportions
+ * add up as near the same sum as they can: the row heights then come out as
+ * near one another as the pictures allow. Returns where each row starts, and
+ * the end.
  */
-function share(total: number, parts: [number, number, number][]): number[] {
-  const at = (f: number) => parts.map(([n, lo, hi]) => Math.min(hi, Math.max(lo, n * f)))
-  const sum = (f: number) => at(f).reduce((s, v) => s + v, 0)
-  let a = 0
-  let b = 1
-  while (sum(b) < total && b < 1e9) b *= 2
-  for (let i = 0; i < 60; i++) {
-    const m = (a + b) / 2
-    if (sum(m) < total) a = m
-    else b = m
+function rowsOf(ns: number[], k: number): number[] {
+  const n = ns.length
+  k = Math.max(1, Math.min(k, n))
+  const pre = [0]
+  for (const v of ns) pre.push(pre[pre.length - 1] + v)
+  const avg = pre[n] / k
+  const cost = (i: number, j: number) => (pre[j] - pre[i] - avg) ** 2
+  const best = Array.from({ length: k + 1 }, () => new Array<number>(n + 1).fill(Infinity))
+  const from = Array.from({ length: k + 1 }, () => new Array<number>(n + 1).fill(0))
+  best[0][0] = 0
+  for (let r = 1; r <= k; r++) {
+    for (let j = r; j <= n; j++) {
+      for (let i = r - 1; i < j; i++) {
+        const v = best[r - 1][i] + cost(i, j)
+        if (v < best[r][j]) {
+          best[r][j] = v
+          from[r][j] = i
+        }
+      }
+    }
   }
-  return at(b)
+  const cuts = [n]
+  let j = n
+  for (let r = k; r >= 1; r--) {
+    j = from[r][j]
+    cuts.push(j)
+  }
+  return cuts.reverse()
 }
 
 type Rect = { x: number; y: number; w: number; h: number }
-type Placed = { rect: Rect; pos: string }
 
-/** Where to hold the picture in a field of this proportion so its piece stays whole. */
-function objectPosition(s: Shape, fieldAspect: number): string {
-  const [x0, y0, x1, y1] = s.box
-  const place = (vis: number, c0: number, c1: number) => {
-    if (vis >= 1) return 50
-    const lo = Math.max(0, c1 - vis)
-    const hi = Math.min(c0, 1 - vis)
-    const at = lo <= hi ? Math.min(hi, Math.max(lo, (c0 + c1) / 2 - vis / 2)) : (lo + hi) / 2
-    return (at / (1 - vis)) * 100
-  }
-  if (fieldAspect < s.n) return `${place(fieldAspect / s.n, x0, x1).toFixed(1)}% 50%`
-  return `50% ${place(s.n / fieldAspect, y0, y1).toFixed(1)}%`
-}
-
-/** The whole grid for a box `w` wide: where each picture goes, and the height it all takes. */
-function layout(w: number): { placed: Placed[]; height: number } {
+/**
+ * The whole grid for a box `w` wide: where each picture goes, and the height
+ * it all takes. Every rect, less `GAP`, has its picture's own proportion
+ * exactly, the gaps included in the sums, so nothing is cut.
+ */
+function layout(w: number, tiles: SeenTile[]): { rects: Rect[]; height: number; order: number[] } {
   const rand = seeded(SEED)
-  const shapes = TILES.map(shapeOf)
-  const order = TILES.map((_, i) => i)
+  const aspect = tiles.map((t) => t.w / t.h)
+  const order = tiles.map((_, i) => i)
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1))
     ;[order[i], order[j]] = [order[j], order[i]]
@@ -265,64 +134,136 @@ function layout(w: number): { placed: Placed[]; height: number } {
 
   // Fields: one picture, or two one above the other when their proportions
   // together still make a reasonable field.
-  type Field = { items: number[]; n: number; lo: number; hi: number }
   const fields: Field[] = []
   for (let k = 0; k < order.length; k++) {
-    const a = shapes[order[k]]
-    const b = k + 1 < order.length ? shapes[order[k + 1]] : null
-    if (b && rand() < STACK_CHANCE) {
-      const n = 1 / (1 / a.n + 1 / b.n)
+    const a = aspect[order[k]]
+    if (k + 1 < order.length && rand() < STACK_CHANCE) {
+      const b = aspect[order[k + 1]]
+      const n = 1 / (1 / a + 1 / b)
       if (n > 0.45 && n < 1.3) {
-        fields.push({ items: [order[k], order[k + 1]], n, lo: 1 / (1 / a.lo + 1 / b.lo), hi: 1 / (1 / a.hi + 1 / b.hi) })
+        fields.push({ items: [order[k], order[k + 1]], n })
         k++
         continue
       }
     }
-    fields.push({ items: [order[k]], n: a.n, lo: a.lo, hi: a.hi })
+    fields.push({ items: [order[k]], n: a })
   }
 
-  // Rows of `columns` fields, the last ones spread evenly so no row is left short.
   const cols = columns(w)
-  const rowCount = Math.max(1, Math.round(fields.length / cols))
-  const target = (w / cols) / ROW_ASPECT
-  const placed: Placed[] = new Array(TILES.length)
+  const perRow = cols * ROW_ASPECT
+  const total = fields.reduce((s, f) => s + f.n, 0)
+  const cuts = rowsOf(
+    fields.map((f) => f.n),
+    Math.round(total / perRow),
+  )
+
+  const rects: Rect[] = new Array(tiles.length)
+  // The order the eye reads them in, row by row, for the arrows of the opened picture.
+  const seen: number[] = []
   let y = 0
-  let start = 0
-  for (let r = 0; r < rowCount; r++) {
-    const end = Math.round(((r + 1) * fields.length) / rowCount)
-    const row = fields.slice(start, end)
-    start = end
-    const sumLo = row.reduce((s, f) => s + f.lo, 0)
-    const sumHi = row.reduce((s, f) => s + f.hi, 0)
-    // The row's height: as near the target as the pieces allow.
-    const h = Math.min(w / sumLo, Math.max(w / sumHi, target))
-    const widths = share(w, row.map((f) => [f.n * h, f.lo * h, f.hi * h]))
+  for (let r = 0; r + 1 < cuts.length; r++) {
+    const row = fields.slice(cuts[r], cuts[r + 1])
+    // Each field is GAP wider and (one GAP per picture in it) taller than
+    // the pictures it shows; the height that makes the row fill `w` exactly:
+    const sumN = row.reduce((s, f) => s + f.n, 0)
+    const sumCN = row.reduce((s, f) => s + f.items.length * f.n, 0)
+    const h = (w - row.length * GAP + GAP * sumCN) / sumN
     let x = 0
-    row.forEach((f, i) => {
-      const fw = widths[i]
+    for (const f of row) {
+      seen.push(...f.items)
+      const fw = GAP + (h - f.items.length * GAP) * f.n
       if (f.items.length === 1) {
-        const s = shapes[f.items[0]]
-        placed[f.items[0]] = { rect: { x, y, w: fw, h }, pos: objectPosition(s, fw / h) }
+        rects[f.items[0]] = { x, y, w: fw, h }
       } else {
-        const [a, b] = f.items.map((it) => shapes[it])
-        const [ha, hb] = share(h, [
-          [fw / a.n, fw / a.hi, fw / a.lo],
-          [fw / b.n, fw / b.hi, fw / b.lo],
-        ])
-        placed[f.items[0]] = { rect: { x, y, w: fw, h: ha }, pos: objectPosition(a, fw / ha) }
-        placed[f.items[1]] = { rect: { x, y: y + ha, w: fw, h: hb }, pos: objectPosition(b, fw / hb) }
+        const [a, b] = f.items
+        const ha = (fw - GAP) / aspect[a] + GAP
+        rects[a] = { x, y, w: fw, h: ha }
+        rects[b] = { x, y: y + ha, w: fw, h: h - ha }
       }
       x += fw
-    })
+    }
     y += h
   }
-  return { placed, height: y }
+  return { rects, height: y, order: seen }
+}
+
+/** The line the page opens on, over the dark, before the pictures. */
+function Intro({ phase }: { phase: "in" | "hold" | "out" | "skip" }) {
+  const [on, setOn] = useState(false)
+  // Laid at 0 first, then raised, so it fades up rather than appearing.
+  useEffect(() => {
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setOn(true)))
+    return () => cancelAnimationFrame(r)
+  }, [])
+  const leaving = phase === "out" || phase === "skip"
+  const ms = phase === "skip" ? INTRO_SKIP_MS : leaving ? INTRO_OUT_MS : INTRO_IN_MS
+  return (
+    <div
+      aria-live="polite"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 40,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 24px",
+        textAlign: "center",
+        pointerEvents: "none",
+        opacity: on && !leaving ? 1 : 0,
+        transition: `opacity ${ms}ms cubic-bezier(.45,0,.55,1)`,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: JULIUS,
+          textTransform: "uppercase",
+          letterSpacing: TRACK,
+          fontSize: "clamp(13px, 1.25vw, 20px)",
+          lineHeight: 1.3,
+          color: GREY,
+          margin: `0 ${TRACK_BACK} 0 0`,
+        }}
+      >
+        {INTRO_TITLE}
+      </p>
+      <p
+        style={{
+          fontFamily: TEXT_FONT,
+          fontWeight: 400,
+          fontSize: `${TEXT_SIZE}px`,
+          lineHeight: 1.5,
+          letterSpacing: TEXT_TRACK,
+          color: GREY,
+          margin: `18px -${TEXT_TRACK} 0 0`,
+        }}
+      >
+        {INTRO_LINE}
+      </p>
+    </div>
+  )
 }
 
 export function SeenMosaic() {
   const boxRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState<number | null>(null)
   const [loaded, setLoaded] = useState<Set<number>>(() => new Set())
+  const [phase, setPhase] = useState<"in" | "hold" | "out" | "skip" | "done">("in")
+  const [open, setOpen] = useState<number | null>(null)
+
+  // Back from an opened picture, the page stands where the last one seen is,
+  // if the arrows went on past the screen.
+  const close = useCallback(() => {
+    const last = open
+    setOpen(null)
+    if (last === null) return
+    const el = document.querySelector<HTMLElement>(`[data-seen="${last}"]`)
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (r.top >= BAR_H && r.bottom <= window.innerHeight) return
+    window.scrollTo({ top: window.scrollY + r.top - Math.max(BAR_H, (window.innerHeight - r.height) / 2), behavior: "instant" })
+  }, [open])
 
   useEffect(() => {
     const measure = () => {
@@ -335,7 +276,57 @@ export function SeenMosaic() {
     return () => ro.disconnect()
   }, [])
 
-  const grid = width ? layout(width) : null
+  // The opening line's time, and the reader's way past it. While it shows, a
+  // scroll does not move the page (it would come up already scrolled): it
+  // lets the reader in. A click on the bar (home, the eyes) still does what
+  // it does.
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPhase("done")
+      return
+    }
+    const timers: number[] = []
+    const at = (ms: number, f: () => void) => timers.push(window.setTimeout(f, ms))
+    let over = false
+    const end = (leaveMs: number, from: "out" | "skip") => {
+      if (over) return
+      over = true
+      timers.forEach((t) => window.clearTimeout(t))
+      setPhase(from)
+      at(leaveMs, () => setPhase("done"))
+      remove()
+    }
+    at(INTRO_IN_MS, () => setPhase("hold"))
+    at(INTRO_IN_MS + INTRO_HOLD_MS, () => end(INTRO_OUT_MS, "out"))
+
+    const skip = () => end(INTRO_SKIP_MS, "skip")
+    const hold = (e: Event) => {
+      if (e.cancelable) e.preventDefault()
+      skip()
+    }
+    const SCROLL_KEYS = new Set(["ArrowDown", "ArrowUp", "PageDown", "PageUp", " ", "End", "Home"])
+    const onKey = (e: KeyboardEvent) => {
+      if (SCROLL_KEYS.has(e.key)) e.preventDefault()
+      skip()
+    }
+    const opts = { passive: false, capture: true } as const
+    window.addEventListener("wheel", hold, opts)
+    window.addEventListener("touchmove", hold, opts)
+    window.addEventListener("keydown", onKey, true)
+    window.addEventListener("pointerdown", skip, true)
+    function remove() {
+      window.removeEventListener("wheel", hold, opts)
+      window.removeEventListener("touchmove", hold, opts)
+      window.removeEventListener("keydown", onKey, true)
+      window.removeEventListener("pointerdown", skip, true)
+    }
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t))
+      remove()
+    }
+  }, [])
+
+  const grid = width ? layout(width, SEEN_TILES) : null
   const onLoad = useCallback((i: number) => {
     setLoaded((s) => {
       if (s.has(i)) return s
@@ -347,15 +338,29 @@ export function SeenMosaic() {
 
   return (
     <main className="w-full" style={{ backgroundColor: "#202020", minHeight: "100vh" }}>
-      <SeenEyes place="header" />
+      <SeenBar />
+      <div aria-hidden="true" style={{ height: BAR_H }} />
 
-      <div ref={boxRef} className="relative w-full overflow-hidden" style={{ height: grid ? grid.height : "100vh" }}>
+      <div
+        ref={boxRef}
+        className="relative w-full overflow-hidden"
+        style={{
+          height: grid ? grid.height : "100vh",
+          opacity: phase === "done" ? 1 : 0,
+          // not to be clicked before it shows
+          pointerEvents: phase === "done" ? "auto" : "none",
+          transition: `opacity ${GRID_IN_MS}ms ease`,
+        }}
+      >
         {grid &&
-          TILES.map((t, i) => {
-            const { rect: r, pos } = grid.placed[i]
+          SEEN_TILES.map((t, i) => {
+            const r = grid.rects[i]
             return (
-              <div
+              <button
                 key={t.src}
+                type="button"
+                data-seen={i}
+                onClick={() => setOpen(i)}
                 className="absolute"
                 style={{
                   left: r.x + GAP / 2,
@@ -363,12 +368,18 @@ export function SeenMosaic() {
                   width: Math.max(0, r.w - GAP),
                   height: Math.max(0, r.h - GAP),
                   overflow: "hidden",
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  cursor: "zoom-in",
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- `images.unoptimized`: next/image would serve the same file */}
                 <img
                   src={t.src}
                   alt={t.alt}
+                  width={t.w}
+                  height={t.h}
                   draggable={false}
                   decoding="async"
                   loading="lazy"
@@ -378,20 +389,27 @@ export function SeenMosaic() {
                     if (el?.complete && el.naturalWidth > 0) onLoad(i)
                   }}
                   style={{
+                    display: "block",
                     width: "100%",
                     height: "100%",
+                    // The field has the picture's own proportion: `cover` cuts
+                    // nothing but a fraction of a pixel. A cut-out is never
+                    // drawn larger than its own pixels.
                     objectFit: t.cutout ? "scale-down" : "cover",
-                    objectPosition: t.cutout ? "50% 50%" : pos,
                     opacity: loaded.has(i) ? 1 : 0,
                     transition: "opacity 900ms ease",
                   }}
                 />
-              </div>
+              </button>
             )
           })}
       </div>
 
       <SeenEyes place="footer" />
+
+      {phase !== "done" && <Intro phase={phase} />}
+
+      <SeenLightbox tiles={SEEN_TILES} order={grid?.order ?? []} open={open} onOpen={setOpen} onClose={close} />
     </main>
   )
 }

@@ -448,8 +448,10 @@ export function PendantViewer({ src, label, look, className, style, size = 1, li
  * unfolded by the curve `scripts/env-360.mjs` folded them with, into half
  * floats, which keep a softbox eight times brighter than white as eight times
  * brighter. The rows are turned bottom first, as WebGL reads a data texture.
+ * Shared with the Space pieces' viewer (`space-viewer.tsx`, 2026-11-22), so
+ * the lamp stands in the same studio as the pendants.
  */
-async function studioTexture(THREE: typeof import("three")): Promise<DataTexture> {
+export async function studioTexture(THREE: typeof import("three")): Promise<DataTexture> {
   const blob = await (await fetch(STUDIO)).blob()
   const bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" })
   const { width: w, height: h } = bitmap

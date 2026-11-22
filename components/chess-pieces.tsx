@@ -12,6 +12,13 @@ import { useCallback, useEffect, useState } from "react"
  * true hierarchy, the pawns at 57% of the frame against the kings at 75%. The
  * white above the shorter pieces is not a gap to be cropped out; it is the room
  * they are standing in, and it falls on a white page.
+ *
+ * That white is pure (#fff) to the last pixel since 2026-11-22: behind each gold
+ * piece a faint grey field (253–254) was left from the retouching, and its
+ * straight edges read on screen as fine lines near the frame's left side and
+ * top. Only that ground was lifted to white; the pieces, their shadows and the
+ * framing are untouched. The files as they were: D:\PANDOV\Claude outputs\
+ * chess-pieces.inainte-2026-11-22.
  */
 const PAIRS = [
   { src: "/images/chess-pieces/pawns.jpg", label: "Pawns" },
