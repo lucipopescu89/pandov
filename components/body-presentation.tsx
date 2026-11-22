@@ -9,6 +9,7 @@ import { CaptionFade } from "@/components/caption-fade"
 import { PendantLink } from "@/components/pendant-link"
 import { splitMechanism, type Motion, type RingSpec, type Vignette } from "@/lib/mechanism"
 import { splitReveal, type RevealLayer, type RevealSpec } from "@/lib/reveal"
+import { STILL_MEDIA } from "@/lib/still"
 
 /**
  * Master design canvas (matches the Figma export / Body.jpg reference).
@@ -714,7 +715,7 @@ export async function BodyPresentation() {
           0%, 100% { transform: translateY(${(FLOAT_REACH / CANVAS_W) * 100}cqw); }
           50% { transform: translateY(${(-FLOAT_REACH / CANVAS_W) * 100}cqw); }
         }
-        @media (prefers-reduced-motion: reduce) {
+        @media ${STILL_MEDIA} {
           .bp-float { animation: none; }
         }
         /* On a phone the artwork is drawn at about 0.6 of its size, and its

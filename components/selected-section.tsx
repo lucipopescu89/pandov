@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { JULIUS, JULIUS_MIN, TEXT_FONT, TEXT_MIN, TEXT_TRACK, TRACK, TRACK_BACK } from "@/lib/type"
@@ -310,23 +310,9 @@ function SelectedPhone() {
 
 export function SelectedSection() {
   const ref = useRef<HTMLDivElement>(null)
-  const [fade, setFade] = useState(0)
-
-  useEffect(() => {
-    const onScroll = () => {
-      const el = ref.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const vh = window.innerHeight
-      const start = vh * 0.9
-      const end = vh * 0.4
-      const raw = (start - rect.top) / (start - end)
-      setFade(Math.min(1, Math.max(0, raw)))
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  // Whole from the start (2026-11-22, the still site, lib/still.ts): it came
+  // up with the scroll, its strength written on every scroll event.
+  const fade = 1
 
   return (
     <section className="sel-sec" style={{ position: "relative", width: "100%", background: "#202020" }}>

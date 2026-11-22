@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { still } from "@/lib/still"
 
 /* --------------------------------------------------------------------------
    Lights the pieces of a page by where they stand in the window, as the
@@ -72,6 +73,8 @@ type Piece = {
 
 export function CenterFade({ selector = "[data-center-fade]" }: { selector?: string }) {
   useEffect(() => {
+    // The still site (2026-11-22, lib/still.ts): every line lit where it stands, as in the markup.
+    if (still()) return
     let pieces: Piece[] = []
     let raf = 0
 

@@ -6,6 +6,7 @@ import SUN from "@/lib/satori-sun-4.json"
 import SCENE from "@/lib/making-scene.json"
 import { simplex3 } from "@/lib/simplex"
 import { canvasDpr, isLite, skipFrame, type Gate } from "@/lib/satori-lights"
+import { still as isStill } from "@/lib/still"
 
 /**
  * The sun behind the sea in the homepage's Making section (2026-11-17, the
@@ -214,7 +215,7 @@ export function MakingSun({ className }: { className?: string }) {
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const still = isStill()
 
     let scale = 1 // device pixels per frame unit
     let unitPx = 1 // CSS pixels per frame unit

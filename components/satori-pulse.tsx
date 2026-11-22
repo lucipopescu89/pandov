@@ -6,6 +6,7 @@ import CORE from "@/lib/satori-core-2.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { canvasDpr, isLite, cometsFrom, ease, flush, level, lights, samplePath, skipFrame, stretch, type Gate, type LightCfg, type Pts } from "@/lib/satori-lights"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
+import { still as isStill } from "@/lib/still"
 
 /**
  * Satori 2, "a pulse of sparks / at the edge of mind" (2026-11-12, the
@@ -427,7 +428,7 @@ export function SatoriPulse() {
 
     const rest = new Float32Array(count).fill(1)
     const none = new Float32Array(count)
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const still = isStill()
     if (still) {
       // The circles round the foot only, still, and the track faint.
       const drawStill = () => {

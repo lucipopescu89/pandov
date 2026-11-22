@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import SUN from "@/lib/satori-sun-4.json"
 import { canvasDpr, comets, flush, isLite, lights, skipFrame, type Gate, type LightCfg, type Pts } from "@/lib/satori-lights"
+import { still as isStill } from "@/lib/still"
 
 /**
  * Satori 4's sun, breathing like the sun's own atmosphere (2026-11-11, the
@@ -283,7 +284,7 @@ export function SatoriSun({ className }: { className?: string }) {
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const still = isStill()
     const lite = isLite()
     const crossing = new URLSearchParams(window.location.search).get("sun") === "cross"
 

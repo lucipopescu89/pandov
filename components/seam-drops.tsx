@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { still } from "@/lib/still"
 
 /* --------------------------------------------------------------------------
    Rise and descend — the water at the seam.
@@ -282,7 +283,9 @@ export function SeamDrops() {
     let lastY = window.scrollY
     let raf = 0
     let visible = false
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const calm = still()
+    // The still site (2026-11-22, lib/still.ts): no drops at all, the seam a plain line.
+    if (calm) return
 
     const onScroll = () => {
       const y = window.scrollY

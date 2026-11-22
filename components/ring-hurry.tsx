@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { listenHurry } from "@/lib/hurry"
+import { still } from "@/lib/still"
 
 /**
  * Presence's ellipses radiate faster while its pendant hurries them: the
@@ -27,7 +28,7 @@ export function RingHurry({ label }: { label: string }) {
   useEffect(() => {
     const section = ref.current?.parentElement
     if (!section || typeof section.getAnimations !== "function") return
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (still()) return
 
     let hurried = false
     let rate = 1

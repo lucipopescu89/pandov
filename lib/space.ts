@@ -83,7 +83,7 @@ const TO_ORDER = "Made to order"
 export const SPACE_PIECES: Record<string, SpacePiece> = {
   "heavy-light": {
     name: "Heavy Light",
-    statement: ["Unmoved,", "carrying a heavy core of light."],
+    statement: ["Unmoved,", "anchored by a heavy core of light."],
     line: "When light becomes heavy.",
     price: 690,
     size: "94 × 88 × 395 mm",

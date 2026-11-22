@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
+import { still } from "@/lib/still"
 
 /**
  * The Making section's line drawings, drawn as if by hand (2026-11-05, the
@@ -366,7 +367,7 @@ function run(host: HTMLElement, svg: SVGSVGElement, go: (href: string) => void):
   }
 
   // Under reduced motion: everything shown, drawn, at once, and the eye open.
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (still()) {
     lines.forEach((l) => l.path.removeAttribute("mask"))
     // the creator's lines too, whole (their masks would keep them hidden)
     svg.querySelectorAll('g[id^="paper-"] path[mask]').forEach((el) => el.removeAttribute("mask"))

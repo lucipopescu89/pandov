@@ -5,6 +5,7 @@ import { Navigation } from "@/components/navigation"
 import { BodyFooter } from "@/components/body-footer"
 import { CollectionIntro, INTRO_FONT_SIZE } from "@/components/collection-intro"
 import { HEART_S, heartKeyframes } from "@/lib/heartbeat"
+import { STILL_MEDIA } from "@/lib/still"
 
 /**
  * One layout for Mind, Body and Space (2026-10-28, the author's asking): the
@@ -100,7 +101,7 @@ const CSS = [
   keyframesCss("cp-heart", heartKeyframes({ grow: HEART_GROW, dim: HEART_DIM })),
   `.cp-heart{display:block;overflow:visible;opacity:${HEART_DIM};animation:cp-heart ${HEART_S}s linear infinite}`,
   // Without motion the heart stands at rest, which is the frame.
-  `@media (prefers-reduced-motion: reduce){.cp-heart{animation:none}}`,
+  `@media ${STILL_MEDIA}{.cp-heart{animation:none}}`,
   // A piece wider than PHONE_PIECE_W is drawn down to it on a phone, margins
   // and all, so it keeps its distance from the screen's edges (see `--fit`).
   `@media (max-width: 767px){.cp-fit{zoom:var(--fit)}}`,

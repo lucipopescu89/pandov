@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { RING_CLASS, type Radiant } from "@/lib/radiant"
+import { STILL_MEDIA, still } from "@/lib/still"
 
 /**
  * Seconds the light takes to cross the ornament, from the innermost contour to
@@ -251,6 +252,8 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
   const lit = (BAND * step) / cycle
 
   useEffect(() => {
+    // The still site (2026-11-22, lib/still.ts): the scroll no longer stirs the light.
+    if (still()) return
     const handleScroll = () => {
       const scrollY = window.scrollY
       const scrollDelta = scrollY - lastScrollYRef.current
@@ -387,7 +390,7 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
           ${(lit * 100).toFixed(2)}%  { opacity: ${FLOOR}; transform: scale(1); }
           100% { opacity: ${FLOOR}; transform: scale(1); }
         }
-        @media (prefers-reduced-motion: reduce) {
+        @media ${STILL_MEDIA} {
           /* Held at the light's own average, so the drawing keeps its weight. */
           .${RING_CLASS} { animation: none; opacity: 0.5; }
         }

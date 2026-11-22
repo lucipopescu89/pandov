@@ -5,6 +5,7 @@ import Image from "next/image"
 import { readMandala, type MoonArt, type MoonMotion, type MoonRing, type MoonShape } from "@/lib/moon-mandala"
 import { DROP_LARGE, dropUnit } from "@/components/seam-drops"
 import { gearScroll } from "@/lib/geared-scroll"
+import { still } from "@/lib/still"
 
 /* --------------------------------------------------------------------------
    The mandala over the Chess Set's moon, and the drop that sets it off.
@@ -678,7 +679,7 @@ export function MoonMandala({
     const canvas = canvasRef.current
     const dropCanvas = dropRef.current
     if (!box || !canvas || !dropCanvas) return
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (still()) return
     const ctx = canvas.getContext("2d")
     const dctx = dropCanvas.getContext("2d")
     const frameEl = box.parentElement

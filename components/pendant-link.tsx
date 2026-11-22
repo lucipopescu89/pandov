@@ -4,6 +4,7 @@ import { useEffect, useRef, type CSSProperties, type MouseEvent, type PointerEve
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { HURRY_TAP_MS, sendHurry } from "@/lib/hurry"
+import { still } from "@/lib/still"
 
 /**
  * The link over a pendant's photograph on /body/second-wind, which opens the
@@ -259,7 +260,7 @@ export function PendantLink({
       timer.current = 0
       return
     }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (still()) return
     e.preventDefault()
     sendHurry(label, true)
     timer.current = window.setTimeout(() => {

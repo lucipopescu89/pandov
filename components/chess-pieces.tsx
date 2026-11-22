@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useCallback, useEffect, useState } from "react"
+import { still } from "@/lib/still"
 
 /**
  * The six pairs, in the order the set is usually read: the smallest piece
@@ -100,7 +101,7 @@ export function ChessPieces() {
   useEffect(() => {
     // Honour the OS "reduce motion" setting: nothing moves on its own, and the
     // dots below carry the reader through the set instead.
-    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (paused || still()) return
     const timer = setTimeout(() => setCurrent((i) => (i + 1) % PAIRS.length), HOLD_MS)
     return () => clearTimeout(timer)
   }, [current, paused])

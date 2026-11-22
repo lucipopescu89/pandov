@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { EYE_SVG, EYE_VIEWBOX } from "@/lib/seen-eye"
 import { FROM_EYE_KEY, RETURN_KEY } from "@/lib/seen-key"
+import { still } from "@/lib/still"
 
 /**
  * The way out of /seen (2026-11-08, the author's asking): in place of the top
@@ -102,7 +103,7 @@ export function SeenEyesButton() {
     }
     const balls = svgs.map((svg) => svg.querySelector<SVGGElement>("[id^='eye-ball']"))
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (still()) {
       setEye(0)
       return
     }

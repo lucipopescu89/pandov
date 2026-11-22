@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import SCENE from "@/lib/making-scene.json"
 import { simplex3 } from "@/lib/simplex"
 import { canvasDpr, isLite, skipFrame, type Gate } from "@/lib/satori-lights"
+import { still as isStill } from "@/lib/still"
 
 /**
  * The sea of drawings in the homepage's Making section (2026-11-17, the
@@ -137,7 +138,7 @@ export function MakingSea({ className }: { className?: string }) {
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const still = isStill()
 
     // The canvas spans the screen's width; the frame is the composition box,
     // its parent, whose width is the frame's 1893 units.

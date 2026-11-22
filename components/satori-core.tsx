@@ -22,6 +22,7 @@ import {
   type Mode,
   type Pts,
 } from "@/lib/satori-lights"
+import { still } from "@/lib/still"
 
 /**
  * The author's drawing, hidden at rest and drawn by hand on a hover over the
@@ -332,7 +333,7 @@ export function SatoriCore({ slug }: { slug: Slug }) {
       flush(ctx, gather)
     }
 
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (still()) {
       draw(true)
       const ro = new ResizeObserver(() => {
         size()

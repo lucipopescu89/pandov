@@ -6,6 +6,7 @@ import { SeenEyes } from "@/components/seen-eyes"
 import { SeenLightbox } from "@/components/seen-lightbox"
 import { SEEN_TILES, type SeenTile } from "@/lib/seen-gallery"
 import { JULIUS, TEXT_FONT, TEXT_SIZE, TEXT_TRACK, TRACK, TRACK_BACK } from "@/lib/type"
+import { still } from "@/lib/still"
 
 /**
  * /seen — the hidden page behind the eye (2026-11-08, the author's asking, an
@@ -281,7 +282,7 @@ export function SeenMosaic() {
   // lets the reader in. A click on the bar (home, the eyes) still does what
   // it does.
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (still()) {
       setPhase("done")
       return
     }

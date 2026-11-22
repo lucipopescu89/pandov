@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { still } from "@/lib/still"
 
 /**
  * Making and Contact leave their footage alone on screen when nobody is doing
@@ -63,6 +64,9 @@ function typing(): boolean {
 
 export function AmbientMode() {
   useEffect(() => {
+    // The still site (2026-11-22, lib/still.ts): the menus and the words stay;
+    // a touch on a faded page only woke it, and the menus were not there to tap.
+    if (still()) return
     const root = document.documentElement
     let idle = 0
     let unlock = 0

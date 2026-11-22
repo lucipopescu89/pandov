@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import FLOW from "@/lib/satori-flow-3.json"
 import { PLAY_EVENT, UNDRAWN_EVENT, startsHover } from "@/components/satori-sun"
 import { canvasDpr, isLite, skipFrame, type Gate } from "@/lib/satori-lights"
+import { still as isStill } from "@/lib/still"
 
 /**
  * Satori 3, "the one who sits / expands inside" (2026-11-12, the author's
@@ -79,7 +80,7 @@ export function SatoriFlow() {
     const canvas = ref.current
     const ctx = canvas?.getContext("2d")
     if (!canvas || !ctx) return
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const still = isStill()
 
     let scale = 1 // device pixels per frame unit
     let dpr = 1

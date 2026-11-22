@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { still } from "@/lib/still"
 
 /* --------------------------------------------------------------------------
    A line of type that is lit by where it stands in the window: out below the
@@ -121,6 +122,8 @@ export function ScrollFade({
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    // The still site (2026-11-22, lib/still.ts): lit where it stands, as in the markup.
+    if (still()) return
     const inner = travelRef.current
     let offset = from === "above" ? -distance : distance
     const Timeline = (window as unknown as { ScrollTimeline?: ScrollTimelineConstructor }).ScrollTimeline

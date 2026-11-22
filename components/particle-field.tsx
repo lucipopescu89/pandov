@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { revealPosition, revealStrip, type RevealLayer } from "@/lib/reveal"
 import { listenHurry } from "@/lib/hurry"
+import { still } from "@/lib/still"
 
 const PARTICLES_PER_PATH = 36
 /** Peak opacity, held between the fade in and the fade out. */
@@ -761,7 +762,7 @@ export function ParticleField({
     /** Artwork units the band has climbed. */
     let travel = 0
 
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const calm = still()
 
     const stopListening = listenHurry(label, (on) => {
       hurried = on
@@ -931,10 +932,15 @@ export function ParticleField({
         lifted.style.setProperty("-webkit-mask-position", at)
       }
 
-      raf = requestAnimationFrame(frame)
+      // The still site (2026-11-22, lib/still.ts): one frame, the dots where
+      // they stand, drawn again only when the artwork is laid out anew.
+      if (!calm) raf = requestAnimationFrame(frame)
     }
 
-    const ro = new ResizeObserver(measure)
+    const ro = new ResizeObserver(() => {
+      measure()
+      if (calm && visible) frame(performance.now())
+    })
     ro.observe(svg)
     measure()
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react"
 import { clamp01, smooth, words as wordsAt, ARRIVE, ARRIVE_GLIDE_VW, arriveOpacity, arriveLeft } from "@/lib/making-rhythm"
+import { still as isStill } from "@/lib/still"
 
 /**
  * The scan on /making: the burnt log end with the white figure in its hollow,
@@ -169,7 +170,7 @@ export function MakingScan({ words, color }: { words: ReactNode; color: string }
     const wordsEl = section.querySelector<HTMLElement>(".mk-scan-words")
     const veil = section.querySelector<HTMLElement>(".mk-scan-veil")
     if (!frameEl || !x || !box || !after || !line) return
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const still = isStill()
     const flowing = !!section.closest(".mk-flow")
     // Any touch screen, a phone, a tablet, a laptop that has one (`LINE_INSET_TOUCH`).
     const touch = window.matchMedia("(any-pointer: coarse)").matches

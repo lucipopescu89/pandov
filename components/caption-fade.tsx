@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { still } from "@/lib/still"
 
 /**
  * Captions fade in as they come up to the middle of the window and out as they
@@ -193,6 +194,18 @@ export function CaptionFade({ className, style, children }: Props) {
 
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
+    }
+
+    // The still site (2026-11-22, lib/still.ts): every caption lit, as in the
+    // markup, the scroll no longer read; only made larger on a phone.
+    if (still()) {
+      enlarge()
+      const grow = new ResizeObserver(enlarge)
+      grow.observe(wrap)
+      return () => {
+        grow.disconnect()
+        for (const el of wrap.querySelectorAll("text")) el.style.transform = ""
+      }
     }
 
     measure()

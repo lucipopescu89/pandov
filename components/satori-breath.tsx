@@ -5,6 +5,7 @@ import DATA from "@/lib/satori-breath-1.json"
 import { HEART_S, heartbeat } from "@/lib/heartbeat"
 import { PLAY_EVENT, startsHover } from "@/components/satori-sun"
 import { canvasDpr, isLite, comets, drawnStretches, flush, lights, skipFrame, type Gate, ease, lightWay, span, stretch, type LightCfg, type Mode, type Pts } from "@/lib/satori-lights"
+import { still } from "@/lib/still"
 
 /**
  * Satori 1, "the one who sits / is complete" (2026-11-12, the author's brief).
@@ -551,7 +552,7 @@ export function SatoriBreath() {
       flush(hctx, gather)
     }
 
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (still()) {
       paint(0, 0, 1)
       const still = new ResizeObserver(() => paint(0, 0, 1))
       still.observe(canvas)

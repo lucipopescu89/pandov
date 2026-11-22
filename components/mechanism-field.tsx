@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { HEART_S, heartKeyframes } from "@/lib/heartbeat"
 import type { MechanismLayer, Motion, ViewBox } from "@/lib/mechanism"
 import { listenHurry } from "@/lib/hurry"
+import { still } from "@/lib/still"
 
 /** Seconds between a wave ring's pulses: each of its dots sets off once a cycle. */
 const WAVE_S = 6
@@ -392,7 +393,7 @@ export function MechanismField({
   useEffect(() => {
     const wrap = wrapRef.current
     if (!wrap || typeof wrap.animate !== "function") return
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (still()) return
 
     const all: Animation[] = []
     const spinBoosted: Animation[] = []

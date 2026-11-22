@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { still } from "@/lib/still"
 
 /**
  * The square ornament that opens the Chess Set page. A golden band travels
@@ -13,6 +14,8 @@ export function ChessSetOrnament() {
   const [gradientPosition, setGradientPosition] = useState(100)
 
   useEffect(() => {
+    // The still site (2026-11-22, lib/still.ts): the band stays where it starts.
+    if (still()) return
     const handleScroll = () => {
       const scrollY = window.scrollY
       // Move gradient from right (100%) to left (0%) as user scrolls

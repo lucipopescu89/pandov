@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { STILL_MEDIA } from "@/lib/still"
 
 /** Side of the square the circles were measured in. */
 const BOX = 357
@@ -226,7 +227,7 @@ export function BirdRings({
           animation: ${TUNNEL} ${+(TRAVEL * STEP_S).toFixed(3)}s linear infinite;
         }
         ${tunnelKeyframes()}
-        @media (prefers-reduced-motion: reduce) {
+        @media ${STILL_MEDIA} {
           /* Held where each ring's delay puts it, which is the drawing. The
              turn rides on the travel, so it holds as well. */
           .${RING_CLASS} { animation-play-state: paused; }
