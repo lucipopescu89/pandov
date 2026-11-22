@@ -10,15 +10,19 @@
 //
 // Heavy Light (2026-11-22) was exported Y-up, in tenths of a millimetre: its
 // body measures 884.6 × 3959.6 × 947.8 units, the author's 88 × 395 × 94 mm.
-// Its parts, by their names in the export:
-//   Box3089     the plinth of the renders     left out
+// Its parts, by their names in the export (the second export, of the evening,
+// with the body turned right way out, the lampholder shortened and the cable):
+//   Box3089     the plinth of the renders     left out (gone from the
+//                                              second export, kept here in
+//                                              case it comes back)
 //   Plane115    the wooden body               "wood"
-//   Cylinder499 the lampholder and its cable's
-//               way out, a cylinder cut into
-//               the wood and standing out of
-//               its back, where the renders
-//               show only the cable            left out
-
+//   Cylinder499 the E14 lampholder, shortened
+//               so it no longer stands out of
+//               the back; a part of it shows  "socket"
+//   Line672     the cable, leaving the back
+//               low down and cut short on
+//               purpose: its length is the
+//               client's to choose            "cable"
 //   Sphere1318  the bulb's glass              "glass"
 //   Sphere1317  the bulb's gold crown         "crown"
 // Anything else would be kept under its own name.
@@ -33,8 +37,8 @@ import { EXTMeshoptCompression, KHRMeshQuantization } from "@gltf-transform/exte
 import { weld, reorder, quantize, dedup, prune } from "@gltf-transform/functions"
 import { MeshoptEncoder } from "meshoptimizer"
 
-const PARTS = { Plane115: "wood", Cylinder499: "socket", Sphere1318: "glass", Sphere1317: "crown" }
-const LEAVE_OUT = new Set(["Box3089", "Cylinder499"])
+const PARTS = { Plane115: "wood", Cylinder499: "socket", Line672: "cable", Sphere1318: "glass", Sphere1317: "crown" }
+const LEAVE_OUT = new Set(["Box3089"])
 /** The export's unit, in metres: a tenth of a millimetre. */
 const UNIT = 0.0001
 

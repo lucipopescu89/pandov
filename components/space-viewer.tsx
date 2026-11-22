@@ -32,8 +32,13 @@ import { studioTexture } from "@/components/pendant-viewer"
 
 /** Linear RGB, as the shader mixes them: [the lighter wood of a ring, the darker]. */
 const WOODS = {
-  // Oiled white oak: a warm honey, its latewood and pores a deeper brown.
-  natural: { light: [0.42, 0.25, 0.115], dark: [0.17, 0.088, 0.036], roughness: 0.58 },
+  // Oiled oak, a dark grey-brown as in the author's photographs, its latewood
+  // and pores darker: the red, green and blue in the proportions measured on
+  // the wood in heavy-light-natural-1 (about 1 : 0.63 : 0.35, in linear
+  // light). Darker and duller since the evening of 2026-11-22 (the author's
+  // asking): the honey of new oak, 0.42/0.25/0.115 over 0.17/0.088/0.036, read
+  // too yellow beside the photographs, and a first greyer try went khaki.
+  natural: { light: [0.2, 0.126, 0.07], dark: [0.08, 0.05, 0.028], roughness: 0.58 },
   // Ebonised: near black, the rings a little lighter, as in the author's renders.
   ebonised: { light: [0.058, 0.053, 0.05], dark: [0.02, 0.0185, 0.0175], roughness: 0.5 },
 } as const
@@ -181,8 +186,13 @@ export function SpaceViewer({ src, label, wood, lit, className, style, size = 1 
         emissive: new THREE.Color(...WARM),
         emissiveIntensity: 0,
       })
+      // The lampholder, a part of it seen in the hollow: black, as a bakelite one is.
       const socket = new THREE.MeshStandardMaterial({ color: 0x0c0c0c, metalness: 0, roughness: 0.45 })
-      const materials = [woodMaterial, crown, glass, socket]
+      // The cable: black and matte, a textile braid. Drawn from both sides: in
+      // the export its faces are wound one way along some lengths and the other
+      // along the rest, and drawn from one side it came apart into dashes.
+      const cable = new THREE.MeshStandardMaterial({ color: 0x070707, metalness: 0, roughness: 0.85, side: THREE.DoubleSide })
+      const materials = [woodMaterial, crown, glass, socket, cable]
 
       // The lamp's own lights, and the halo; all at nothing until it is on.
       const bulb: PointLight = new THREE.PointLight(new THREE.Color(...WARM_LIGHT), 0, 0, 2)
@@ -310,7 +320,7 @@ export function SpaceViewer({ src, label, wood, lit, className, style, size = 1 
       model = loaded
       model.scale.setScalar(SCALE)
       model.updateMatrixWorld(true)
-      const byName: Record<string, MeshStandardMaterial> = { wood: woodMaterial, crown, glass, socket }
+      const byName: Record<string, MeshStandardMaterial> = { wood: woodMaterial, crown, glass, socket, cable }
       model.traverse((o) => {
         const mesh = o as Mesh
         if (!mesh.isMesh) return
@@ -320,12 +330,17 @@ export function SpaceViewer({ src, label, wood, lit, className, style, size = 1 
         mesh.material = byName[part]
         if (part === "glass") mesh.renderOrder = 1
       })
+      // Turned about the middle of the wood, not of everything: the cable runs
+      // out behind, and the lamp would swing round a point behind itself.
+      // The frame still holds all of it, cable's end included.
       const box = new THREE.Box3().setFromObject(model)
-      model.position.sub(box.getCenter(new THREE.Vector3()))
+      const woodMesh = model.getObjectByName("wood")
+      const middle = (woodMesh ? new THREE.Box3().setFromObject(woodMesh) : box).getCenter(new THREE.Vector3())
+      model.position.sub(middle)
       model.updateMatrixWorld(true)
-      const extent = box.getSize(new THREE.Vector3())
-      halfHeight = extent.y / 2
-      reach = Math.hypot(extent.x, extent.z) / 2
+      box.translate(middle.clone().negate())
+      halfHeight = Math.max(box.max.y, -box.min.y)
+      reach = Math.max(...[box.min.x, box.max.x].flatMap((x) => [box.min.z, box.max.z].map((z) => Math.hypot(x, z))))
       scene.add(model)
 
       // The bulb's middle, and which way its crown faces: the lamp's front.

@@ -13,7 +13,8 @@ import { JULIUS_MIN, TEXT_MIN, TEXT_TRACK, TRACK } from "@/lib/type"
  * pendant's page (`pendant-page.tsx`) in its grammar and at its lengths, so a
  * visitor who has seen one knows the other. Under the menu, the statement in
  * quotation marks; then the gallery, and beside it the name, its line, the
- * finishes and the price, ORDER and "Ask a question", and what the piece is.
+ * finishes and the price, ORDER and "Ask a question", and what the piece is:
+ * its size, wood, light, cable (its length the client's, 2026-11-22) and making.
  * Last, the way back to Space. There is no "More from" while Space has one
  * piece; when it has more, the pendants' row is the one to bring over.
  *
@@ -32,7 +33,7 @@ const AIR = { computer: 230 + 189.3, phone: 40 + 32 }
 const SLACK = { computer: 42.6, phone: 34.5 }
 
 export function SpacePiecePage({ piece }: { piece: SpacePiece }) {
-  const { name, statement, line, price, size, light, model, finishes } = piece
+  const { name, statement, line, price, size, light, cable, photos, model, modelThumb, finishes } = piece
   const last = statement.length - 1
   return (
     <main className="w-full" style={{ backgroundColor: GROUND, color: TEXT }}>
@@ -50,7 +51,7 @@ export function SpacePiecePage({ piece }: { piece: SpacePiece }) {
 
         <SpaceChoice>
           <div className="sp-row">
-            <SpaceGallery name={name} model={model} finishes={finishes} />
+            <SpaceGallery name={name} photos={photos} model={model} modelThumb={modelThumb} finishes={finishes} />
             <section className="sp-info">
               <h1 className="sp-name">{name}</h1>
               <p className="sp-line">{line}</p>
@@ -71,6 +72,14 @@ export function SpacePiecePage({ piece }: { piece: SpacePiece }) {
                   <dd>
                     {light.map((l) => (
                       <span key={l}>{l}</span>
+                    ))}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Cable</dt>
+                  <dd>
+                    {cable.map((c) => (
+                      <span key={c}>{c}</span>
                     ))}
                   </dd>
                 </div>
