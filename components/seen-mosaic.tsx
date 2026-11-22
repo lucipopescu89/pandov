@@ -301,16 +301,12 @@ export function SeenMosaic() {
     at(INTRO_IN_MS + INTRO_HOLD_MS, () => end(INTRO_OUT_MS, "out"))
 
     const skip = () => end(INTRO_SKIP_MS, "skip")
-    const hold = (e: Event) => {
-      if (e.cancelable) e.preventDefault()
-      skip()
-    }
-    const SCROLL_KEYS = new Set(["ArrowDown", "ArrowUp", "PageDown", "PageUp", " ", "End", "Home"])
-    const onKey = (e: KeyboardEvent) => {
-      if (SCROLL_KEYS.has(e.key)) e.preventDefault()
-      skip()
-    }
-    const opts = { passive: false, capture: true } as const
+    // A scroll ends the opening and scrolls the page as ever (2026-11-22, the
+    // author's asking: nothing may hold the scroll); it used to be taken to
+    // end the opening only.
+    const hold = () => skip()
+    const onKey = () => skip()
+    const opts = { passive: true, capture: true } as const
     window.addEventListener("wheel", hold, opts)
     window.addEventListener("touchmove", hold, opts)
     window.addEventListener("keydown", onKey, true)

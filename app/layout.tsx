@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 import { manrope } from "@/lib/type"
 import { SITE_URL } from "@/lib/site"
 import "./globals.css"
@@ -63,20 +64,20 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         {children}
         <Analytics />
-        {/* The still site (2026-11-22, the author's asking, after visitors said
-            the pages did not flow on their phones; see lib/still.ts): the three
-            scripts that ran over every page are no longer loaded. Each was one
-            line here, and each comes back by putting its line back:
-              <Script src="/pandov-fx.js" strategy="afterInteractive" />
-                the gold dust, the soft entrances (blurred, which a phone
-                redraws as it scrolls), a black veil fading on every load, the
-                scroll line at the top;
-              <Script src="/pandov-grain.js" strategy="afterInteractive" />
-                the gold motes in the homepage's Making photograph;
+        {/* The author's atmosphere effects (2026-10-28): gold dust, the O's and
+            Presence on the homepage, Silence on Second Wind, soft entrances.
+            One plain script outside React, so this line is the whole switch:
+            delete it and the site is exactly as it was. See public/pandov-fx.js. */}
+        <Script src="/pandov-fx.js" strategy="afterInteractive" />
+        {/* Gold motes rising in the crevices of the burnt trunk, in the
+            homepage's Making photograph (2026-10-30, the author's asking).
+            Delete this line and it is gone. See public/pandov-grain.js. */}
+        <Script src="/pandov-grain.js" strategy="afterInteractive" />
+        {/* No longer loaded since 2026-11-22 (the author's asking: nothing may
+            hold or carry the scroll): the glide after each turn of the wheel,
+            which took the scroll from the browser. Its line, to bring it back:
               <Script src="/pandov-glide.js" strategy="afterInteractive" />
-                the glide after each turn of the wheel, which took the scroll
-                from the browser.
-            The files are left in public/, unused. */}
+            The file is left in public/, unused. */}
         {/* The #202020 test of 2026-11-20 (public/pandov-dark-test.js, local
             addresses only) is no longer loaded (2026-11-21): the author decided
             that day, and on 127.0.0.1 it kept repainting what is now dark on

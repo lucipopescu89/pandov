@@ -63,6 +63,18 @@ import { still } from "@/lib/still"
 
 const SRC = "/images/chess-set/mandala.svg"
 
+/**
+ * Whether the drop, the ink and the strike play. Not since 2026-11-22 (the
+ * author's asking: nothing may hold or carry the scroll). The sequence is
+ * built on the slowed scroll: the page is carried less and less far, stops
+ * with the moon in the middle, a phone's page is cut off there, the page
+ * follows the drop down by itself, and the reader's scrolling draws the bow.
+ * Without them it would stop half-way, the moon left black. So the moon and
+ * its mandala are drawn at rest, as for a visitor who asks for less motion.
+ * Set to true to have it all again.
+ */
+const MOON_PLAYS = false
+
 /** The moon's radius in the mandala's units. `scripts/chess-mandala.mjs` parts white from grey there. */
 const MOON_RIM = 63.5
 const MAX_DPR = 2
@@ -679,7 +691,7 @@ export function MoonMandala({
     const canvas = canvasRef.current
     const dropCanvas = dropRef.current
     if (!box || !canvas || !dropCanvas) return
-    if (still()) return
+    if (still() || !MOON_PLAYS) return
     const ctx = canvas.getContext("2d")
     const dctx = dropCanvas.getContext("2d")
     const frameEl = box.parentElement

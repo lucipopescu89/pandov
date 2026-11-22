@@ -8,6 +8,17 @@ import { NUDGE_PX, TO_TOP_EVENT, finish, heroDoors, heroUp, hurry, rewind } from
 import { hasScrollTimeline } from "@/lib/scroll-timeline"
 
 /**
+ * Whether the page may be held at the doors while they open, and moved by the
+ * hero on the way back up. Never, since 2026-11-22 (the author's asking, after
+ * visitors said the pages did not flow on their phones): every browser now has
+ * what Safari before 26 had (see `holdScroll`'s effect below), the page
+ * scrolling by itself as any page does and the doors opening at their own pace
+ * once it is past them. Set to true to hold it again where the browser can.
+ */
+const HOLD_AT_DOORS = false
+const holds = () => HOLD_AT_DOORS && hasScrollTimeline()
+
+/**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
  * and an empty one to end on. They are made from the render with
  * `scripts/hero-doors.mjs`, which lays them over #202020 so they meet the
@@ -1039,7 +1050,7 @@ export function HeroAnimation() {
     const phone = !wide && window.matchMedia(PHONE_MEDIA).matches
     // Where the browser scrolls the page by itself (see `holdScroll`'s effect
     // below): the doors open at their own pace once the page is past the pin.
-    const native = !hasScrollTimeline()
+    const native = !holds()
     const urls = phone ? PHONE_FRAME_URLS : FRAME_URLS
     const budget = phone ? PHONE_BITMAP_BUDGET_PX : BITMAP_BUDGET_PX
     // A frame's whole width, in its own file's pixels, and where the file
@@ -1617,7 +1628,7 @@ export function HeroAnimation() {
     // was a scrollTo in the middle of a phone's own fling, and that is where
     // an iPhone 8 jumped. The reader simply scrolls back through the open
     // doors, and at the top they close.
-    const native = !hasScrollTimeline()
+    const native = !holds()
 
     const back = () => {
       const y = window.scrollY
@@ -1704,7 +1715,7 @@ export function HeroAnimation() {
   // the author accepted. `?safari16` shows this version on a computer.
   useEffect(() => {
     const el = containerRef.current
-    if (!el || !hasScrollTimeline()) return
+    if (!el || !holds()) return
     // The doors alone since 2026-11-22: past them the page scrolls as ever.
     return holdScroll(el, [{ at: () => PAST_PIN_PX, done: () => doorsRef.current() }], {
       active: () => !!stepRef.current?.active(),

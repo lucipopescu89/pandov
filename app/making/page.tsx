@@ -1,6 +1,4 @@
-// The still page since 2026-11-22 (lib/still.ts); the moving one is `MakingPage`
-// from "@/components/making-page", kept unchanged: put it back here to bring it back.
-import { MakingStill } from "@/components/making-still"
+import { MakingPage } from "@/components/making-page"
 
 export const metadata = {
   title: "Making — PANDOV",
@@ -13,7 +11,7 @@ export default function Making() {
     <>
       {/* The page's title for Google and screen readers, not drawn (2026-11-20, the audit). */}
       <h1 className="sr-only">Making — how Pandov pieces are made</h1>
-      <MakingStill />
+      <MakingPage />
     </>
   )
 }

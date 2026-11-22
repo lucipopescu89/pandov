@@ -1,4 +1,13 @@
 /**
+ * OFF since the same evening (the author's asking, after seeing the still site
+ * live: "everything is flat"). The site moves again everywhere; what was kept
+ * from the still evening is that nothing holds the scroll any more (the doors'
+ * hold, `HOLD_AT_DOORS` in hero-animation.tsx; the moon's slowed scroll,
+ * `MOON_PLAYS` in moon-mandala.tsx; /seen's opening, seen-mosaic.tsx; the
+ * wheel's glide, no longer loaded in app/layout.tsx). With `STILL` false, the
+ * still versions below are only for a visitor whose device asks for less
+ * motion, as before. Set it to true to have the still site again.
+ *
  * The site without motion (2026-11-22, the author's asking, after visitors
  * said the pages did not flow on their phones): plain scrolling everywhere,
  * on a phone and a computer, the homepage's played passages become pictures,
@@ -19,7 +28,7 @@
  * `making-page.tsx`), and `app/page.tsx` and `app/making/page.tsx` say which
  * is used.
  */
-export const STILL = true
+export const STILL = false
 
 /** For a stylesheet: the media query under which the still version applies. */
 export const STILL_MEDIA = STILL ? "all" : "(prefers-reduced-motion: reduce)"

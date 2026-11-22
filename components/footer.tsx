@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { BirdRings } from "@/components/bird-rings"
 import { BodyFooter } from "@/components/body-footer"
@@ -95,10 +95,42 @@ function clamp01(v: number): number {
 export function Footer() {
   const wordsRef = useRef<HTMLAnchorElement>(null)
   const birdRef = useRef<HTMLAnchorElement>(null)
-  // Whole from the start (2026-11-22, the still site, lib/still.ts): the
-  // words and the bird came up with the scroll, measured on every scroll event.
-  const ctaIn = 1
-  const birdIn = 1
+  const [ctaIn, setCtaIn] = useState(0)
+  const [birdIn, setBirdIn] = useState(0)
+
+  useEffect(() => {
+    let raf = 0
+    const strength = (el: HTMLElement | null, vh: number, atEnd: boolean) => {
+      if (!el) return 0
+      if (atEnd) return 1
+      const r = el.getBoundingClientRect()
+      const mid = r.top + r.height / 2
+      return clamp01((IN_FROM * vh - mid) / ((IN_FROM - IN_TO) * vh))
+    }
+    const update = () => {
+      raf = 0
+      const vh = window.innerHeight
+      const atEnd = document.documentElement.scrollHeight - vh - window.scrollY < 2
+      setCtaIn(strength(wordsRef.current, vh, atEnd))
+      setBirdIn(strength(birdRef.current, vh, atEnd))
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    // A tab that loaded in the background only gets a real viewport once it is looked at.
+    window.addEventListener("pageshow", onScroll)
+    document.addEventListener("visibilitychange", onScroll)
+    update()
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      window.removeEventListener("pageshow", onScroll)
+      document.removeEventListener("visibilitychange", onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
 
   return (
     <footer
