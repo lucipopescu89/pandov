@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { TO_TOP_EVENT, heroDoors } from "@/lib/played-beat"
+import { HERO_MENU_EVENT, TO_TOP_EVENT, heroDoors, heroSteps, stepsDevice } from "@/lib/played-beat"
 
 /**
  * Homepage only (2026-11-02, the author's asking; since 2026-11-16 it opens
@@ -27,6 +27,14 @@ import { TO_TOP_EVENT, heroDoors } from "@/lib/played-beat"
  *
  * The menu itself is the shared `Navigation`, unchanged: only where it sits
  * and when it shows is decided here.
+ *
+ * On a phone, where the opening goes in steps (2026-11-23, `stepsDevice`):
+ * while the steps hold the page (`heroSteps.locked`) the hand is theirs, and
+ * they say when the menu goes and comes (`HERO_MENU_EVENT`). Past them a
+ * finger is only listened to, never held: the touch listener is passive, so
+ * the browser never waits on the page's script before it scrolls. Until that
+ * day it was a blocking listener on the whole homepage, and on a phone busy
+ * decoding the doors' frames every swipe waited on it.
  */
 export function RevealOnScrollUp({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(false)
@@ -36,6 +44,8 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
   const shownRef = useRef(false)
 
   useEffect(() => {
+    // A phone's opening in steps: see the note above.
+    const steps = stepsDevice()
     // At the top of the page: the hero's pin is there too, and its beats
     // move the page at least NUDGE_PX (40) past it.
     const TOP_PX = 4
@@ -78,6 +88,7 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
     }
 
     const onWheel = (e: WheelEvent) => {
+      if (heroSteps.locked) return
       if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
       const gap = e.timeStamp - lastWheel
       lastWheel = e.timeStamp
@@ -100,6 +111,7 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
     const UP = new Set(["ArrowUp", "PageUp", "Home"])
     const DOWN = new Set(["ArrowDown", "PageDown", "End", " "])
     const onKey = (e: KeyboardEvent) => {
+      if (heroSteps.locked) return
       const t = e.target as HTMLElement | null
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
       if (UP.has(e.key) || (e.key === " " && e.shiftKey)) return goingUp()
@@ -124,6 +136,7 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
       touchHeld = false
     }
     const onTouchMove = (e: TouchEvent) => {
+      if (heroSteps.locked) return
       if (touchHeld) return swallow(e)
       const y = e.touches[0]?.clientY
       if (touchY === null || y === undefined) return
@@ -131,7 +144,8 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
       if (Math.abs(d) < 8) return
       touchY = y
       if (d > 0) return goingUp()
-      if (shownRef.current) {
+      // A phone's finger is never held (see the note above).
+      if (shownRef.current && !steps) {
         touchHeld = true
         set(false)
         return swallow(e)
@@ -143,6 +157,8 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
     }
 
     const onToTop = () => set(true)
+    // The opening's steps, on a phone: the menu down, or away.
+    const onSteps = (e: Event) => set(!!(e as CustomEvent<boolean>).detail)
 
     // The page opens with the menu down, over the handles (2026-11-16, the
     // author's asking): a page opened at its top counts as a hand come up.
@@ -156,18 +172,20 @@ export function RevealOnScrollUp({ children }: { children: ReactNode }) {
     window.addEventListener("wheel", onWheel, opts)
     window.addEventListener("keydown", onKey, true)
     window.addEventListener("touchstart", onTouchStart, { passive: true, capture: true })
-    window.addEventListener("touchmove", onTouchMove, opts)
+    window.addEventListener("touchmove", onTouchMove, steps ? { passive: true, capture: true } : opts)
     window.addEventListener("touchend", onTouchEnd, true)
     window.addEventListener(TO_TOP_EVENT, onToTop)
+    window.addEventListener(HERO_MENU_EVENT, onSteps)
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => {
       window.removeEventListener("scroll", onScroll)
       window.removeEventListener("wheel", onWheel, opts)
       window.removeEventListener("keydown", onKey, true)
       window.removeEventListener("touchstart", onTouchStart, true)
-      window.removeEventListener("touchmove", onTouchMove, opts)
+      window.removeEventListener("touchmove", onTouchMove, true)
       window.removeEventListener("touchend", onTouchEnd, true)
       window.removeEventListener(TO_TOP_EVENT, onToTop)
+      window.removeEventListener(HERO_MENU_EVENT, onSteps)
       cancelAnimationFrame(settle)
       delete document.documentElement.dataset.heroMenu
     }

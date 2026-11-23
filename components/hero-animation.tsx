@@ -4,19 +4,51 @@ import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { RadiantRings } from "@/components/radiant-rings"
 import { MIND_IN_VH } from "@/components/categories-section"
-import { NUDGE_PX, TO_TOP_EVENT, finish, heroDoors, heroUp, hurry, rewind } from "@/lib/played-beat"
+import {
+  COMPUTER_POINTER,
+  HERO_MENU_EVENT,
+  NUDGE_PX,
+  TO_TOP_EVENT,
+  finish,
+  heroDoors,
+  heroSteps,
+  heroUp,
+  hurry,
+  rewind,
+  stepsDevice,
+} from "@/lib/played-beat"
 import { hasScrollTimeline } from "@/lib/scroll-timeline"
 
 /**
  * Whether the page may be held at the doors while they open, and moved by the
- * hero on the way back up. Never, since 2026-11-22 (the author's asking, after
- * visitors said the pages did not flow on their phones): every browser now has
- * what Safari before 26 had (see `holdScroll`'s effect below), the page
- * scrolling by itself as any page does and the doors opening at their own pace
- * once it is past them. Set to true to hold it again where the browser can.
+ * hero on the way back up.
+ *
+ * On a computer again since 2026-11-23 (the author's asking: the handles' and
+ * the doors' unfolding in steps with the scroll, so it feels in the reader's
+ * hand, as it was until the evening before, "but only for desktop"). The page
+ * comes to rest where the doors fill the screen, and each turn of the wheel
+ * there turns the handles and opens the doors a step further (`OPEN_WHEEL_PX`;
+ * see `holdScroll`); past them it scrolls as ever, as on 2026-11-22.
+ *
+ * Never on a phone or a tablet (`HOLD_DEVICE`): from 2026-11-22 to the next day
+ * no screen held it (visitors had said the pages did not flow on their phones).
+ * Since the evening of 2026-11-23 a phone has its own opening, in steps, with
+ * the page not scrolling at all while it plays (see `stepsDevice` and the
+ * steps' effect in `HeroAnimation`); a computer whose browser cannot be held
+ * keeps the page scrolling by itself and the doors opening at their own pace.
+ * A computer is told by its pointer: a mouse or a trackpad, which can hover,
+ * rather than a finger. Safari before 26 is never held either, as before
+ * (`hasScrollTimeline`). Set HOLD_AT_DOORS to false to hold it nowhere again.
  */
-const HOLD_AT_DOORS = false
-const holds = () => HOLD_AT_DOORS && hasScrollTimeline()
+const HOLD_AT_DOORS = true
+/** A computer: a pointer that hovers and points finely (the gold ring's test, pandov-fx.js). */
+const HOLD_DEVICE = COMPUTER_POINTER
+const holds = () =>
+  HOLD_AT_DOORS &&
+  hasScrollTimeline() &&
+  typeof window !== "undefined" &&
+  window.matchMedia(HOLD_DEVICE).matches &&
+  !window.matchMedia(PHONE_MEDIA).matches
 
 /**
  * The door animation, the author's render of 2026-09-29: 38 frames of motion
@@ -652,6 +684,44 @@ const PAST_PIN_PX = 2
  */
 const FLING_MS = 3000
 
+/**
+ * A phone's opening, in steps (2026-11-23, the author's asking; see
+ * `stepsDevice` in lib/played-beat.ts and the steps' effect in
+ * `HeroAnimation`).
+ *
+ * Before, a phone scrolled the opening natively while the doors played at
+ * their own pace: a single swipe carried the page through Presence's short
+ * stay, the dark and For Mind in well under the doors' 1.6s, so Presence was
+ * often never seen; a tap on the way skipped to For Mind; and the menu's
+ * blocking touch listener made every swipe wait on a page busy decoding the
+ * doors' frames, which read as sticking.
+ *
+ * Now the page does not scroll at all until For Mind (`LOCK_CLASS`, CSS in
+ * app/globals.css). Each swipe up, or a tap, is one step: the menu goes and
+ * text 1 comes (1); the handles turn, the doors open and Presence comes
+ * through them (2); For Mind comes up from below into its place (3), and from
+ * there the page scrolls as any page. A swipe down goes a step back while the
+ * page is held. A swipe while the doors are still opening waits for them, so
+ * Presence cannot be skipped; and nothing waits on them for longer than
+ * `STEPS_DOORS_MAX_MS`, so the page can never be left held.
+ */
+const LOCK_CLASS = "hero-lock"
+/** A swipe: at least this far, px, and more up or down than sideways. */
+const SWIPE_PX = 36
+/** A tap: moved less than this, px, and lifted within TAP_MS. */
+const TAP_PX = 12
+const TAP_MS = 400
+/** A turn of a wheel or a key on a tablet: one step per hand (GESTURE_GAP_MS of quiet between two). */
+const WHEEL_STEP_PX = 30
+/** The menu's slide, ms: a step taken within it waits for it. */
+const MENU_STEP_MS = 450
+/** Longest the third step waits on the doors, ms, whatever their frames do. */
+const STEPS_DOORS_MAX_MS = 6000
+/** For Mind coming up, ms, where the browser cannot glide the page itself. */
+const MIND_GLIDE_MS = 900
+/** Longest the glide to For Mind is waited on before the page is put there, ms. */
+const MIND_GLIDE_MAX_MS = 1800
+
 /** A played beat, as the scroll's hold sees it. */
 type Beat = {
   /** Its place, px of real scrolling past the pin: on past it, off before. */
@@ -1035,6 +1105,14 @@ export function HeroAnimation() {
   // The doors following the scroll at the pin (see OPEN_WHEEL_PX), for the
   // scroll's hold.
   const stepRef = useRef<DoorsStep | null>(null)
+  // A phone's steps (see the steps' effect): open the doors, or let them
+  // close, with the page standing at the top; and where they stand.
+  const forceOpenRef = useRef<(v: boolean) => void>(() => {})
+  const doorsNowRef = useRef<() => { pos: number; ready: boolean; broken: boolean }>(() => ({
+    pos: 0,
+    ready: false,
+    broken: false,
+  }))
 
   // The doors: loaded, decoded, played and drawn here, outside React. They
   // change every frame for a second and a bit, and nothing else on the page
@@ -1067,6 +1145,8 @@ export function HeroAnimation() {
     let pos = 0 // where the doors stand, 0 shut → 1 open
     let open = false // where they are going
     let primed = false
+    // Opened by a phone's step, the page still at the top (see the steps).
+    let forced = false
     // While the frames are still on their way the page waits for them, but
     // only so long (DOORS_WAIT_MS from the scroll that asked for them). On a
     // phone the frames can take some seconds, and reading 1 meanwhile let the
@@ -1360,7 +1440,7 @@ export function HeroAnimation() {
       const top = el.getBoundingClientRect().top
       // Past the pin, not at it: the page comes to rest at the pin first (see
       // `holdScroll`), and the doors wait for the next scroll.
-      const want = !heroUp.on && top < -PAST_PIN_PX
+      const want = !heroUp.on && (forced || top < -PAST_PIN_PX)
       // Sent shut from inside the hero, they stay open until Presence has
       // gone off, and then close by their frames (2026-10-28, the author's
       // asking).
@@ -1472,6 +1552,12 @@ export function HeroAnimation() {
       for (let i = 1; i < FRAME_COUNT; i++) load(i)
     })
 
+    forceOpenRef.current = (v: boolean) => {
+      forced = v
+      measure()
+    }
+    doorsNowRef.current = () => ({ pos, ready, broken })
+
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
     resize()
@@ -1483,6 +1569,8 @@ export function HeroAnimation() {
       disposed = true
       heroDoors.breathe = () => false
       stepRef.current = null
+      forceOpenRef.current = () => {}
+      doorsNowRef.current = () => ({ pos: 0, ready: false, broken: false })
       cancelAnimationFrame(breathRaf)
       doorsRef.current = () => 1
       shutDoorsRef.current = () => {}
@@ -1713,6 +1801,8 @@ export function HeroAnimation() {
   // busy decoding the frames, and the doors stuttered. A reader in a hurry
   // there can now pass the doors before they have finished: that is the price
   // the author accepted. `?safari16` shows this version on a computer.
+  // Since 2026-11-23 only on a computer, too (see `holds`): phones and tablets
+  // scroll by themselves whatever their browser.
   useEffect(() => {
     const el = containerRef.current
     if (!el || !holds()) return
@@ -1722,6 +1812,231 @@ export function HeroAnimation() {
       target: () => stepRef.current?.target() ?? 0,
       nudge: (d) => stepRef.current?.nudge(d) ?? false,
     })
+  }, [])
+
+  // A phone's opening, in steps (2026-11-23; see LOCK_CLASS above for why).
+  // The page is held — it cannot scroll at all — while the reader is at the
+  // top of it, and each swipe up or tap takes one step: the menu away and text
+  // 1 (1), the doors open and Presence (2), For Mind up into its place (3),
+  // where the page is let go. A swipe down goes back a step while held. Back at
+  // the top after scrolling, the page is held again where the reader left it.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !stepsDevice()) return
+    const root = document.documentElement
+    const past = () => -el.getBoundingClientRect().top
+    // 0 the menu down · 1 text 1 · 2 the doors open, Presence · 3 the page the reader's
+    let step = 3
+    let locked = false
+    let waitUntil = 0
+    let openedAt = 0
+    // The doors opened by a step, with the page still at the top.
+    let forcedOn = false
+    // The page on its way down to For Mind (the third step).
+    let gliding = false
+    let raf = 0
+    let glideTimer = 0
+
+    const block = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault()
+    }
+    const lock = () => {
+      if (locked) return
+      locked = true
+      heroSteps.locked = true
+      root.classList.add(LOCK_CLASS)
+      // For iOS before 16, where overflow alone does not stop a finger.
+      window.addEventListener("touchmove", block, { passive: false })
+    }
+    const unlock = () => {
+      if (!locked) return
+      locked = false
+      heroSteps.locked = false
+      root.classList.remove(LOCK_CLASS)
+      window.removeEventListener("touchmove", block)
+    }
+    const menu = (shown: boolean) => window.dispatchEvent(new CustomEvent(HERO_MENU_EVENT, { detail: shown }))
+    const force = (v: boolean) => {
+      forcedOn = v
+      forceOpenRef.current(v)
+    }
+
+    // The doors have opened, or failed, or been waited on long enough.
+    const doorsOpen = () => {
+      const d = doorsNowRef.current()
+      return (d.ready && d.pos >= 1) || d.broken || performance.now() - openedAt > STEPS_DOORS_MAX_MS
+    }
+
+    // Where the page stands with For Mind in its place, the hero letting go.
+    const mindTop = () => {
+      const vh = (stickyRef.current?.offsetHeight || window.innerHeight) / 100
+      return el.getBoundingClientRect().top + window.scrollY + PRESENCE_REST_PX + SCROLL_VH * vh
+    }
+    const arrive = (top: number) => {
+      gliding = false
+      cancelAnimationFrame(raf)
+      raf = 0
+      window.clearTimeout(glideTimer)
+      if (Math.abs(window.scrollY - top) > 2) window.scrollTo({ top, behavior: "instant" })
+    }
+    // The third step: the page let go and carried down to For Mind, so it
+    // comes up from below into its place, the dark and all on the way. The
+    // browser glides it where it can; elsewhere (iOS before 15.4) it is
+    // carried a frame at a time. A finger put down on the way takes over.
+    const toMind = () => {
+      step = 3
+      const top = mindTop()
+      const from = window.scrollY
+      unlock()
+      gliding = true
+      const t0 = performance.now()
+      // Whatever the glide does, the page is in For Mind's place by then.
+      glideTimer = window.setTimeout(() => gliding && arrive(top), MIND_GLIDE_MAX_MS)
+      if ("scrollBehavior" in root.style) {
+        window.scrollTo({ top, behavior: "smooth" })
+        const watch = () => {
+          raf = 0
+          if (!gliding) return
+          if (Math.abs(window.scrollY - top) <= 2 || performance.now() - t0 > MIND_GLIDE_MAX_MS) return arrive(top)
+          raf = requestAnimationFrame(watch)
+        }
+        raf = requestAnimationFrame(watch)
+      } else {
+        const carry = (now: number) => {
+          raf = 0
+          if (!gliding) return
+          const t = Math.min(1, (now - t0) / MIND_GLIDE_MS)
+          window.scrollTo({ top: from + (top - from) * ease(t), behavior: "instant" })
+          if (t < 1) raf = requestAnimationFrame(carry)
+          else arrive(top)
+        }
+        raf = requestAnimationFrame(carry)
+      }
+    }
+
+    const go = (dir: 1 | -1) => {
+      if (!locked || gliding) return
+      const now = performance.now()
+      if (now < waitUntil) return
+      if (dir > 0) {
+        if (step === 0) {
+          step = 1
+          menu(false)
+          waitUntil = now + MENU_STEP_MS
+        } else if (step === 1) {
+          step = 2
+          openedAt = now
+          force(true)
+        } else if (step === 2 && doorsOpen()) {
+          toMind()
+        }
+      } else if (step === 2) {
+        step = 1
+        force(false)
+        waitUntil = now + MENU_STEP_MS
+      } else if (step === 1 && heroDoors.shut()) {
+        step = 0
+        menu(true)
+        waitUntil = now + MENU_STEP_MS
+      }
+    }
+
+    // A finger: a swipe up or down, or a tap (not on a link or a button).
+    let touch: { x: number; y: number; at: number } | null = null
+    const onTouchStart = (e: TouchEvent) => {
+      if (gliding) arrive(window.scrollY)
+      if (!locked || e.touches.length !== 1) {
+        touch = null
+        return
+      }
+      const t = e.touches[0]
+      touch = { x: t.clientX, y: t.clientY, at: e.timeStamp }
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      const start = touch
+      touch = null
+      const t = e.changedTouches[0]
+      if (!locked || !start || !t) return
+      const dx = t.clientX - start.x
+      // Up the glass is the way down the page.
+      const dy = start.y - t.clientY
+      if (Math.abs(dy) >= SWIPE_PX && Math.abs(dy) > Math.abs(dx)) return go(dy > 0 ? 1 : -1)
+      if (Math.abs(dx) < TAP_PX && Math.abs(dy) < TAP_PX && e.timeStamp - start.at < TAP_MS) {
+        if (e.target instanceof Element && e.target.closest("a, button, input, textarea, select")) return
+        go(1)
+      }
+    }
+    // A wheel or keys, on a tablet that has them: a step per hand.
+    let wheelSum = 0
+    let wheelAt = -Infinity
+    let wheelUsed = false
+    const onWheel = (e: WheelEvent) => {
+      if (!locked) return
+      if (e.timeStamp - wheelAt > GESTURE_GAP_MS) {
+        wheelSum = 0
+        wheelUsed = false
+      }
+      wheelAt = e.timeStamp
+      if (wheelUsed) return
+      wheelSum += e.deltaY
+      if (Math.abs(wheelSum) < WHEEL_STEP_PX) return
+      wheelUsed = true
+      go(wheelSum > 0 ? 1 : -1)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (!locked || e.repeat) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+      if (e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) go(1)
+      else if (e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey)) go(-1)
+    }
+
+    const atTop = () => window.scrollY <= 1 && past() <= 0
+    const onScroll = () => {
+      if (locked) {
+        // A browser that let a finger through the hold after all: the steps
+        // give way, and the page scrolls by itself as it used to.
+        if (window.scrollY > 2) {
+          unlock()
+          step = 3
+        }
+        return
+      }
+      // Past the pin the doors stand open by the page's own place.
+      if (forcedOn && past() > PAST_PIN_PX + 1) force(false)
+      // Back at the top: held again, on the menu or on text 1, as left.
+      if (!gliding && atTop()) {
+        if (forcedOn) force(false)
+        step = root.dataset.heroMenu === "away" ? 1 : 0
+        lock()
+      }
+    }
+
+    if (atTop()) {
+      step = root.dataset.heroMenu === "away" ? 1 : 0
+      lock()
+    }
+    window.addEventListener("touchstart", onTouchStart, { passive: true })
+    window.addEventListener("touchend", onTouchEnd, { passive: true })
+    const onTouchCancel = () => {
+      touch = null
+    }
+    window.addEventListener("touchcancel", onTouchCancel, { passive: true })
+    window.addEventListener("wheel", onWheel, { passive: true })
+    window.addEventListener("keydown", onKey)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      unlock()
+      cancelAnimationFrame(raf)
+      window.clearTimeout(glideTimer)
+      if (forcedOn) forceOpenRef.current(false)
+      window.removeEventListener("touchstart", onTouchStart)
+      window.removeEventListener("touchend", onTouchEnd)
+      window.removeEventListener("touchcancel", onTouchCancel)
+      window.removeEventListener("wheel", onWheel)
+      window.removeEventListener("keydown", onKey)
+      window.removeEventListener("scroll", onScroll)
+    }
   }, [])
 
   // A click or a tap anywhere on the opening skips it (2026-11-05, the
@@ -1789,6 +2104,10 @@ export function HeroAnimation() {
     }
     const skip = (e: MouseEvent) => {
       if (e.button !== 0) return
+      // Not on a phone, where the opening goes in steps and a tap moves it one
+      // step on (2026-11-23): a tap there used to throw the page past
+      // Presence to For Mind.
+      if (stepsDevice()) return
       if (e.target instanceof Element && e.target.closest("a, button, input, textarea, select")) return
       run()
     }

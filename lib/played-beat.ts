@@ -64,6 +64,37 @@ export const heroDoors = {
  */
 export const TO_TOP_EVENT = "pandov:to-top"
 
+/**
+ * A computer: a pointer that hovers and points finely, a mouse or a trackpad
+ * rather than a finger (the gold ring's test, public/pandov-fx.js).
+ */
+export const COMPUTER_POINTER = "(hover: hover) and (pointer: fine)"
+
+/**
+ * Whether the homepage's opening goes in steps (2026-11-23, the author's
+ * asking, after it stuttered on some phones: it skipped Presence, or seemed to
+ * stick). On a phone or a tablet, a finger rather than a mouse, and not where
+ * the device asks for less motion: the page does not scroll at all while the
+ * opening plays, and each swipe up (or a tap) moves it one step — the menu
+ * goes and text 1 comes; the handles turn, the doors open and Presence comes
+ * through them; For Mind comes up from below and the page is the reader's.
+ * Played by `HeroAnimation` (components/hero-animation.tsx).
+ */
+export function stepsDevice(): boolean {
+  if (typeof window === "undefined") return false
+  return !window.matchMedia(COMPUTER_POINTER).matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
+/** Whether the opening's steps hold the page now (the page cannot scroll). Set by the hero. */
+export const heroSteps = { locked: false }
+
+/**
+ * Sent by the hero's steps with `detail` true or false: the top menu down, or
+ * away with text 1 in its place. `RevealOnScrollUp` does it, as it does for a
+ * hand; while the steps hold the page it leaves the hand to them.
+ */
+export const HERO_MENU_EVENT = "pandov:hero-menu"
+
 /** easeInOutCubic. */
 export function ease(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2

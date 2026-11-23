@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import Link from "next/link"
 import { RING_CLASS, type Radiant } from "@/lib/radiant"
 import { STILL_MEDIA, still } from "@/lib/still"
+import { TEXT_SIZE, TEXT_TRACK } from "@/lib/type"
 
 /**
  * Seconds the light takes to cross the ornament, from the innermost contour to
@@ -124,6 +124,23 @@ const CENTRE = 360.9
  * ink. LINE_INK_MIN is the least it takes, because a solid pixel at a third of
  * the ink reads fainter than the smeared line it replaces did.
  */
+/**
+ * The statement, the author's text of 2026-11-23 (the second that day; the
+ * first kept only its last sentence), set in lines by sense: a stanza to a
+ * sentence, a line to a phrase. Each line breaks where the phrase does, never
+ * after an article or a preposition; a comma or the dash ends a line rather
+ * than opening one. The second sentence goes in four short lines rather than
+ * two long ones so every line is under 280px — the same setting then holds on a
+ * phone's 311px column as on a computer. The last stanza lays "just enough
+ * metal to exist" and "enough weight to anchor the hand" one under the other,
+ * the pair they are; the dash is tied to "exist" by a no-break space.
+ */
+const STATEMENT: string[][] = [
+  ["Two distinct forms,", "opposed in silhouette and balance."],
+  ["Rather than mirroring each other", "in different finishes,", "White and Black are sculpted", "as separate counterparts."],
+  ["Reduced to what is essential,", "each piece holds just enough metal to exist —", "and enough weight to anchor the hand."],
+]
+
 /** The ornament's lines on the dark (the export draws them #5C4C34, for white). */
 const ORNAMENT_INK = "#c8b088"
 
@@ -132,8 +149,9 @@ const EXPORT_BOX = 722
 const LINE_INK_MIN = 0.55
 
 /**
- * Closing statement of the Chess Set page: the commission note on the left,
- * the radiant ornament on the right. The rosette at the centre of the radiant
+ * The Chess Set's statement: its text on the left, the radiant ornament on
+ * the right. (The commission note and a CONTACT link stood under the line until
+ * 2026-11-23; they close the page now, in `chess-set-closing.tsx`.) The rosette at the centre of the radiant
  * turns continuously and speeds up with the scroll, so the drawing reads as a
  * mechanism rather than a static frame.
  *
@@ -280,7 +298,11 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
              the white the pieces' photographs leave above them, which now
              stands on the other side of an edge, so it closes as it opens. */
           background-color: #202020;
-          padding: 160px 0 160px;
+          /* 160px over and under until 2026-11-23, when the author asked for
+             the bar to be smaller: the ornament sets its height, and the dark
+             round it is what came down. The outermost contour swells some 15px
+             past the drawing at most, well inside this. */
+          padding: 80px 0 80px;
         }
         .statement-inner {
           max-width: 1400px;
@@ -293,42 +315,29 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
         }
         .statement-text {
           flex: 0 1 420px;
-          font-family: 'Julius Sans One', sans-serif;
         }
+        /* Manrope since 2026-11-23 (the author's asking; Julius, uppercase,
+           until then), at the site's one size and tracking, in Body's grey
+           on the dark. A line of 2, as Making's editorial setting. */
         .statement-lead {
-          font-size: clamp(11px, 1.05vw, 14px);
-          letter-spacing: 0.2em;
-          line-height: 2.2;
+          font-family: var(--font-text), sans-serif;
+          font-weight: 400;
+          font-size: ${TEXT_SIZE}px;
+          letter-spacing: ${TEXT_TRACK};
+          line-height: 2;
           color: #888;
-          text-transform: uppercase;
           margin: 0;
         }
-        .statement-note {
-          font-size: clamp(11px, 0.85vw, 12px);
-          letter-spacing: 0.2em;
-          line-height: 2.1;
-          /* Under the lead on the dark, as it was over it on white (#aaa). */
-          color: #6f6f6f;
-          margin: 48px 0 0;
+        /* A stanza to a sentence, half a line apart, as on Making. */
+        .statement-lead + .statement-lead {
+          margin-top: 1em;
         }
-        .statement-rule {
-          height: 1px;
-          background-color: #3a3a3a;
-          margin: 44px 0 0;
-        }
-        .statement-contact {
-          display: inline-block;
-          margin-top: 40px;
-          font-family: 'Julius Sans One', sans-serif;
-          font-size: 12px;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: #888;
-          text-decoration: none;
-          transition: opacity 0.3s ease;
-        }
-        .statement-contact:hover {
-          opacity: 0.5;
+        /* A line to a phrase (STATEMENT, above), on every screen. The
+           longest is 272px; on a screen too narrow for it (under ~340px) it
+           wraps, balanced, rather than run out of the column. */
+        .statement-l {
+          display: block;
+          text-wrap: balance;
         }
         /* Ornament — radiant frame with the rosette turning at its centre */
         .statement-ornament {
@@ -404,8 +413,9 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
           opacity: calc(0.65 * var(--sr-ink));
         }
         @media (max-width: 900px) {
+          /* 110px until 2026-11-23, brought down with the desktop's. */
           .statement-section {
-            padding: 110px 0 110px;
+            padding: 64px 0 64px;
           }
           .statement-inner {
             flex-direction: column;
@@ -426,18 +436,22 @@ export function ChessSetStatement({ radiant, rosette }: { radiant: Radiant; rose
 
       <section className="statement-section">
         <div className="statement-inner">
+          {/* Only the line since 2026-11-23 (the author's text of that day):
+              the commission note, its rule and the CONTACT link went to the
+              page's end, `components/chess-set-closing.tsx`, under the pieces.
+              Since the afternoon of that day, the author's longer text, in
+              lines by sense, the same on every screen (STATEMENT, above). */}
           <div className="statement-text">
-            <p className="statement-lead">
-              Reduced to what is essential, each piece holds just enough material to exist.
-            </p>
-            <p className="statement-note">
-              Every edition is produced to order. Dimensions, materials and finishes
-              are defined with each commission. Pricing is available upon request.
-            </p>
-            <div className="statement-rule" />
-            <Link href="/contact" className="statement-contact">
-              Contact
-            </Link>
+            {STATEMENT.map((stanza) => (
+              <p key={stanza[0]} className="statement-lead">
+                {stanza.map((line, i) => (
+                  <span key={line} className="statement-l">
+                    {line}
+                    {i < stanza.length - 1 ? " " : null}
+                  </span>
+                ))}
+              </p>
+            ))}
           </div>
 
           <div className="statement-ornament" ref={ornamentRef}>

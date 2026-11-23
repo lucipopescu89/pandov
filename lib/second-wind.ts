@@ -156,8 +156,8 @@ export const SECOND_WIND: Record<string, Pendant> = {
     height: "53 mm",
     model: "/models/waterfall.glb",
     cutout: "/images/body/waterfall-pendant.avif",
+    // The still one on its cord (5) taken out on 2026-11-23, the author's asking.
     photos: photos("waterfall", [
-      ["5", "Waterfall hanging still on its cord against a black top"],
       ["6", "Waterfall swinging on its cord against a black top"],
       ["3", "Waterfall worn on a fine chain above a black neckline"],
       ["2", "Waterfall on dark grey stone"],
@@ -207,11 +207,11 @@ export const SECOND_WIND: Record<string, Pendant> = {
     height: "55 mm",
     model: "/models/mnature.glb",
     cutout: "/images/body/mnature-pendant.avif",
+    // Alone on dark slate (10) taken out on 2026-11-23, the author's asking: the pair (11) shows it the same way, and its back.
     photos: photos("mnature", [
       ["9", "Mother Nature on white, over a sweep of white brushstrokes"],
       ["4", "Mother Nature worn on a black cord with a black top"],
       ["13", "Mother Nature worn on a fine chain, lying against the skin"],
-      ["10", "Mother Nature on dark slate"],
       ["11", "A pair of Mother Nature pendants on dark slate, one turned to show its back"],
     ]),
     materials: PRICES,
@@ -240,10 +240,10 @@ export const SECOND_WIND: Record<string, Pendant> = {
     model: "/models/emperor.glb",
     cutout: "/images/body/emperor-pendant.avif",
     // The cord photograph (6) last, not first: the author's asking on 2026-10-27.
+    // Alone on dark slate (8) taken out on 2026-11-23, the author's asking: the pair (5) shows it the same way, and its back.
     photos: photos("emperor", [
       ["3", "Emperor of Nothingness worn on a black cord with an open white shirt"],
       ["7", "Emperor of Nothingness on dark stone, under a glow of embers"],
-      ["8", "Emperor of Nothingness on dark slate"],
       ["5", "A pair of Emperor of Nothingness pendants on dark slate, one turned to show its back"],
       ["6", "Emperor of Nothingness turning on its cord against a black top"],
     ]),

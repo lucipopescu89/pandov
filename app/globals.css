@@ -153,3 +153,16 @@
     --presence-halo-k: 0.7;
   }
 }
+
+/* The homepage's opening on a phone, in steps (2026-11-23; `stepsDevice` in
+   lib/played-beat.ts): while it plays, the page does not scroll at all, so
+   nothing can carry it past Presence and no script has to fight a finger for
+   it. Set and taken off by the hero (`LOCK_CLASS` in hero-animation.tsx). */
+html.hero-lock,
+html.hero-lock body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.hero-lock body {
+  touch-action: none;
+}

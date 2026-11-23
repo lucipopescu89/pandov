@@ -7,6 +7,7 @@ import { BodyFooter } from "@/components/body-footer"
 import { ChessSetGallery } from "@/components/chess-set-gallery"
 import { ChessSetOrnament } from "@/components/chess-set-ornament"
 import { ChessSetStatement } from "@/components/chess-set-statement"
+import { ChessSetClosing } from "@/components/chess-set-closing"
 import { ChessPieces } from "@/components/chess-pieces"
 import { MoonMandala } from "@/components/moon-mandala"
 import { ScrollFade } from "@/components/scroll-fade"
@@ -27,6 +28,17 @@ export const metadata = {
  * clouds call for, below.
  */
 const SHOW_CLOUDS = false
+
+/**
+ * Whether the poem stands on the dark between the moon and the board. Taken
+ * off on 2026-11-23, on the author's asking: it told the mandala's old
+ * sequence (the impulse the drop, the composure the ink, the waiting the bow,
+ * and the strike), and the strike is gone with the slowed scroll. The board's
+ * couplet, WHITE REACHES UPWARD / BLACK SINKS INWARD, stands on the dark in
+ * its place, and the bar is shorter for it. `true` brings the poem back
+ * exactly, with the couplet over the board in the white, as before.
+ */
+const SHOW_POEM = false
 
 /**
  * The moon and its mandala at a fixed size, whole on the screen (2026-11-21,
@@ -55,17 +67,24 @@ const SHOW_CLOUDS = false
  * scrolling, never cut or covered. The width's share stays 96%, since past it
  * the page's edges would cut its sides: on a phone it is no larger.
  *
+ * And 20% larger again on 2026-11-23 (the author's asking: it looked rather
+ * small, its lines very fine; they went to a full 1px the same day, in
+ * `moon-mandala.tsx`): 1500px at most and 138% of the screen's height, so it
+ * runs further past the screen's top and foot as it passes, and is seen whole
+ * only by scrolling. A phone is unchanged, at 96% of its width, for the
+ * reason above. The 1248px and 115% are kept here should it want to go back.
+ *
  * The geometry, in widths of the moon's canvas (`--moon-w`): the canvas is
  * 0.44419 tall, the mandala's square 1.0059 wide and its top 67.92% of the
  * canvas's height above it, so the outermost chevrons stand 0.24066 above
  * the canvas's top and 0.64316 below it, 0.19897 below its foot.
  */
-const MANDALA_D = "min(1248px, 115vh, 96vw)"
+const MANDALA_D = "min(1500px, 138vh, 96vw)"
 const MOON_PER_MANDALA = 1.13144
 const MANDALA_ABOVE = 0.24066
 const MANDALA_BELOW_FOOT = 0.19897
 /**
- * The white from the seam to the mandala's top, px: FALL IN HEAVEN stands
+ * The white from the seam to the mandala's top, px: DESCEND IN HEAVEN (FALL IN HEAVEN until 2026-11-23) stands
  * 170px under the seam, as RISE IN HELL stands over it, and the mandala begins
  * some 70px under that line. And the white left under the mandala before the
  * poem's dark.
@@ -342,7 +361,7 @@ export default async function ChessSetPage() {
           /* Centred however its width compares with the page's (a block wider
              than its parent is not centred by auto margins). */
           margin-left: calc(50% - var(--moon-w) / 2);
-          /* FALL IN HEAVEN's line box (the type's size at line-height 1) and
+          /* DESCEND IN HEAVEN's line box (the type's size at line-height 1) and
              the section's 120px are above this; the mandala's top is
              MANDALA_ABOVE of the canvas's width above the canvas. */
           margin-top: calc(${MANDALA_ABOVE} * var(--moon-w) + ${MANDALA_TOP_PX - 120}px - clamp(11px, 0.85vw, 12px));
@@ -542,6 +561,25 @@ export default async function ChessSetPage() {
         .chess-board-captions .chess-line + .chess-line {
           margin-top: 1.5em;
         }
+        /* Without the poem (SHOW_POEM, 2026-11-23) the board's couplet stands
+           on the dark in its place, in the poem's grey, and the bar is
+           shorter: 120px over and under two lines rather than 150 round five.
+           The board then opens 60px under the dark, not 140, so the couplet
+           is still read with the photographs it speaks of: 180px from them
+           rather than the 40 it had in the white, where 290 would have left
+           it on its own. */
+        .chess-poem-section.chess-captions-bar {
+          padding: 120px 24px;
+        }
+        .chess-captions-bar .chess-board-captions {
+          margin-bottom: 0;
+        }
+        .chess-captions-bar .chess-board-captions .chess-line {
+          color: #8a8a8a;
+        }
+        .chess-board-section.chess-board-after-bar {
+          padding-top: 60px;
+        }
 
         /* --- Pieces ----------------------------------------------------- */
         .chess-pieces-section {
@@ -553,11 +591,13 @@ export default async function ChessSetPage() {
              pieces, which reads as part of this. */
           padding-top: 80px;
           /* The bottom menu brings its own room above it — 80px on a desktop,
-             56 on a phone, the same on every page. This adds 44 more so the dots
-             sit ~130px under the logo: the set ends on six small marks, and they
-             need more air under them than a photograph's edge would. The
-             author's call, and the one page on the site where that space is not
-             the shared figure. */
+             56 on a phone, the same on every page. This adds 44 more: the
+             page ends on small marks, and they need more air under them than a
+             photograph's edge would. The author's call, and the one page on
+             the site where that space is not the shared figure. Until
+             2026-11-23 the marks were the pieces' six dots; since then they are
+             the close under them (chess-set-closing.tsx), ending on ENQUIRE,
+             and the 44 went with them. */
           margin-bottom: 44px;
         }
 
@@ -594,6 +634,12 @@ export default async function ChessSetPage() {
           }
           .chess-board-captions {
             margin-bottom: 24px;
+          }
+          .chess-poem-section.chess-captions-bar {
+            padding: 90px 24px;
+          }
+          .chess-board-section.chess-board-after-bar {
+            padding-top: 40px;
           }
         }
       `}</style>
@@ -646,7 +692,7 @@ export default async function ChessSetPage() {
             RISE IN HELL rises, its mirror: from just under the seam, 150px, at
             the same calm, steady pace (the author's asking, 2026-11-08). */}
         <ScrollFade className="chess-line chess-seam-below" from="above" distance={150} pace={45} steady>
-          Fall in Heaven
+          Descend in Heaven
         </ScrollFade>
 
         <div className="chess-moon-media">
@@ -685,27 +731,36 @@ export default async function ChessSetPage() {
         </div>
       </section>
 
-      {/* ================= Poem, on the dark ================= */}
-      <section className="chess-poem-section">
-        <div className="moon-poem">
-          <p className="chess-line moon-impulse">
-            <span>The violence of the impulse</span>
-            <span>The quiet of the composure</span>
-          </p>
-          <p className="chess-line moon-between">Between</p>
-          <p className="chess-line moon-waiting">
-            <span>A quiet waiting</span>
-            <span>For the right strike</span>
-          </p>
-        </div>
+      {/* ================= On the dark: the board's couplet (or the poem, SHOW_POEM) ================= */}
+      <section className={SHOW_POEM ? "chess-poem-section" : "chess-poem-section chess-captions-bar"}>
+        {SHOW_POEM ? (
+          <div className="moon-poem">
+            <p className="chess-line moon-impulse">
+              <span>The violence of the impulse</span>
+              <span>The quiet of the composure</span>
+            </p>
+            <p className="chess-line moon-between">Between</p>
+            <p className="chess-line moon-waiting">
+              <span>A quiet waiting</span>
+              <span>For the right strike</span>
+            </p>
+          </div>
+        ) : (
+          <div className="chess-board-captions">
+            <p className="chess-line">White reaches upward</p>
+            <p className="chess-line">Black sinks inward</p>
+          </div>
+        )}
       </section>
 
       {/* ================= Board ================= */}
-      <section className="chess-board-section">
-        <div className="chess-board-captions">
-          <p className="chess-line">White reaches upward</p>
-          <p className="chess-line">Black sinks inward</p>
-        </div>
+      <section className={SHOW_POEM ? "chess-board-section" : "chess-board-section chess-board-after-bar"}>
+        {SHOW_POEM && (
+          <div className="chess-board-captions">
+            <p className="chess-line">White reaches upward</p>
+            <p className="chess-line">Black sinks inward</p>
+          </div>
+        )}
         <ChessSetGallery />
       </section>
 
@@ -713,8 +768,11 @@ export default async function ChessSetPage() {
       <ChessSetStatement radiant={radiant} rosette={rosette} />
 
       {/* ================= Pieces — gold and dark, face to face ================= */}
+      {/* And under them, in the same white, the page's close: how the set is
+          made, made to order, price on request, and ENQUIRE (2026-11-23). */}
       <section className="chess-pieces-section">
         <ChessPieces />
+        <ChessSetClosing />
       </section>
 
       <BodyFooter activeLabel={null} />
